@@ -5,7 +5,7 @@ from sqlalchemy import (
     Column, Integer, String, Text, ForeignKey, BigInteger, JSON, Float,
     DateTime, Boolean, Index, UniqueConstraint, Enum, ARRAY
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship as orm_relationship
 from sqlalchemy.sql import func
 
 from ..base import Base, TimestampMixin
@@ -45,8 +45,8 @@ class CharacterEmotionalProfile(Base, TimestampMixin):
     personality_traits = Column(JSON, default={})
     
     # Relaciones
-    relationships = relationship("UserCharacterRelationship", back_populates="character", cascade="all, delete-orphan")
-    emotional_states = relationship("UserCharacterEmotionalState", back_populates="character", cascade="all, delete-orphan")
+    relationships = orm_relationship("UserCharacterRelationship", back_populates="character", cascade="all, delete-orphan")
+    emotional_states = orm_relationship("UserCharacterEmotionalState", back_populates="character", cascade="all, delete-orphan")
     
     def __repr__(self) -> str:
         """Representación de texto del perfil emocional."""
@@ -72,12 +72,12 @@ class UserCharacterRelationship(Base, TimestampMixin):
     last_interaction_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relaciones
-    user = relationship("User", back_populates="character_relationships")
-    character = relationship("CharacterEmotionalProfile", back_populates="relationships")
+    user = orm_relationship("User", back_populates="character_relationships")
+    character = orm_relationship("CharacterEmotionalProfile", back_populates="relationships")
     
-    emotional_state = relationship("UserCharacterEmotionalState", back_populates="relationship", uselist=False, cascade="all, delete-orphan")
-    emotional_memories = relationship("EmotionalMemory", back_populates="relationship", cascade="all, delete-orphan")
-    personality_adaptation = relationship("PersonalityAdaptation", back_populates="relationship", uselist=False, cascade="all, delete-orphan")
+    emotional_state = orm_relationship("UserCharacterEmotionalState", back_populates="relationship", uselist=False, cascade="all, delete-orphan")
+    emotional_memories = orm_relationship("EmotionalMemory", back_populates="relationship", cascade="all, delete-orphan")
+    personality_adaptation = orm_relationship("PersonalityAdaptation", back_populates="relationship", uselist=False, cascade="all, delete-orphan")
     
     __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_user_character_relationship"),)
     
@@ -108,9 +108,8 @@ class UserCharacterEmotionalState(Base, TimestampMixin):
     dominant_emotion = Column(String(20), default="neutral")
     
     # Relaciones
-    relationship = relationship("UserCharacterRelationship", back_populates="emotional_state", foreign_keys=[relationship_id])
-    # Usar un nombre diferente para evitar conflicto con la función relationship importada
-    character = relationship("CharacterEmotionalProfile", back_populates="emotional_states")
+    relationship = orm_relationship("UserCharacterRelationship", back_populates="emotional_state", foreign_keys=[relationship_id])
+    character = orm_relationship("CharacterEmotionalProfile", back_populates="emotional_states")
     
     __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_user_character_emotional_state"), Index("idx_user_character_emotional_dominant", "user_id", "character_id", "dominant_emotion"),)
     
@@ -140,7 +139,7 @@ class EmotionalMemory(Base, TimestampMixin):
     is_forgotten = Column(Boolean, default=False)
     
     # Relaciones
-    relationship = relationship("UserCharacterRelationship", back_populates="emotional_memories", foreign_keys=[relationship_id])
+    relationship = orm_relationship("UserCharacterRelationship", back_populates="emotional_memories", foreign_keys=[relationship_id])
     
     __table_args__ = (Index("idx_emotional_memories_user_char", "user_id", "character_id"), Index("idx_emotional_memories_importance", "user_id", "character_id", "importance_score", "is_forgotten"), Index("idx_emotional_memories_last_recalled", "user_id", "character_id", "last_recalled_at"),)
     
@@ -176,7 +175,7 @@ class PersonalityAdaptation(Base, TimestampMixin):
     confidence_score = Column(Float, default=0.5)
     
     # Relaciones
-    relationship = relationship("UserCharacterRelationship", back_populates="personality_adaptation", foreign_keys=[relationship_id])
+    relationship = orm_relationship("UserCharacterRelationship", back_populates="personality_adaptation", foreign_keys=[relationship_id])
     
     __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_personality_adaptation"),)
     
