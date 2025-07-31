@@ -1,4 +1,4 @@
-# Fase 2: Implementación de Flujo Transversal
+# Fase 1: Implementación de Flujo Transversal
 
 ## Objetivo
 Implementar una estructura funcional básica que conecte los módulos de Administración (reacciones del canal), Gamificación (puntos) y Narrativa (entrega de historia) en un único flujo de trabajo.
