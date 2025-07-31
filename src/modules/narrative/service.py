@@ -509,6 +509,21 @@ class NarrativeService(ICoreService):
 
 from datetime import datetime
 
+class MissionCompletedEvent:
+    """Evento emitido cuando un usuario completa una misión."""
+    def __init__(self, user_id, mission_id):
+        self.user_id = user_id
+        self.mission_id = mission_id
+
+class LevelUpEvent:
+    """Evento emitido cuando un usuario sube de nivel."""
+    def __init__(self, user_id, new_level):
+        self.user_id = user_id
+        self.new_level = new_level
+
+class NarrativeService:
+    """Servicio para gestionar la narrativa del juego."""
+    
     async def handle_mission_completed(self, event: MissionCompletedEvent) -> None:
         """
         Gestiona la entrega de fragmentos narrativos cuando se completa una misión.
