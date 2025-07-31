@@ -71,6 +71,19 @@ class AdminService(ICoreService):
             result = await session.execute(select(Tariff))
             return result.scalars().all()
 
+    async def update_tariff(self, tariff_id: int, name: str, price: float, duration_days: int) -> Tariff | None:
+        """Actualiza una tarifa existente."""
+        tariff = await self.get_tariff(tariff_id)
+        if tariff:
+            tariff.name = name
+            tariff.price = price
+            tariff.duration_days = duration_days
+            async with self._session() as session:
+                await session.commit()
+                print(f"[Admin] Tarifa actualizada: {tariff}")
+                return tariff
+        return None
+
     async def delete_tariff(self, tariff_id: int) -> bool:
         """Elimina una tarifa por su ID."""
         tariff = await self.get_tariff(tariff_id)

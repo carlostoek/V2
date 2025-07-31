@@ -1,6 +1,21 @@
 from src.core.interfaces.IEventBus import IEvent
 from typing import Dict, List, Optional, Any
 
+class UserMessageEvent(IEvent):
+    """Evento que se dispara cuando un usuario envía un mensaje."""
+    def __init__(self, user_id: int, message: str, timestamp: str):
+        self.user_id = user_id
+        self.message = message
+        self.timestamp = timestamp
+
+class CommandExecutedEvent(IEvent):
+    """Evento que se dispara cuando un usuario ejecuta un comando."""
+    def __init__(self, user_id: int, command: str, args: List[str], timestamp: str):
+        self.user_id = user_id
+        self.command = command
+        self.args = args
+        self.timestamp = timestamp
+
 class UserStartedBotEvent(IEvent):
     """Evento que se dispara cuando un usuario presiona /start por primera vez."""
     def __init__(self, user_id: int, username: str | None):
