@@ -27,7 +27,7 @@ Para más detalles, consulta [ARCHITECTURE.md](ARCHITECTURE.md).
 - **Python 3.10+**: Aprovechando las últimas características del lenguaje.
 - **Aiogram 3.x**: Framework moderno y asíncrono para bots de Telegram.
 - **SQLAlchemy 2.x**: ORM potente y flexible para interacción con bases de datos.
-- **PostgreSQL**: Base de datos relacional robusta.
+- **PostgreSQL/SQLite**: Soporte para PostgreSQL en producción y SQLite para desarrollo.
 - **Pydantic**: Validación de datos y configuración basada en tipos.
 - **Asyncio**: Programación asíncrona para máxima eficiencia.
 
@@ -35,7 +35,7 @@ Para más detalles, consulta [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### Requisitos Previos
 - Python 3.10 o superior
-- PostgreSQL
+- PostgreSQL (para producción) o SQLite (para desarrollo)
 - Token de bot de Telegram (de BotFather)
 
 ### Pasos de Instalación

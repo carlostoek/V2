@@ -1,7 +1,7 @@
 """Configuración de la aplicación basada en variables de entorno."""
 
-from typing import List, Optional, Set
-from pydantic import PostgresDsn, field_validator
+from typing import List, Optional, Set, Union
+from pydantic import PostgresDsn, field_validator, AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -14,10 +14,12 @@ class Settings(BaseSettings):
     USE_WEBHOOK: bool = False
     
     # Database settings
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: Union[PostgresDsn, str]
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_ECHO: bool = False
+    CREATE_TABLES: bool = True  # Crear tablas automáticamente al iniciar en desarrollo
+    USE_SQLITE: bool = False  # Usar SQLite en lugar de PostgreSQL
     
     # Admin settings
     ADMIN_USER_IDS: str = ""

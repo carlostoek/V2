@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 from src.core.event_bus import EventBus
 from src.core.services.config import settings
@@ -8,10 +9,14 @@ from src.modules.gamification.service import GamificationService
 from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.admin.service import AdminService
+from src.bot.database.engine import init_db
 
 async def main():
     """Punto de entrada principal de la aplicación V2."""
     logging.basicConfig(level=logging.INFO)
+    
+    # Inicializar la base de datos (creará tablas si CREATE_TABLES=True)
+    await init_db()
     
     event_bus = EventBus()
 
