@@ -168,3 +168,102 @@ Manejo de expiración automática de suscripciones VIP.
 Este bot administra canales, controla suscripciones y accesos, permite jugar minijuegos y trivias, tiene un sistema completo de misiones, niveles, recompensas e insignias, gestiona narrativas personalizadas y progresivas, permite regalar puntos y contenido diario, administra subastas VIP, y tiene sistemas automatizados de notificaciones con mensajes personalizados y humorísticos.
 
 Además, todo está conectado con teclados personalizados que permiten a los usuarios y administradores navegar de forma intuitiva y con acceso rápido a cada sección del bot.
+
+
+---
+
+📋 Reporte Global de Funcionalidades del Bot
+
+🛠️ 1. Comandos y Acciones que Puede Realizar el Bot
+
+El bot es capaz de realizar las siguientes funciones para los usuarios y administradores:
+
+🎮 Funciones para los Usuarios
+
+Explorar narrativa: Los usuarios pueden avanzar en la historia desbloqueando fragmentos y pistas.
+
+Participar en misiones: Los usuarios pueden acceder a misiones y completar tareas para obtener recompensas.
+
+Administrar su perfil: Pueden ver su progreso, sus estadísticas, y las pistas que han desbloqueado.
+
+Interactuar con trivias: El bot proporciona trivias que los usuarios pueden responder para ganar puntos.
+
+Recibir notificaciones: El bot envía mensajes informativos y de avance narrativo.
+
+Acceso al canal: Los usuarios pueden unirse a canales gratuitos o VIP a través de botones o tokens especiales.
+
+
+👑 Funciones VIP y Especiales
+
+Participar en subastas: Los usuarios VIP pueden participar en subastas de objetos o privilegios exclusivos.
+
+Acceso a contenido exclusivo: El bot permite a los usuarios desbloquear contenido VIP no disponible para usuarios gratuitos.
+
+Beneficios escalonados: Los usuarios VIP obtienen beneficios que pueden mejorar progresivamente.
+
+
+🛠️ Funciones Administrativas
+
+Configuración del bot: Los administradores pueden configurar las opciones internas del bot y gestionar los datos narrativos.
+
+Administración de misiones: Los administradores pueden crear y editar misiones disponibles para los usuarios.
+
+Control de subastas: Los administradores pueden iniciar, gestionar y finalizar subastas.
+
+Notificaciones programadas: Los administradores pueden configurar mensajes y recordatorios automáticos.
+
+Gestión de usuarios: Los administradores pueden visualizar información y estadísticas de los usuarios.
+
+
+
+---
+
+🤖 2. Automatizaciones Internas
+
+El bot realiza múltiples tareas sin que los usuarios las soliciten:
+
+Suma puntos de trivia diariamente.
+
+Genera misiones diarias de forma automática.
+
+Envía notificaciones programadas.
+
+Monitorea subastas activas y actualiza sus estados automáticamente.
+
+Limpia solicitudes antiguas en los canales.
+
+Maneja los accesos a contenido de manera automática cuando un usuario se convierte en VIP.
+
+
+
+---
+
+🔄 3. Interacciones con el Usuario
+
+Los usuarios pueden:
+
+Usar botones y menús interactivos para navegar.
+
+Consultar su perfil, estadísticas y contenido desbloqueado.
+
+Recibir respuestas personalizadas al avanzar en la narrativa.
+
+Acceder a trivias y participar en misiones.
+
+Ingresar a canales VIP o gratuitos mediante tokens o enlaces.
+
+
+
+---
+
+🛡️ 4. Restricciones y Protecciones
+
+Contenido limitado: Los usuarios gratuitos tienen acceso restringido a ciertas misiones, pistas y canales.
+
+Control VIP: Solo los usuarios con acceso especial pueden participar en subastas y recibir contenido exclusivo.
+
+Gestión cerrada: Los administradores son los únicos que pueden modificar la configuración interna y las narrativas.
+
+
+
+--
