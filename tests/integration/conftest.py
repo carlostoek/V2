@@ -1,9 +1,14 @@
-
 import pytest
+import os
+import sys
 from typing import AsyncGenerator, List, Any
 from aiogram import Bot
 from aiogram.methods import TelegramMethod, GetMe
 from aiogram.types import User
+
+# Configurar variables de entorno para los tests
+os.environ["BOT_TOKEN"] = "8426456639:AAHgA6kNgAUxT1l3EZJNKlwoE4xdcytbMLw"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/testdb"
 
 class MockedBot(Bot):
     """Bot mockeado para interceptar llamadas a la API en tests."""

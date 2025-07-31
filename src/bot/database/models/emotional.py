@@ -109,7 +109,8 @@ class UserCharacterEmotionalState(Base, TimestampMixin):
     
     # Relaciones
     relationship = relationship("UserCharacterRelationship", back_populates="emotional_state", foreign_keys=[relationship_id])
-    character = relationship("CharacterEmotionalProfile", back_populates="emotional_states")
+    # Corregir relación para evitar conflicto con variable local relationship
+    char = relationship("CharacterEmotionalProfile", back_populates="emotional_states")
     
     __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_user_character_emotional_state"), Index("idx_user_character_emotional_dominant", "user_id", "character_id", "dominant_emotion"),)
     

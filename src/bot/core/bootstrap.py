@@ -13,6 +13,7 @@ from .di import setup_di_container
 from .handlers import setup_handlers
 from .errors import setup_error_handlers
 from .scheduler import setup_scheduler
+from ..services.admin import AdminService
 
 logger = structlog.get_logger()
 
