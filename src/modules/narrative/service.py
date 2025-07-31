@@ -130,6 +130,100 @@ class NarrativeService(ICoreService):
                 
                 # Las misiones tienen alta probabilidad de desbloquear pistas
                 await self._maybe_unlock_lore_piece(user_id, "mission", high_chance=True)
+                
+    async def handle_mission_completed(self, event: MissionCompletedEvent) -> None:
+        """
+        Gestiona la entrega de fragmentos narrativos cuando se completa una misión.
+        
+        Args:
+            event: Evento que contiene información de la misión completada.
+        """
+        user_id = event.user_id
+        mission_id = event.mission_id
+        
+        logger.info(f"[Narrative] Procesando misión completada para {user_id}: {mission_id}")
+        
+        # Buscar un fragmento adecuado para misiones
+        fragment_key = await self._get_appropriate_fragment(user_id, "mission")
+        
+        if fragment_key:
+            self.story_fragments_to_send[user_id] = fragment_key
+            logger.info(f"[Narrative] Asignando fragmento {fragment_key} por misión completada")
+            
+            # Las misiones tienen alta probabilidad de desbloquear pistas
+            await self._maybe_unlock_lore_piece(user_id, "mission", high_chance=True)
+        else:
+            logger.warning(f"[Narrative] No se encontró fragmento para misión de usuario {user_id}")
+            
+    async def handle_level_up(self, event: LevelUpEvent) -> None:
+        """
+        Gestiona la progresión narrativa cuando un usuario sube de nivel.
+        
+        Args:
+            event: Evento que contiene información del nuevo nivel.
+        """
+        user_id = event.user_id
+        new_level = event.new_level
+        
+        logger.info(f"[Narrative] Usuario {user_id} subió al nivel {new_level}")
+        
+        # Desbloquear fragmentos especiales basados en el nivel
+        if new_level >= 2:
+            # Nivel 2 desbloquea nuevo personaje o área
+            fragment_key = await self._get_level_specific_fragment(user_id, new_level)
+            if fragment_key:
+                self.story_fragments_to_send[user_id] = fragment_key
+                logger.info(f"[Narrative] Asignando fragmento de nivel {new_level}: {fragment_key}")
+                
+                # Nivel nuevo siempre desbloquea una pista
+                await self._maybe_unlock_lore_piece(user_id, "level_up", high_chance=True)
+                
+    async def _get_level_specific_fragment(self, user_id: int, level: int) -> Optional[str]:
+        """
+        Obtiene un fragmento específico para un nivel.
+        
+        Args:
+            user_id: ID del usuario.
+            level: Nivel del usuario.
+            
+        Returns:
+            Clave del fragmento específico para el nivel o None si no existe.
+        """
+        try:
+            async for session in get_session():
+                # Buscar fragmentos para el nivel específico
+                query = select(StoryFragment).where(
+                    and_(
+                        StoryFragment.level_required == level,
+                        StoryFragment.tags.contains(["level_up"])
+                    )
+                ).limit(1)
+                
+                result = await session.execute(query)
+                fragment = result.scalars().first()
+                
+                if fragment:
+                    return fragment.key
+                
+                # Si no hay fragmento específico, usar uno genérico
+                fallback_query = select(StoryFragment).where(
+                    and_(
+                        StoryFragment.level_required <= level,
+                        StoryFragment.tags.contains(["progression"])
+                    )
+                ).limit(1)
+                
+                fallback_result = await session.execute(fallback_query)
+                fallback_fragment = fallback_result.scalars().first()
+                
+                if fallback_fragment:
+                    return fallback_fragment.key
+                
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error al obtener fragmento para nivel: {e}")
+            return None
     
     async def _ensure_user_narrative_state(self, user_id: int, current_fragment_key: str) -> None:
         """
@@ -507,98 +601,4 @@ class NarrativeService(ICoreService):
             logger.error(f"Error al procesar elección narrativa: {e}")
             return False
 
-from datetime import datetime
-
-    async def handle_mission_completed(self, event: MissionCompletedEvent) -> None:
-        """
-        Gestiona la entrega de fragmentos narrativos cuando se completa una misión.
-        
-        Args:
-            event: Evento que contiene información de la misión completada.
-        """
-        user_id = event.user_id
-        mission_id = event.mission_id
-        
-        logger.info(f"[Narrative] Procesando misión completada para {user_id}: {mission_id}")
-        
-        # Buscar un fragmento adecuado para misiones
-        fragment_key = await self._get_appropriate_fragment(user_id, "mission")
-        
-        if fragment_key:
-            self.story_fragments_to_send[user_id] = fragment_key
-            logger.info(f"[Narrative] Asignando fragmento {fragment_key} por misión completada")
-            
-            # Las misiones tienen alta probabilidad de desbloquear pistas
-            await self._maybe_unlock_lore_piece(user_id, "mission", high_chance=True)
-        else:
-            logger.warning(f"[Narrative] No se encontró fragmento para misión de usuario {user_id}")
-            
-    async def handle_level_up(self, event: LevelUpEvent) -> None:
-        """
-        Gestiona la progresión narrativa cuando un usuario sube de nivel.
-        
-        Args:
-            event: Evento que contiene información del nuevo nivel.
-        """
-        user_id = event.user_id
-        new_level = event.new_level
-        
-        logger.info(f"[Narrative] Usuario {user_id} subió al nivel {new_level}")
-        
-        # Desbloquear fragmentos especiales basados en el nivel
-        if new_level >= 2:
-            # Nivel 2 desbloquea nuevo personaje o área
-            fragment_key = await self._get_level_specific_fragment(user_id, new_level)
-            if fragment_key:
-                self.story_fragments_to_send[user_id] = fragment_key
-                logger.info(f"[Narrative] Asignando fragmento de nivel {new_level}: {fragment_key}")
-                
-                # Nivel nuevo siempre desbloquea una pista
-                await self._maybe_unlock_lore_piece(user_id, "level_up", high_chance=True)
-                
-    async def _get_level_specific_fragment(self, user_id: int, level: int) -> Optional[str]:
-        """
-        Obtiene un fragmento específico para un nivel.
-        
-        Args:
-            user_id: ID del usuario.
-            level: Nivel del usuario.
-            
-        Returns:
-            Clave del fragmento específico para el nivel o None si no existe.
-        """
-        try:
-            async for session in get_session():
-                # Buscar fragmentos para el nivel específico
-                query = select(StoryFragment).where(
-                    and_(
-                        StoryFragment.level_required == level,
-                        StoryFragment.tags.contains(["level_up"])
-                    )
-                ).limit(1)
-                
-                result = await session.execute(query)
-                fragment = result.scalars().first()
-                
-                if fragment:
-                    return fragment.key
-                
-                # Si no hay fragmento específico, usar uno genérico
-                fallback_query = select(StoryFragment).where(
-                    and_(
-                        StoryFragment.level_required <= level,
-                        StoryFragment.tags.contains(["progression"])
-                    )
-                ).limit(1)
-                
-                fallback_result = await session.execute(fallback_query)
-                fallback_fragment = fallback_result.scalars().first()
-                
-                if fallback_fragment:
-                    return fallback_fragment.key
-                
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error al obtener fragmento para nivel: {e}")
-            return None
+# Importación de datetime ya está al principio del archivo
