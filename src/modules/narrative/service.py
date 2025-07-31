@@ -1,6 +1,6 @@
 from src.core.interfaces.IEventBus import IEventBus
 from src.core.interfaces.ICoreService import ICoreService
-from src.modules.events import PointsAwardedEvent, ReactionAddedEvent
+from src.modules.events import UserStartedBotEvent
 
 class NarrativeService(ICoreService):
     """Servicio para manejar la lógica de la narrativa."""
@@ -11,11 +11,10 @@ class NarrativeService(ICoreService):
 
     async def setup(self) -> None:
         """Suscribe el servicio a los eventos relevantes."""
-        self._event_bus.subscribe(PointsAwardedEvent, self.handle_points_awarded)
+        self._event_bus.subscribe(UserStartedBotEvent, self.handle_user_started)
 
-    async def handle_points_awarded(self, event: PointsAwardedEvent) -> None:
-        """Si los puntos vienen de una reacción, asigna una historia."""
-        if event.source_event == ReactionAddedEvent.__name__:
-            user_id = event.user_id
-            print(f"[Narrative] Puntos por reacción para {user_id}. Asignando fragmento de historia.")
-            self.story_fragments_to_send[user_id] = "intro_story_fragment_1"
+    async def handle_user_started(self, event: UserStartedBotEvent) -> None:
+        """Entrega un mensaje de bienvenida al usuario."""
+        user_id = event.user_id
+        print(f"[Narrative] Entregando mensaje de bienvenida a {user_id}.")
+        self.story_fragments_to_send[user_id] = "welcome_story_fragment"

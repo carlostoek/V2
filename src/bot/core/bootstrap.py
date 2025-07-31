@@ -53,7 +53,8 @@ async def bootstrap():
     
     # Configurar programador de tareas
     logger.info("Configurando programador de tareas")
-    scheduler = setup_scheduler()
+    admin_service = container.resolve(AdminService)
+    scheduler = setup_scheduler(admin_service)
     
     try:
         # Iniciar programador de tareas

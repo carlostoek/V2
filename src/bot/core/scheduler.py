@@ -9,10 +9,12 @@ import pytz
 from ..config import settings
 from ..tasks.daily import schedule_daily_tasks
 from ..tasks.maintenance import schedule_maintenance_tasks
+from ..tasks.subscription import schedule_subscription_tasks
+from ..services.admin import AdminService
 
 logger = structlog.get_logger()
 
-def setup_scheduler() -> AsyncIOScheduler:
+def setup_scheduler(admin_service: AdminService) -> AsyncIOScheduler:
     """Configura el programador de tareas."""
     
     # Configurar timezone
@@ -37,6 +39,7 @@ def setup_scheduler() -> AsyncIOScheduler:
     # Registrar tareas
     schedule_daily_tasks(scheduler)
     schedule_maintenance_tasks(scheduler)
+    schedule_subscription_tasks(scheduler, admin_service)
     
     logger.info("Programador de tareas configurado")
     

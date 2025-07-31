@@ -45,17 +45,8 @@ class CharacterEmotionalProfile(Base, TimestampMixin):
     personality_traits = Column(JSON, default={})
     
     # Relaciones
-    relationships = relationship(
-        "UserCharacterRelationship", 
-        back_populates="character",
-        cascade="all, delete-orphan"
-    )
-    
-    emotional_states = relationship(
-        "UserCharacterEmotionalState", 
-        back_populates="character",
-        cascade="all, delete-orphan"
-    )
+    relationships = relationship("UserCharacterRelationship", back_populates="character", cascade="all, delete-orphan")
+    emotional_states = relationship("UserCharacterEmotionalState", back_populates="character", cascade="all, delete-orphan")
     
     def __repr__(self) -> str:
         """Representación de texto del perfil emocional."""
@@ -84,29 +75,11 @@ class UserCharacterRelationship(Base, TimestampMixin):
     user = relationship("User", back_populates="character_relationships")
     character = relationship("CharacterEmotionalProfile", back_populates="relationships")
     
-    emotional_state = relationship(
-        "UserCharacterEmotionalState", 
-        back_populates="relationship",
-        uselist=False,
-        cascade="all, delete-orphan"
-    )
+    emotional_state = relationship("UserCharacterEmotionalState", back_populates="relationship", uselist=False, cascade="all, delete-orphan")
+    emotional_memories = relationship("EmotionalMemory", back_populates="relationship", cascade="all, delete-orphan")
+    personality_adaptation = relationship("PersonalityAdaptation", back_populates="relationship", uselist=False, cascade="all, delete-orphan")
     
-    emotional_memories = relationship(
-        "EmotionalMemory",
-        back_populates="relationship",
-        cascade="all, delete-orphan"
-    )
-    
-    personality_adaptation = relationship(
-        "PersonalityAdaptation",
-        back_populates="relationship",
-        uselist=False,
-        cascade="all, delete-orphan"
-    )
-    
-    __table_args__ = (
-        UniqueConstraint("user_id", "character_id", name="uix_user_character_relationship"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_user_character_relationship"),)
     
     def __repr__(self) -> str:
         """Representación de texto de la relación."""
@@ -135,21 +108,10 @@ class UserCharacterEmotionalState(Base, TimestampMixin):
     dominant_emotion = Column(String(20), default="neutral")
     
     # Relaciones
-    relationship = relationship(
-        "UserCharacterRelationship", 
-        back_populates="emotional_state",
-        foreign_keys=[relationship_id]
-    )
+    relationship = relationship("UserCharacterRelationship", back_populates="emotional_state", foreign_keys=[relationship_id])
+    character = relationship("CharacterEmotionalProfile", back_populates="emotional_states")
     
-    character = relationship(
-        "CharacterEmotionalProfile", 
-        back_populates="emotional_states"
-    )
-    
-    __table_args__ = (
-        UniqueConstraint("user_id", "character_id", name="uix_user_character_emotional_state"),
-        Index("idx_user_character_emotional_dominant", "user_id", "character_id", "dominant_emotion"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_user_character_emotional_state"), Index("idx_user_character_emotional_dominant", "user_id", "character_id", "dominant_emotion"),)
     
     def __repr__(self) -> str:
         """Representación de texto del estado emocional."""
@@ -177,17 +139,9 @@ class EmotionalMemory(Base, TimestampMixin):
     is_forgotten = Column(Boolean, default=False)
     
     # Relaciones
-    relationship = relationship(
-        "UserCharacterRelationship", 
-        back_populates="emotional_memories",
-        foreign_keys=[relationship_id]
-    )
+    relationship = relationship("UserCharacterRelationship", back_populates="emotional_memories", foreign_keys=[relationship_id])
     
-    __table_args__ = (
-        Index("idx_emotional_memories_user_char", "user_id", "character_id"),
-        Index("idx_emotional_memories_importance", "user_id", "character_id", "importance_score", "is_forgotten"),
-        Index("idx_emotional_memories_last_recalled", "user_id", "character_id", "last_recalled_at"),
-    )
+    __table_args__ = (Index("idx_emotional_memories_user_char", "user_id", "character_id"), Index("idx_emotional_memories_importance", "user_id", "character_id", "importance_score", "is_forgotten"), Index("idx_emotional_memories_last_recalled", "user_id", "character_id", "last_recalled_at"),)
     
     def __repr__(self) -> str:
         """Representación de texto de la memoria emocional."""
@@ -221,15 +175,9 @@ class PersonalityAdaptation(Base, TimestampMixin):
     confidence_score = Column(Float, default=0.5)
     
     # Relaciones
-    relationship = relationship(
-        "UserCharacterRelationship", 
-        back_populates="personality_adaptation",
-        foreign_keys=[relationship_id]
-    )
+    relationship = relationship("UserCharacterRelationship", back_populates="personality_adaptation", foreign_keys=[relationship_id])
     
-    __table_args__ = (
-        UniqueConstraint("user_id", "character_id", name="uix_personality_adaptation"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "character_id", name="uix_personality_adaptation"),)
     
     def __repr__(self) -> str:
         """Representación de texto de la adaptación de personalidad."""

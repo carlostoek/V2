@@ -8,6 +8,8 @@ from ..services.user import UserService
 from ..services.emotional import EmotionalService
 from ..services.narrative import NarrativeService
 from ..services.gamification import GamificationService
+from ..services.admin import AdminService
+from ..database import get_session
 
 T = TypeVar('T')
 
@@ -35,17 +37,22 @@ async def setup_di_container(bot: Bot, dp: Dispatcher) -> Container:
     container.register(Bot, bot)
     container.register(Dispatcher, dp)
     
-    # Crear servicios de aplicación
-    user_service = UserService()
-    emotional_service = EmotionalService()
-    narrative_service = NarrativeService()
-    gamification_service = GamificationService()
-    
-    # Registrar servicios de aplicación
-    container.register(UserService, user_service)
-    container.register(EmotionalService, emotional_service)
-    container.register(NarrativeService, narrative_service)
-    container.register(GamificationService, gamification_service)
+    # Crear sesión de base de datos
+    async for session in get_session():
+        # Crear servicios de aplicación
+        user_service = UserService()
+        emotional_service = EmotionalService()
+        narrative_service = NarrativeService()
+        gamification_service = GamificationService()
+        admin_service = AdminService(container.resolve(IEventBus), session)
+        
+        # Registrar servicios de aplicación
+        container.register(UserService, user_service)
+        container.register(EmotionalService, emotional_service)
+        container.register(NarrativeService, narrative_service)
+        container.register(GamificationService, gamification_service)
+        container.register(AdminService, admin_service)
+        break # Solo necesitamos una sesión para la inyección
     
     logger.info("Contenedor de inyección de dependencias configurado")
     
