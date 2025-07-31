@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Any, Union
 
 from sqlalchemy import select, update, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload
 
 from src.core.interfaces.IEventBus import IEvent, IEventBus
 from src.core.interfaces.ICoreService import ICoreService
@@ -96,6 +98,19 @@ class GamificationService(ICoreService):
         # Actualizar puntos en base de datos
         try:
             async for session in get_session():
+                # Verificar que el usuario existe antes de proceder
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden otorgar puntos.")
+                    return
+                
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden otorgar puntos.")
+                    return
+                
                 # Verificar si existe registro de puntos
                 query = select(UserPoints).where(UserPoints.user_id == user_id)
                 result = await session.execute(query)
@@ -398,6 +413,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden asignar misiones iniciales.")
                     return
                 
                 # Buscar misiones disponibles para nivel 1
@@ -458,6 +474,23 @@ class GamificationService(ICoreService):
         """
         try:
             async for session in get_session():
+                # Verificar que el usuario existe
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden actualizar misiones.")
+                    return
+                # Verificar que el usuario existe
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se puede actualizar progreso de misiones.")
+                    return
+                
                 # Obtener misiones activas del usuario
                 query = select(UserMission).options(
                     selectinload(UserMission.mission)
@@ -680,6 +713,7 @@ class GamificationService(ICoreService):
             user = user_result.scalars().first()
             
             if not user:
+                self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden refrescar misiones diarias.")
                 return
             
             # Obtener misiones diarias disponibles
@@ -763,6 +797,15 @@ class GamificationService(ICoreService):
         
         try:
             async for session in get_session():
+                # Verificar que el usuario existe
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden obtener misiones.")
+                    return result
+                
                 # Obtener misiones del usuario
                 query = select(UserMission).options(
                     selectinload(UserMission.mission)
@@ -829,6 +872,15 @@ class GamificationService(ICoreService):
         
         try:
             async for session in get_session():
+                # Verificar que el usuario existe
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden obtener logros.")
+                    return result
+                
                 # Obtener logros del usuario
                 query = select(UserAchievement).options(
                     selectinload(UserAchievement.achievement)
@@ -925,8 +977,11 @@ class GamificationService(ICoreService):
                 user_result = await session.execute(user_query)
                 user = user_result.scalars().first()
                 
-                if user:
-                    result["level"] = user.level
+                if not user:
+                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden obtener puntos.")
+                    return result
+                
+                result["level"] = user.level
                 
                 # Obtener puntos
                 query = select(UserPoints).where(UserPoints.user_id == user_id)

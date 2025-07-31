@@ -27,6 +27,7 @@ class Channel(Base, TimestampMixin):
     memberships = relationship("ChannelMembership", back_populates="channel", cascade="all, delete-orphan")
     access_rules = relationship("ChannelAccess", back_populates="channel", cascade="all, delete-orphan", uselist=False)
     content = relationship("ChannelContent", back_populates="channel", cascade="all, delete-orphan")
+    tariffs = relationship("Tariff", back_populates="channel", cascade="all, delete-orphan")
     
     def __repr__(self) -> str:
         """Representación de texto del canal."""
