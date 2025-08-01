@@ -293,7 +293,7 @@ if __name__ == "__main__":
         print("\n❌ Algunos fixes fallaron. Revisa los logs.")
         print("\n💡 ALTERNATIVA: Ejecuta con --fragments-only para crear solo los fragmentos")
         
-    print("=" * 60){result.rowcount})
+    print("=" * 60){"result.rowcount}")
                 
                 except Exception as e:
                     log.error(f"❌ Error creando fragmento #{i}", error=e)
