@@ -176,7 +176,7 @@ class GamificationService(ICoreService):
                 await self._check_level_up(session, user_id)
         
         except Exception as e:
-            self.logger.error(f"Error al otorgar puntos: {e}")
+            log.error(f"Error al otorgar puntos", error=e)
         
         # Publicar evento de puntos otorgados
         points_event = PointsAwardedEvent(
@@ -232,13 +232,13 @@ class GamificationService(ICoreService):
                 )
                 await self._event_bus.publish(level_up_event)
                 
-                self.logger.info(f"Usuario {user_id} subió al nivel {new_level}")
+                log.gamification(f"Usuario subió al nivel {new_level}", user_id=user_id)
                 
                 # Verificar logros desbloqueados por nivel
                 await self._check_level_achievements(session, user_id, new_level)
         
         except Exception as e:
-            self.logger.error(f"Error al verificar subida de nivel: {e}")
+            log.error(f"Error al verificar subida de nivel", error=e)
 
     def _calculate_level(self, total_points: float) -> int:
         """
@@ -348,7 +348,7 @@ class GamificationService(ICoreService):
                             user_points.points_history.append(history_entry)
                     
                     await session.commit()
-                    self.logger.info(f"Usuario {user_id} desbloqueó logro {achievement.key}")
+                    log.gamification(f"Usuario desbloqueó logro {achievement.key}", user_id=user_id)
                 
                 elif not user_achievement.is_completed:
                     # Actualizar logro existente
@@ -358,10 +358,10 @@ class GamificationService(ICoreService):
                     user_achievement.completion_data = {"level": level}
                     
                     await session.commit()
-                    self.logger.info(f"Usuario {user_id} completó logro {achievement.key}")
+                    log.gamification(f"Usuario completó logro {achievement.key}", user_id=user_id)
         
         except Exception as e:
-            self.logger.error(f"Error al verificar logros de nivel: {e}")
+            log.error(f"Error al verificar logros de nivel", error=e)
 
     async def handle_reaction_added(self, event: ReactionAddedEvent) -> None:
         """
@@ -424,7 +424,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden asignar misiones iniciales.")
+                    log.error(f"Usuario no existe - no se pueden asignar misiones iniciales")
                     return
                 
                 # Buscar misiones disponibles para nivel 1
@@ -468,10 +468,10 @@ class GamificationService(ICoreService):
                         session.add(user_mission)
                 
                 await session.commit()
-                self.logger.info(f"Asignadas {len(available_missions)} misiones iniciales al usuario {user_id}")
+                log.gamification(f"Asignadas {len(available_missions)} misiones iniciales", user_id=user_id)
         
         except Exception as e:
-            self.logger.error(f"Error al asignar misiones iniciales: {e}")
+            log.error(f"Error al asignar misiones iniciales", error=e)
 
     async def _update_missions_progress(self, user_id: int, action_type: str, action_value: Union[int, float], action_context: str) -> None:
         """
@@ -491,7 +491,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden actualizar misiones.")
+                    log.error(f"Usuario no existe - no se pueden actualizar misiones")
                     return
                 # Verificar que el usuario existe
                 user_query = select(User).where(User.id == user_id)
@@ -499,7 +499,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se puede actualizar progreso de misiones.")
+                    log.error(f"Usuario no existe - no se puede actualizar progreso de misiones")
                     return
                 
                 # Obtener misiones activas del usuario
@@ -558,7 +558,7 @@ class GamificationService(ICoreService):
                 await session.commit()
         
         except Exception as e:
-            self.logger.error(f"Error al actualizar progreso de misiones: {e}")
+            log.error(f"Error al actualizar progreso de misiones", error=e)
 
     async def _complete_mission(self, session: AsyncSession, user_id: int, user_mission: UserMission) -> None:
         """
@@ -613,7 +613,7 @@ class GamificationService(ICoreService):
             )
             await self._event_bus.publish(mission_event)
             
-            self.logger.info(f"Usuario {user_id} completó misión {mission.key}")
+            log.gamification(f"Usuario completó misión {mission.key}", user_id=user_id)
             
             # Verificar logros relacionados con misiones
             await self._check_mission_achievements(session, user_id, mission.key)
@@ -623,7 +623,7 @@ class GamificationService(ICoreService):
                 await self._refresh_daily_missions(session, user_id)
         
         except Exception as e:
-            self.logger.error(f"Error al completar misión: {e}")
+            log.error(f"Error al completar misión", error=e)
 
     async def _check_mission_achievements(self, session: AsyncSession, user_id: int, mission_key: str) -> None:
         """
@@ -707,7 +707,7 @@ class GamificationService(ICoreService):
             await session.commit()
         
         except Exception as e:
-            self.logger.error(f"Error al verificar logros de misiones: {e}")
+            log.error(f"Error al verificar logros de misiones", error=e)
 
     async def _refresh_daily_missions(self, session: AsyncSession, user_id: int) -> None:
         """
@@ -724,7 +724,7 @@ class GamificationService(ICoreService):
             user = user_result.scalars().first()
             
             if not user:
-                self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden refrescar misiones diarias.")
+                log.error(f"Usuario no existe - no se pueden refrescar misiones diarias")
                 return
             
             # Obtener misiones diarias disponibles
@@ -785,10 +785,10 @@ class GamificationService(ICoreService):
                     session.add(user_mission)
             
             await session.commit()
-            self.logger.info(f"Misiones diarias actualizadas para usuario {user_id}")
+            log.gamification(f"Misiones diarias actualizadas", user_id=user_id)
         
         except Exception as e:
-            self.logger.error(f"Error al refrescar misiones diarias: {e}")
+            log.error(f"Error al refrescar misiones diarias", error=e)
 
     async def get_user_missions(self, user_id: int) -> Dict[str, List[Dict[str, Any]]]:
         """
@@ -814,7 +814,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden obtener misiones.")
+                    log.error(f"Usuario no existe - no se pueden obtener misiones")
                     return result
                 
                 # Obtener misiones del usuario
@@ -862,7 +862,7 @@ class GamificationService(ICoreService):
                         result["completed"].append(mission_data)
         
         except Exception as e:
-            self.logger.error(f"Error al obtener misiones del usuario: {e}")
+            log.error(f"Error al obtener misiones del usuario", error=e)
         
         return result
 
@@ -889,7 +889,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden obtener logros.")
+                    log.error(f"Usuario no existe - no se pueden obtener logros")
                     return result
                 
                 # Obtener logros del usuario
@@ -953,7 +953,7 @@ class GamificationService(ICoreService):
                     result["in_progress"].append(achievement_data)
         
         except Exception as e:
-            self.logger.error(f"Error al obtener logros del usuario: {e}")
+            log.error(f"Error al obtener logros del usuario", error=e)
         
         return result
 
@@ -989,7 +989,7 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden obtener puntos.")
+                    log.error(f"Usuario no existe - no se pueden obtener puntos")
                     return result
                 
                 result["level"] = user.level
@@ -1031,7 +1031,7 @@ class GamificationService(ICoreService):
                     result["progress_to_next_level"] = min(100, (level_progress / points_needed) * 100)
         
         except Exception as e:
-            self.logger.error(f"Error al obtener puntos del usuario: {e}")
+            log.error(f"Error al obtener puntos del usuario", error=e)
         
         return result
 
@@ -1059,7 +1059,7 @@ class GamificationService(ICoreService):
         score = event.score
         reward_data = event.reward_data
         
-        self.logger.info(f"[Gamification] Validación Diana completada para {user_id}: {validation_type} (score: {score})")
+        log.gamification(f"Validación Diana completada para {user_id}: {validation_type} (score: {score})")
         
         # Calcular puntos basados en el tipo de validación y score
         points_to_award = self._calculate_diana_validation_points(validation_type, score, reward_data)
@@ -1084,7 +1084,7 @@ class GamificationService(ICoreService):
         validation_type = event.validation_type
         score = event.score
         
-        self.logger.info(f"[Gamification] Validación Diana fallida para {user_id}: {validation_type} (score: {score})")
+        log.gamification(f"Validación Diana fallida para {user_id}: {validation_type} (score: {score})")
         
         # Otorgar puntos de consolación (menores)
         consolation_points = max(1, int(score * 2))  # Mínimo 1 punto
@@ -1104,7 +1104,7 @@ class GamificationService(ICoreService):
         validation_type = event.validation_type
         progress_data = event.progress_data
         
-        self.logger.debug(f"[Gamification] Progreso en validación narrativa para {user_id}: {validation_type}")
+        log.debug(f"Progreso en validación narrativa para {user_id}: {validation_type}")
         
         # Otorgar puntos pequeños por progreso
         progress_points = 2
@@ -1229,7 +1229,7 @@ class GamificationService(ICoreService):
                                 user_points.points_history.append(history_entry)
                         
                         await session.commit()
-                        self.logger.info(f"Usuario {user_id} desbloqueó logro Diana {achievement.key}")
+                        log.achievement(f"Usuario {user_id} desbloqueó logro Diana {achievement.key}")
                         
         except Exception as e:
-            self.logger.error(f"Error verificando logros de validación Diana: {e}")
+            log.error(f"Error verificando logros de validación Diana: {e}")
