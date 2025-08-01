@@ -87,3 +87,29 @@ class NarrativeValidationProgressEvent(IEvent):
         self.user_id = user_id
         self.validation_type = validation_type
         self.progress_data = progress_data
+
+class RoleChangedEvent(IEvent):
+    """Evento que se dispara cuando cambia el rol de un usuario."""
+    def __init__(self, user_id: int, old_role: str, new_role: str, changed_by: Optional[int] = None):
+        self.user_id = user_id
+        self.old_role = old_role
+        self.new_role = new_role
+        self.changed_by = changed_by
+        self.timestamp = datetime.now().isoformat()
+
+class VIPStatusChangedEvent(IEvent):
+    """Evento que se dispara cuando cambia el estado VIP de un usuario."""
+    def __init__(self, user_id: int, is_vip: bool, expires_at: Optional[str] = None, changed_by: Optional[int] = None):
+        self.user_id = user_id
+        self.is_vip = is_vip
+        self.expires_at = expires_at
+        self.changed_by = changed_by
+        self.timestamp = datetime.now().isoformat()
+
+class AdminStatusChangedEvent(IEvent):
+    """Evento que se dispara cuando cambia el estado de administrador de un usuario."""
+    def __init__(self, user_id: int, is_admin: bool, changed_by: Optional[int] = None):
+        self.user_id = user_id
+        self.is_admin = is_admin
+        self.changed_by = changed_by
+        self.timestamp = datetime.now().isoformat()

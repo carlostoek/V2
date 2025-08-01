@@ -16,6 +16,7 @@ from src.modules.gamification.service import GamificationService
 from ..services.user import UserService
 from ..services.emotional import EmotionalService
 from ..services.admin import AdminService
+from ..services.role import RoleService
 from ..database import async_session, get_session
 from src.core.services.config import CentralConfig
 
@@ -78,6 +79,10 @@ class ServicesContainer(containers.DeclarativeContainer):
     admin_service = providers.Factory(
         AdminService,
         event_bus=event_bus
+    )
+    
+    role_service = providers.Factory(
+        RoleService
     )
 
 

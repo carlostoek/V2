@@ -8,6 +8,7 @@ from ..middlewares.user import UserMiddleware
 from ..middlewares.throttling import ThrottlingMiddleware
 from ..middlewares.emotional import EmotionalMiddleware
 from ..middlewares.points import PointsMiddleware
+from ..middlewares.role import RoleMiddleware
 
 logger = structlog.get_logger()
 
@@ -21,6 +22,10 @@ def setup_middlewares(dp: Dispatcher) -> None:
     # Middleware de usuarios (segundo para garantizar que el usuario existe)
     dp.update.middleware(UserMiddleware())
     logger.info("Middleware de usuarios configurado")
+    
+    # Middleware de roles (tercero para gestionar roles y permisos)
+    dp.update.middleware(RoleMiddleware())
+    logger.info("Middleware de roles configurado")
     
     # Middleware de throttling (limitar mensajes)
     dp.message.middleware(ThrottlingMiddleware())
