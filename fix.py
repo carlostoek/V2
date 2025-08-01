@@ -58,7 +58,7 @@ async def execute_quick_fixes():
                 'Primer Desafío de Lucien',
                 'Ah, otro visitante de Diana. Permíteme presentarme: Lucien, guardián de los secretos que ella no cuenta... todavía.',
                 'challenge',
-                {"level": 1, "completed_diana_intro": true}',
+                '{"level": 1, "completed_diana_intro": true}',
                 '{"success": "level_2_observation", "failure": "encouragement_1"}',
                 '{"character": "lucien", "level": 1, "challenge_type": "reaction"}'
             ),
@@ -76,9 +76,9 @@ async def execute_quick_fixes():
                 'Misión de Observación - Nivel 2',
                 'Volviste. Interesante... No todos regresan después de la primera revelación.',
                 'mission_start',
-                '"level": 2, "completed_level_1": true',
-                '"mission_type": "observation", "target": "hidden_clues"',
-                '"character": "diana", "level": 2, "mission": "observation"'
+                '{"level": 2, "completed_level_1": true}',
+                '{"mission_type": "observation", "target": "hidden_clues"}',
+                '{"character": "diana", "level": 2, "mission": "observation"}'
             ),
             (
                 'diana_validation_success',
@@ -250,6 +250,50 @@ async def create_basic_fragments_only():
                     
                     if hasattr(result, 'rowcount') and result.rowcount is not None and result.rowcount > 0:
                         log.info(f"   📊 Filas afectadas: {result.rowcount}")
+                
+                except Exception as e:
+                    log.error(f"❌ Error creando fragmento #{i}", error=e)
+                    continue
+        
+        # Verificar
+        async with engine.begin() as conn:
+            result = await conn.execute(text("SELECT COUNT(*) FROM story_fragments;"))
+            count = result.fetchone()[0]
+            log.success(f"✅ Total fragmentos en BD: {count}")
+        
+        return True
+        
+    except Exception as e:
+        log.error("Error creando fragmentos", error=e)
+        return False
+    
+    finally:
+        await engine.dispose()
+
+if __name__ == "__main__":
+    print("🚀 Ejecutando Quick Fixes CORREGIDOS para Railway PostgreSQL...")
+    print("=" * 60)
+    
+    # Dar opción de solo fragmentos o completo
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "--fragments-only":
+        print("🎯 Modo: Solo fragmentos básicos")
+        success = asyncio.run(create_basic_fragments_only())
+    else:
+        print("🎯 Modo: Fixes completos")
+        success = asyncio.run(execute_quick_fixes())
+    
+    if success:
+        print("\n🎉 ¡FIXES COMPLETADOS EXITOSAMENTE!")
+        print("✅ El error de foreign key constraint debe estar resuelto")
+        print("✅ Los fragmentos narrativos por defecto están creados")
+        print("\n⚠️  IMPORTANTE: Elimina este archivo después de ejecutarlo")
+    else:
+        print("\n❌ Algunos fixes fallaron. Revisa los logs.")
+        print("\n💡 ALTERNATIVA: Ejecuta con --fragments-only para crear solo los fragmentos")
+        
+    print("=" * 60){result.rowcount}")
                 
                 except Exception as e:
                     log.error(f"❌ Error creando fragmento #{i}", error=e)
