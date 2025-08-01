@@ -84,9 +84,9 @@ class GamificationService(ICoreService):
                         "is_vip_only": mission.is_vip_only
                     }
                 
-                self.logger.info(f"Cargadas {len(self.missions)} misiones activas en cache")
+                log.success(f"Cargadas {len(self.missions)} misiones activas en cache")
         except Exception as e:
-            self.logger.error(f"Error al cargar datos iniciales: {e}")
+            log.error(f"Error al cargar datos iniciales de gamificación", error=e)
 
     async def _award_points(self, user_id: int, points_to_award: int, source_event: IEvent) -> None:
         """
