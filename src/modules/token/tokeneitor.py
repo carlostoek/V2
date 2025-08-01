@@ -362,8 +362,8 @@ class Tokeneitor(ICoreService):
                     # Actualizar membresía existente
                     membership.status = "active"
                     membership.expires_at = membership_expires_at
-                    membership.metadata = {
-                        **membership.metadata,
+                    membership.user_metadata = {
+                        **membership.user_metadata,
                         "is_vip": True,
                         "tariff_id": tariff.id,
                         "last_token_id": token_obj.id
@@ -376,7 +376,7 @@ class Tokeneitor(ICoreService):
                         status="active",
                         joined_at=datetime.now(),
                         expires_at=membership_expires_at,
-                        metadata={
+                        user_metadata={
                             "is_vip": True,
                             "tariff_id": tariff.id,
                             "last_token_id": token_obj.id

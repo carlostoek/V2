@@ -3,7 +3,7 @@ from aiogram.types import Message
 from aiogram.filters import Command
 
 from ...keyboards.admin.main_kb import get_admin_main_keyboard
-from ...filters.is_admin import IsAdminFilter # Asumiendo que existe un filtro de administrador
+from ...filters.is_admin import IsAdminFilter
 
 admin_main_router = Router()
 

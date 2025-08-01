@@ -19,16 +19,24 @@ import pytest_asyncio
 @pytest.fixture(scope="session", autouse=True)
 def test_settings():
     """Configure test environment variables."""
-    with patch.dict(
-        "os.environ",
-        {
-            "USE_SQLITE": "True",
-            "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
-            "CREATE_TABLES": "True",
-            "BOT_TOKEN": "fake-token-for-tests",
-            "PARSE_MODE": "HTML",
-        },
-    ):
+    test_env = {
+        "BOT_TOKEN": "test_token_12345:ABCDEF_test_token_for_unit_tests",
+        "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
+        "USE_SQLITE": "True", 
+        "DATABASE_ECHO": "False",
+        "CREATE_TABLES": "True",
+        "ADMIN_USER_IDS": "123456789,987654321",
+        "VIP_CHANNEL_ID": "-1001234567890",
+        "FREE_CHANNEL_ID": "-1001234567891",
+        "ENABLE_ANALYTICS": "False",
+        "ENABLE_BACKGROUND_TASKS": "False",
+        "ENABLE_EMOTIONAL_SYSTEM": "True",
+        "LOG_LEVEL": "DEBUG",
+        "TASK_SCHEDULER_TIMEZONE": "UTC",
+        "PARSE_MODE": "HTML",
+    }
+    
+    with patch.dict("os.environ", test_env):
         yield
 
 @pytest.fixture(scope="function")

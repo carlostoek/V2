@@ -17,7 +17,10 @@ from src.modules.events import (
     MissionCompletedEvent,
     NarrativeProgressionEvent,
     PieceUnlockedEvent,
-    LevelUpEvent
+    LevelUpEvent,
+    DianaValidationCompletedEvent,
+    DianaValidationFailedEvent,
+    NarrativeValidationProgressEvent
 )
 from src.bot.database.engine import get_session
 from src.bot.database.models.user import User
@@ -55,6 +58,11 @@ class GamificationService(ICoreService):
         self._event_bus.subscribe(UserStartedBotEvent, self.handle_user_started)
         self._event_bus.subscribe(NarrativeProgressionEvent, self.handle_narrative_progression)
         self._event_bus.subscribe(PieceUnlockedEvent, self.handle_piece_unlocked)
+        
+        # Nuevos eventos de validación Diana
+        self._event_bus.subscribe(DianaValidationCompletedEvent, self.handle_diana_validation_completed)
+        self._event_bus.subscribe(DianaValidationFailedEvent, self.handle_diana_validation_failed)
+        self._event_bus.subscribe(NarrativeValidationProgressEvent, self.handle_narrative_validation_progress)
         
         # Cargar datos iniciales
         await self._load_initial_data()
@@ -1035,3 +1043,190 @@ class GamificationService(ICoreService):
             Puntos actuales.
         """
         return self.points.get(user_id, 0)
+
+    async def handle_diana_validation_completed(self, event: DianaValidationCompletedEvent) -> None:
+        """
+        Maneja validaciones Diana completadas exitosamente.
+        
+        Args:
+            event: Evento de validación Diana completada.
+        """
+        user_id = event.user_id 
+        validation_type = event.validation_type
+        score = event.score
+        reward_data = event.reward_data
+        
+        self.logger.info(f"[Gamification] Validación Diana completada para {user_id}: {validation_type} (score: {score})")
+        
+        # Calcular puntos basados en el tipo de validación y score
+        points_to_award = self._calculate_diana_validation_points(validation_type, score, reward_data)
+        
+        if points_to_award > 0:
+            await self._award_points(user_id, points_to_award, event)
+        
+        # Verificar si debe desbloquear logros especiales de Diana
+        await self._check_diana_validation_achievements(user_id, validation_type, score)
+        
+        # Actualizar progreso en misiones de validación Diana
+        await self._update_missions_progress(user_id, "diana_validation_completed", 1, validation_type)
+
+    async def handle_diana_validation_failed(self, event: DianaValidationFailedEvent) -> None:
+        """
+        Maneja validaciones Diana fallidas.
+        
+        Args:
+            event: Evento de validación Diana fallida.
+        """
+        user_id = event.user_id
+        validation_type = event.validation_type
+        score = event.score
+        
+        self.logger.info(f"[Gamification] Validación Diana fallida para {user_id}: {validation_type} (score: {score})")
+        
+        # Otorgar puntos de consolación (menores)
+        consolation_points = max(1, int(score * 2))  # Mínimo 1 punto
+        await self._award_points(user_id, consolation_points, event)
+        
+        # Actualizar progreso en misiones de "intentos" de validación
+        await self._update_missions_progress(user_id, "diana_validation_attempt", 1, validation_type)
+
+    async def handle_narrative_validation_progress(self, event: NarrativeValidationProgressEvent) -> None:
+        """
+        Maneja progreso en validaciones narrativas.
+        
+        Args:
+            event: Evento de progreso en validación narrativa.
+        """
+        user_id = event.user_id
+        validation_type = event.validation_type
+        progress_data = event.progress_data
+        
+        self.logger.debug(f"[Gamification] Progreso en validación narrativa para {user_id}: {validation_type}")
+        
+        # Otorgar puntos pequeños por progreso
+        progress_points = 2
+        await self._award_points(user_id, progress_points, event)
+        
+        # Actualizar progreso en misiones de participación narrativa
+        await self._update_missions_progress(user_id, "narrative_validation_progress", 1, validation_type)
+
+    def _calculate_diana_validation_points(self, validation_type: str, score: float, reward_data: Dict) -> int:
+        """
+        Calcula puntos a otorgar basado en el tipo de validación Diana y score.
+        
+        Args:
+            validation_type: Tipo de validación
+            score: Score obtenido
+            reward_data: Datos adicionales de recompensa
+            
+        Returns:
+            Puntos a otorgar
+        """
+        # Puntos base por tipo de validación
+        base_points = {
+            'level_1_to_2': 25,      # Validación de reacción
+            'level_2_to_3': 40,      # Validación de observación  
+            'level_3_to_vip': 60,    # Validación de perfil de deseo
+            'level_5_to_6': 80       # Validación de empatía
+        }
+        
+        # Obtener puntos base
+        points = base_points.get(validation_type, 20)
+        
+        # Multiplicador basado en score (0.0 - 1.0)
+        score_multiplier = max(0.5, min(2.0, score))  # Entre 0.5x y 2.0x
+        
+        # Bonus por datos de recompensa especiales
+        bonus = 0
+        if reward_data:
+            if reward_data.get('reaction_type') == 'immediate':
+                bonus += 5
+            if reward_data.get('observation_type') == 'methodical':
+                bonus += 10
+            if reward_data.get('empathy_type') == 'genuine':
+                bonus += 15
+        
+        final_points = int((points * score_multiplier) + bonus)
+        return max(1, final_points)  # Mínimo 1 punto
+
+    async def _check_diana_validation_achievements(self, user_id: int, validation_type: str, score: float) -> None:
+        """
+        Verifica logros especiales relacionados con validaciones Diana.
+        
+        Args:
+            user_id: ID del usuario
+            validation_type: Tipo de validación
+            score: Score obtenido
+        """
+        try:
+            async for session in get_session():
+                # Buscar logros relacionados con validaciones Diana
+                query = select(Achievement).where(
+                    and_(
+                        Achievement.criteria.contains({"type": "diana_validation"}),
+                        or_(
+                            Achievement.criteria.contains({"validation_type": validation_type}),
+                            Achievement.criteria.contains({"validation_type": "any"})
+                        )
+                    )
+                )
+                result = await session.execute(query)
+                achievements = result.scalars().all()
+                
+                for achievement in achievements:
+                    # Verificar criterios específicos
+                    criteria = achievement.criteria
+                    
+                    # Verificar score mínimo si está especificado
+                    min_score = criteria.get('min_score', 0.0)
+                    if score < min_score:
+                        continue
+                    
+                    # Verificar si ya tiene el logro
+                    user_achievement_query = select(UserAchievement).where(
+                        and_(
+                            UserAchievement.user_id == user_id,
+                            UserAchievement.achievement_id == achievement.id
+                        )
+                    )
+                    user_achievement_result = await session.execute(user_achievement_query)
+                    user_achievement = user_achievement_result.scalars().first()
+                    
+                    if not user_achievement:
+                        # Crear nuevo logro
+                        user_achievement = UserAchievement(
+                            user_id=user_id,
+                            achievement_id=achievement.id,
+                            is_completed=True,
+                            progress=100.0,
+                            completed_at=datetime.now(),
+                            completion_data={
+                                "validation_type": validation_type,
+                                "score": score
+                            }
+                        )
+                        session.add(user_achievement)
+                        
+                        # Otorgar recompensa
+                        if achievement.points_reward > 0:
+                            points_query = select(UserPoints).where(UserPoints.user_id == user_id)
+                            points_result = await session.execute(points_query)
+                            user_points = points_result.scalars().first()
+                            
+                            if user_points:
+                                user_points.current_points += achievement.points_reward
+                                user_points.total_earned += achievement.points_reward
+                                
+                                history_entry = {
+                                    "timestamp": datetime.now().isoformat(),
+                                    "amount": achievement.points_reward,
+                                    "source": f"DianaValidationAchievement_{achievement.key}",
+                                    "balance": user_points.current_points
+                                }
+                                user_points.points_history.append(history_entry)
+                        
+                        await session.commit()
+                        self.logger.info(f"Usuario {user_id} desbloqueó logro Diana {achievement.key}")
+                        
+        except Exception as e:
+            self.logger.error(f"Error verificando logros de validación Diana: {e}")

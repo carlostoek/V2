@@ -4,23 +4,14 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Mock de configuración antes de importar
-with patch('src.bot.config.settings.Settings') as mock_settings:
-    mock_settings.return_value = MagicMock(
-        BOT_TOKEN="test_token",
-        DATABASE_URL="sqlite:///:memory:",
-        USE_SQLITE=True,
-        DATABASE_ECHO=False,
-        CREATE_TABLES=True
-    )
-    
-    from src.modules.emotional.service import EmotionalService
-    from src.modules.emotional.diana_state import EmotionalState, EmotionalTrigger
-    from src.modules.emotional.events import (
-        EmotionalStateChangedEvent,
-        UserInteractionAnalyzedEvent
-    )
-    from src.modules.events import UserStartedBotEvent
+# Import modules after test environment is set up (via conftest.py)
+from src.modules.emotional.service import EmotionalService
+from src.modules.emotional.diana_state import EmotionalState, EmotionalTrigger
+from src.modules.emotional.events import (
+    EmotionalStateChangedEvent,
+    UserInteractionAnalyzedEvent
+)
+from src.modules.events import UserStartedBotEvent
 
 
 @pytest.fixture

@@ -49,7 +49,7 @@ class ChannelMembership(Base, TimestampMixin):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     
     # Datos adicionales
-    metadata = Column(JSON, default={})
+    user_metadata = Column(JSON, default={})
     
     # Relaciones
     user = relationship("User", back_populates="channel_memberships")

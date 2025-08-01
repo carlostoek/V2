@@ -64,3 +64,26 @@ class LevelUpEvent(IEvent):
         self.user_id = user_id
         self.new_level = new_level
         self.rewards = rewards or {}
+
+class DianaValidationCompletedEvent(IEvent):
+    """Evento que se dispara cuando un usuario completa una validación de Diana."""
+    def __init__(self, user_id: int, validation_type: str, score: float, reward_data: Dict[str, Any] = None):
+        self.user_id = user_id
+        self.validation_type = validation_type  # 'level_1_to_2', 'level_2_to_3', etc.
+        self.score = score
+        self.reward_data = reward_data or {}
+
+class DianaValidationFailedEvent(IEvent):
+    """Evento que se dispara cuando un usuario falla una validación de Diana."""
+    def __init__(self, user_id: int, validation_type: str, score: float, retry_allowed: bool = True):
+        self.user_id = user_id
+        self.validation_type = validation_type
+        self.score = score
+        self.retry_allowed = retry_allowed
+
+class NarrativeValidationProgressEvent(IEvent):
+    """Evento que se dispara cuando hay progreso en validaciones narrativas."""
+    def __init__(self, user_id: int, validation_type: str, progress_data: Dict[str, Any]):
+        self.user_id = user_id
+        self.validation_type = validation_type
+        self.progress_data = progress_data

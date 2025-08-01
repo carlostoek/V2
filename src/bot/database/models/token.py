@@ -7,8 +7,7 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Foreig
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 
-from src.bot.database.base import Base
-from src.bot.database.mixins import TimestampMixin
+from src.bot.database.base import Base, TimestampMixin
 
 
 class Tariff(Base, TimestampMixin):

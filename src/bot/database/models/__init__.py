@@ -4,7 +4,8 @@ from .user import User
 from .emotional import CharacterEmotionalProfile, UserCharacterRelationship, UserCharacterEmotionalState, EmotionalMemory, PersonalityAdaptation
 from .narrative import StoryFragment, NarrativeChoice, UserNarrativeState, EmotionalNarrativeTrigger
 from .gamification import UserPoints, Achievement, UserAchievement, Mission, UserMission
-from .admin import Tariff, SubscriptionToken
+from .token import Tariff, SubscriptionToken
+from .channel import Channel, ChannelMembership, ChannelAccess, ChannelContent
 
 __all__ = [
     "User",
@@ -23,5 +24,9 @@ __all__ = [
     "Mission",
     "UserMission",
     "Tariff",
-    "SubscriptionToken"
+    "SubscriptionToken",
+    "Channel",
+    "ChannelMembership",
+    "ChannelAccess",
+    "ChannelContent"
 ]
