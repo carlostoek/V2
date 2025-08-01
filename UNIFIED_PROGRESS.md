@@ -145,5 +145,104 @@ Durante la sesión del 01/08/2025 se completaron exitosamente 5 sistemas princip
 - **Mejoras**: BaseSettings de Pydantic con soporte para tests
 - **Funcionalidades**: Singleton CentralConfig con carga desde múltiples fuentes
 
+### 📋 **COMANDOS DISPONIBLES EN DIANA BOT V2**
+
+#### **📱 Comandos de Usuario Básicos**
+- **`/start`** - Iniciar bot y menú principal (con soporte de tokens VIP)
+- **`/help`** - Ayuda completa y comandos disponibles
+- **`/profile`** - Ver perfil y estadísticas del usuario
+- **`/info`**, `/id`, `/myid` - Información detallada del usuario
+
+#### **🎮 Comandos de Gamificación**
+- **`/tienda`** - Tienda de besitos (12 artículos, 4 categorías)
+- **`/trivia`** - Trivias diarias (4 niveles, ranking, VIP exclusivas)
+- **`/regalo`** - Regalos diarios (12 tipos, rachas consecutivas)
+- **`/misiones`** - Sistema completo de misiones y progreso
+
+#### **📖 Comandos Narrativos**
+- **`/mochila`** - Inventario de pistas narrativas desbloqueadas
+
+#### **🔧 Comandos de Administración**
+- **`/admin`** - Panel principal de administración
+- **`/roles`** - Gestión completa de roles (Admin/VIP/Free)
+- **`/tarifas`** - Gestión de tarifas y tokens VIP
+
+#### **📋 Comandos Planificados** (En constants.py)
+- **`/menu`** - Menú principal alternativo
+- **`/perfil`** - Alias de `/profile`
+- **`/historia`** - Continuar historia narrativa
+- **`/dailygift`** - Alias de `/regalo`
+- **`/ruleta`** - Ruleta de la fortuna
+
+**Total Implementados**: **12 comandos funcionales**
+**Total Planificados**: **5 comandos adicionales**
+
+### 🎯 **PRÓXIMOS PASOS RECOMENDADOS**
+
+#### **🚀 PRIORIDAD ALTA - Completar Funcionalidades Core**
+
+1. **Implementar Comandos Faltantes** (1-2 días)
+   - `/menu` - Menú principal mejorado
+   - `/historia` - Navegación narrativa directa 
+   - `/ruleta` - Sistema de ruleta de la fortuna
+   - `/perfil` - Alias mejorado de `/profile`
+
+2. **Sistema de Minijuegos Básicos** (2-3 días)
+   - Juegos de memoria, adivinanzas, reacciones rápidas
+   - Integración con sistema de besitos y misiones
+   - Leaderboards por juego
+
+3. **Funcionalidad de Auto-eliminación** (1 día)
+   - Mensajes del sistema que se auto-eliminan
+   - Configuración de tiempo por tipo de mensaje
+   - Limpieza automática de menús temporales
+
+#### **💎 PRIORIDAD MEDIA - Funcionalidades VIP**
+
+4. **Sistema de Subastas VIP** (3-4 días)
+   - Subastas exclusivas para usuarios VIP
+   - Artículos únicos y limitados
+   - Sistema de pujas en tiempo real
+
+5. **Expansión del Sistema Narrativo** (2-3 días)
+   - Más fragmentos de historia
+   - Decisiones que afecten el desarrollo
+   - Sistema de consecuencias narrativas
+
+6. **Análisis y Métricas Avanzadas** (2 días)
+   - Dashboard de engagement de usuarios
+   - Métricas de conversión VIP
+   - Análisis de uso de comandos
+
+#### **🔧 PRIORIDAD BAJA - Optimizaciones**
+
+7. **Mejoras de Performance** (1-2 días)
+   - Cache de consultas frecuentes
+   - Optimización de queries de base de datos
+   - Lazy loading de datos pesados
+
+8. **Documentación para Usuarios** (1 día)
+   - Guías interactivas en el bot
+   - Tutorial paso a paso para nuevos usuarios
+   - FAQ expandido
+
+#### **📊 ROADMAP SUGERIDO - PRÓXIMAS 2 SEMANAS**
+
+**Semana 1:**
+- Días 1-2: Completar comandos faltantes (/menu, /historia, /ruleta)
+- Días 3-5: Implementar minijuegos básicos
+- Días 6-7: Sistema de auto-eliminación + testing
+
+**Semana 2:**
+- Días 1-3: Sistema de subastas VIP
+- Días 4-5: Expansión narrativa
+- Días 6-7: Análisis y métricas + optimizaciones
+
+#### **🎯 OBJETIVOS CLAVE**
+- **Retención de usuarios**: Minijuegos y contenido fresco
+- **Monetización**: Sistema VIP robusto con subastas
+- **Experiencia de usuario**: Navegación fluida y auto-limpieza
+- **Escalabilidad**: Performance optimizada para crecimiento
+
 ---
 **Documento actualizado el:** 01/08/2025
