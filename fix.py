@@ -58,7 +58,7 @@ async def execute_quick_fixes():
                 'Primer Desafío de Lucien',
                 'Ah, otro visitante de Diana. Permíteme presentarme: Lucien, guardián de los secretos que ella no cuenta... todavía.',
                 'challenge',
-                '{"level": 1, "completed_diana_intro": true}',
+                {"level": 1, "completed_diana_intro": true}',
                 '{"success": "level_2_observation", "failure": "encouragement_1"}',
                 '{"character": "lucien", "level": 1, "challenge_type": "reaction"}'
             ),
@@ -76,9 +76,9 @@ async def execute_quick_fixes():
                 'Misión de Observación - Nivel 2',
                 'Volviste. Interesante... No todos regresan después de la primera revelación.',
                 'mission_start',
-                '{"level": 2, "completed_level_1": true}',
-                '{"mission_type": "observation", "target": "hidden_clues"}',
-                '{"character": "diana", "level": 2, "mission": "observation"}'
+                '"level": 2, "completed_level_1": true',
+                '"mission_type": "observation", "target": "hidden_clues"',
+                '"character": "diana", "level": 2, "mission": "observation"'
             ),
             (
                 'diana_validation_success',
