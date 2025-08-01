@@ -1,4 +1,3 @@
-import logging
 import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
@@ -10,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from src.core.interfaces.IEventBus import IEvent, IEventBus
 from src.core.interfaces.ICoreService import ICoreService
+from src.utils.sexy_logger import log, log_execution_time
 from src.modules.events import (
     ReactionAddedEvent, 
     PointsAwardedEvent, 
@@ -98,7 +98,11 @@ class GamificationService(ICoreService):
             points_to_award: Cantidad de puntos a otorgar.
             source_event: Evento que originó los puntos.
         """
-        self.logger.info(f"[Gamification] Evento {source_event.__class__.__name__} para {user_id}. Otorgando {points_to_award} puntos.")
+        log.gamification(
+            f"Evento {source_event.__class__.__name__} procesado",
+            user_id=user_id,
+            points=points_to_award
+        )
         
         # Actualizar puntos en memoria
         self.points[user_id] = self.points.get(user_id, 0) + points_to_award
@@ -112,11 +116,11 @@ class GamificationService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden otorgar puntos.")
+                    log.error(f"Usuario {user_id} no existe en la base de datos - no se pueden otorgar puntos")
                     return
                 
                 if not user:
-                    self.logger.error(f"Usuario {user_id} no existe en la base de datos. No se pueden otorgar puntos.")
+                    log.error(f"Usuario {user_id} no existe en la base de datos - no se pueden otorgar puntos")
                     return
                 
                 # Verificar si existe registro de puntos
