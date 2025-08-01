@@ -8,6 +8,7 @@ from src.modules.gamification.service import GamificationService
 from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.admin.service import AdminService
+from src.modules.channel.service import ChannelService
 from src.bot.database.engine import init_db
 from src.utils.sexy_logger import log
 
@@ -34,6 +35,7 @@ async def main():
         gamification_service = GamificationService(event_bus)
         narrative_service = NarrativeService(event_bus)
         admin_service = AdminService(event_bus)
+        channel_service = ChannelService(event_bus)
 
         # Conectar servicios al bus
         log.startup("Conectando servicios al Event Bus...")
@@ -41,6 +43,7 @@ async def main():
         await gamification_service.setup()
         await narrative_service.setup()
         await admin_service.setup()
+        await channel_service.setup()
         log.success("✅ Todos los servicios conectados al Event Bus")
 
     with log.section("INICIALIZACIÓN DE TELEGRAM", "📱"):
@@ -49,7 +52,9 @@ async def main():
             bot_token=settings.bot_token, 
             event_bus=event_bus, 
             gamification_service=gamification_service,
-            admin_service=admin_service
+            admin_service=admin_service,
+            narrative_service=narrative_service,
+            channel_service=channel_service
         )
         
         log.startup("Iniciando Bot de Telegram...")

@@ -12,6 +12,7 @@ from src.infrastructure.telegram.keyboards import (
     get_wait_time_selection_kb, get_post_confirmation_kb, get_vip_admin_menu_kb,
     get_tariff_view_kb
 )
+from src.bot.handlers.admin.menu_system import AdminMenuSystem
 
 class AdminStates(StatesGroup):
     waiting_for_channel_id = State()
@@ -23,10 +24,21 @@ class AdminStates(StatesGroup):
     waiting_for_tariff_duration = State()
 
 class Handlers:
-    def __init__(self, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
+    def __init__(self, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, 
+                 narrative_service=None, channel_service=None):
         self._event_bus = event_bus
         self._gamification_service = gamification_service
         self._admin_service = admin_service
+        self._narrative_service = narrative_service
+        self._channel_service = channel_service
+        
+        # Initialize AdminMenuSystem
+        self.admin_menu_system = AdminMenuSystem(
+            admin_service=admin_service,
+            gamification_service=gamification_service,
+            narrative_service=narrative_service,
+            channel_service=channel_service
+        )
 
     async def handle_start(self, message: types.Message, command: types.BotCommand):
         token = command.args
@@ -48,8 +60,8 @@ class Handlers:
             )
 
     async def handle_admin_command(self, message: types.Message):
-        # Aquí iría la lógica para verificar si el usuario es admin
-        await message.answer("Menú de Administración", reply_markup=get_admin_menu_keyboard())
+        # Use the new admin menu system
+        await self.admin_menu_system.show_main_admin_menu(message)
 
     async def handle_free_channel_menu_callback(self, query: types.CallbackQuery):
         is_configured = self._admin_service.get_free_channel_id() is not None
@@ -126,6 +138,9 @@ class Handlers:
     def register(self, dp: Dispatcher):
         dp.message.register(self.handle_start, CommandStart())
         dp.message.register(self.handle_admin_command, Command("admin"))
+        
+        # Register admin menu system handlers
+        self.admin_menu_system.register_handlers(dp)
         dp.callback_query.register(self.handle_free_channel_menu_callback, F.data == "admin:free_channel_menu")
         dp.callback_query.register(self.handle_setup_free_channel_callback, F.data == "admin:setup_free_channel")
         dp.callback_query.register(self.handle_set_wait_time_callback, F.data == "admin:set_wait_time")
@@ -219,7 +234,8 @@ class Handlers:
         else:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
-def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
+def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, 
+                  narrative_service=None, channel_service=None):
     """Configura todos los handlers de la aplicación."""
-    handler_instance = Handlers(event_bus, gamification_service, admin_service)
+    handler_instance = Handlers(event_bus, gamification_service, admin_service, narrative_service, channel_service)
     handler_instance.register(dp)
