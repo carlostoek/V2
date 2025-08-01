@@ -16,7 +16,7 @@ async def main():
     # Banner de inicio increíble
     log.banner(
         "🎭 BOT DIANA V2 - SISTEMA NARRATIVO",
-        f"Ambiente: {os.getenv('ENVIRONMENT', 'DESARROLLO')} | {settings.get('VERSION', '2.0.0')}"
+        f"Ambiente: {os.getenv('ENVIRONMENT', 'DESARROLLO')} | Versión: 2.0.0"
     )
     
     with log.section("INICIALIZACIÓN DE BASE DE DATOS", "🗄️"):
