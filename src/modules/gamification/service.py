@@ -49,7 +49,6 @@ class GamificationService(ICoreService):
         self._event_bus = event_bus
         self.points = {}  # Cache en memoria para puntos
         self.missions = {}  # Cache en memoria para misiones
-        self.logger = logging.getLogger(__name__)
 
     async def setup(self) -> None:
         """Suscribe el servicio a los eventos relevantes y carga datos iniciales."""
