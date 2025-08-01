@@ -10,6 +10,7 @@ from ..config import settings
 from ..tasks.daily import schedule_daily_tasks
 from ..tasks.maintenance import schedule_maintenance_tasks
 from ..tasks.subscription import schedule_subscription_tasks
+from ..tasks.role_maintenance import schedule_role_maintenance_tasks
 from ..services.admin import AdminService
 
 logger = structlog.get_logger()
@@ -40,6 +41,7 @@ def setup_scheduler(admin_service: AdminService) -> AsyncIOScheduler:
     schedule_daily_tasks(scheduler)
     schedule_maintenance_tasks(scheduler)
     schedule_subscription_tasks(scheduler, admin_service)
+    schedule_role_maintenance_tasks(scheduler)
     
     logger.info("Programador de tareas configurado")
     

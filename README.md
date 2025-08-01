@@ -7,6 +7,7 @@ Diana Bot es un bot de Telegram con funciones avanzadas de administración de ca
 - **Sistema Emocional Avanzado**: Los personajes tienen estados emocionales dinámicos que evolucionan con las interacciones.
 - **Narrativa Ramificada**: Experiencia narrativa inmersiva con decisiones que afectan el desarrollo de la historia.
 - **Gamificación Completa**: Sistema de puntos, logros, misiones y recompensas para mantener a los usuarios comprometidos.
+- **Sistema de Roles Avanzado**: Gestión completa de roles (Admin, VIP, Free) con permisos granulares.
 - **Gestión de Canales**: Herramientas avanzadas para administrar canales VIP y gratuitos.
 - **Respuestas Personalizadas**: Contenido adaptado a las preferencias y comportamiento de cada usuario.
 - **Minijuegos Interactivos**: Ruleta, trivia y otros minijuegos integrados en la experiencia.
@@ -30,6 +31,8 @@ Para más detalles, consulta [ARCHITECTURE.md](ARCHITECTURE.md).
 - **PostgreSQL/SQLite**: Soporte para PostgreSQL en producción y SQLite para desarrollo.
 - **Pydantic**: Validación de datos y configuración basada en tipos.
 - **Asyncio**: Programación asíncrona para máxima eficiencia.
+- **Transitions**: Máquinas de estado para el sistema emocional.
+- **APScheduler**: Programador de tareas para mantenimiento automático.
 
 ## 📦 Instalación
 
