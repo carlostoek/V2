@@ -1,7 +1,8 @@
 """Handlers para la administración de tarifas y tokens."""
 
 from aiogram import types
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
+from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -353,11 +354,11 @@ def register_tariff_handlers(dp, tokeneitor):
     )
     dp.message.register(
         lambda message: cmd_tariffs(message, tokeneitor),
-        Text("🏷️ Gestionar Tarifas")
+        F.text == "🏷️ Gestionar Tarifas"
     )
     
     # Flujo de creación de tarifas
-    dp.message.register(cmd_new_tariff, Text("🆕 Nueva Tarifa"))
+    dp.message.register(cmd_new_tariff, F.text == "🆕 Nueva Tarifa")
     dp.message.register(process_tariff_name, TariffStates.waiting_for_name)
     dp.message.register(process_tariff_duration, TariffStates.waiting_for_duration)
     dp.message.register(process_tariff_price, TariffStates.waiting_for_price)
@@ -370,7 +371,7 @@ def register_tariff_handlers(dp, tokeneitor):
     # Generación de enlaces
     dp.message.register(
         lambda message: cmd_generate_link(message, tokeneitor),
-        Text("🔗 Generar Enlace")
+        F.text == "🔗 Generar Enlace"
     )
     dp.callback_query.register(
         lambda callback_query: process_generate_token(callback_query, tokeneitor),
@@ -380,5 +381,5 @@ def register_tariff_handlers(dp, tokeneitor):
     # Estadísticas
     dp.message.register(
         lambda message: cmd_token_stats(message, tokeneitor),
-        Text("📊 Estadísticas")
+        F.text == "📊 Estadísticas"
     )
