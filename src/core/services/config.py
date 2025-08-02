@@ -83,7 +83,8 @@ class CentralConfig:
                 "daily_mission_limit": 3
             },
             "admin": {
-                "wait_time_minutes": 15
+                "wait_time_minutes": 15,
+                "user_ids": []
             },
             "emotional": {
                 "initial_state": "Enigmática"
@@ -127,6 +128,14 @@ class CentralConfig:
                 self._config["admin"]["wait_time_minutes"] = int(wait_time)
             except ValueError:
                 pass
+        
+        if admin_ids := os.getenv("ADMIN_USER_IDS"):
+            try:
+                # Split comma-separated IDs and convert to integers
+                ids = [int(id_str.strip()) for id_str in admin_ids.split(",") if id_str.strip()]
+                self._config["admin"]["user_ids"] = ids
+            except ValueError:
+                logger.error("Invalid ADMIN_USER_IDS format, should be comma-separated integers")
         
         # Other environment variables can be added here
     

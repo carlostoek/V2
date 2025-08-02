@@ -8,6 +8,7 @@ from aiogram.filters import Command
 
 from src.bot.core.menu_system import diana_menu_system, UserRole
 from src.utils.sexy_logger import log
+from src.core.services.config import CentralConfig
 
 # TODO: Importar handlers existentes cuando estén disponibles
 # from src.bot.handlers.user.profile import profile_handler
@@ -35,6 +36,7 @@ class MenuHandler:
         self.narrative_service = narrative_service
         self.channel_service = channel_service
         self.user_service = user_service
+        self.config = CentralConfig()
     
     async def get_user_role(self, user_id: int) -> UserRole:
         """Obtener el rol real del usuario desde la base de datos"""
@@ -49,8 +51,8 @@ class MenuHandler:
                     else:
                         return UserRole.FREE
             
-            # Fallback: verificar si es admin hardcodeado (para testing)
-            admin_ids = [123456789]  # TODO: Obtener de configuración
+            # Verificar si es admin desde configuración
+            admin_ids = self.config.get("admin.user_ids", [])
             if user_id in admin_ids:
                 return UserRole.ADMIN
             
@@ -390,9 +392,10 @@ Para agregar un canal, necesitas:
 async def admin_command_menu(message: types.Message):
     """Comando /admin - conectar con sistema de menús"""
     user_id = message.from_user.id
+    config = CentralConfig()
     
-    # Obtener rol del usuario - Por ahora usar lógica simple
-    admin_ids = [123456789]  # TODO: Obtener de configuración
+    # Obtener rol del usuario desde configuración
+    admin_ids = config.get("admin.user_ids", [])
     user_role = UserRole.ADMIN if user_id in admin_ids else UserRole.FREE
     
     if user_role != UserRole.ADMIN:
@@ -405,9 +408,10 @@ async def admin_command_menu(message: types.Message):
 async def menu_command(message: types.Message):
     """Comando /menu - NUEVO COMANDO PLANIFICADO"""
     user_id = message.from_user.id
+    config = CentralConfig()
     
-    # Obtener rol del usuario - Por ahora usar lógica simple
-    admin_ids = [123456789]  # TODO: Obtener de configuración
+    # Obtener rol del usuario desde configuración
+    admin_ids = config.get("admin.user_ids", [])
     user_role = UserRole.ADMIN if user_id in admin_ids else UserRole.FREE
     
     await diana_menu_system.show_menu(message, "main_user", user_role)

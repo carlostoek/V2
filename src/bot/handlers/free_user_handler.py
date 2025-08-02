@@ -20,6 +20,7 @@ from src.bot.keyboards.free_user_kb import (
     get_admin_notification_kb
 )
 from src.utils.sexy_logger import log
+from src.core.services.config import CentralConfig
 
 # Router para handlers de usuario Free
 free_user_router = Router()
@@ -35,6 +36,7 @@ class FreeUserMenuSystem:
     
     def __init__(self, admin_service=None):
         self.admin_service = admin_service
+        self.config = CentralConfig()
         self.temp_messages: List[Dict] = []  # Mensajes temporales para eliminar
         self.notification_delete_time = 8  # segundos
         self.success_delete_time = 5       # segundos
@@ -278,8 +280,8 @@ Tu interés en **{interest_name}** ha sido registrado.
                                   interest_type: str, interest_name: str):
         """Enviar notificación al administrador"""
         try:
-            # IDs de administradores (obtener de configuración en producción)
-            admin_ids = [123456789]  # TODO: Obtener de configuración
+            # Obtener IDs de administradores desde configuración
+            admin_ids = self.config.get("admin.user_ids", [])
             
             admin_text = f"""
 🔔 **NUEVA NOTIFICACIÓN DE INTERÉS**

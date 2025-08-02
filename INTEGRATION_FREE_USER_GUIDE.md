@@ -75,11 +75,13 @@ def setup_bot():
 ```
 
 ### Paso 2: Configurar IDs de administradores
-En `free_user_handler.py` línea 97 y en `free_user_integration.py` línea 27:
+En tu archivo `.env`, configurar:
 
-```python
-admin_ids = [123456789, 987654321]  # Reemplazar con IDs reales
+```bash
+ADMIN_USER_IDS=123456789,987654321,111222333
 ```
+
+El sistema automáticamente cargará estos IDs desde las variables de entorno y los usará para validar permisos de administrador.
 
 ### Paso 3: Configurar URLs de redes sociales
 En `free_user_kb.py` líneas 80-84, reemplazar con URLs reales:
@@ -192,7 +194,7 @@ Editar en `free_user_kb.py`:
 
 ### **Para completar la implementación:**
 
-1. **Configurar IDs de admin reales**
+1. **Configurar IDs de admin en .env** (variable ADMIN_USER_IDS)
 2. **Añadir URLs reales de redes sociales**
 3. **Implementar envío directo de mensajes admin→usuario**
 4. **Conectar con servicios existentes (user_service, admin_service)**

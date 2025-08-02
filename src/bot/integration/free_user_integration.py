@@ -8,6 +8,7 @@ from aiogram.filters import Command
 
 from src.bot.handlers.free_user_handler import free_menu_system, free_user_router
 from src.utils.sexy_logger import log
+from src.core.services.config import CentralConfig
 
 # Router principal para la integración
 integration_router = Router()
@@ -19,6 +20,7 @@ class FreeUserIntegration:
     
     def __init__(self, user_service=None):
         self.user_service = user_service
+        self.config = CentralConfig()
     
     async def get_user_role(self, user_id: int) -> str:
         """Determinar el rol del usuario"""
@@ -33,8 +35,8 @@ class FreeUserIntegration:
                     else:
                         return 'free'
             
-            # Fallback: verificar si es admin hardcodeado
-            admin_ids = [123456789]  # TODO: Obtener de configuración
+            # Verificar si es admin desde configuración
+            admin_ids = self.config.get("admin.user_ids", [])
             if user_id in admin_ids:
                 return 'admin'
             
