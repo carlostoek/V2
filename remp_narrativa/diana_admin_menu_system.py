@@ -1,519 +1,599 @@
-# diana_admin_menu_system.py
+
+# diana_menu_system.py
 """
-Sistema de Menú Administrativo Elegante para Diana Bot
-¡Navegación fluida con edición de mensajes y auto-limpieza!
+Sistema de Menús Elegante para Diana Bot V2
+🎛️ Menús fluidos, intuitivos y auto-actualizables
 """
 
 import asyncio
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Callable, Optional, Any
+from dataclasses import dataclass
+from enum import Enum
+import time
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from telegram.ext import ContextTypes, CallbackQueryHandler
-from datetime import datetime, timedelta
-import json
 
 from src.utils.sexy_logger import log
 
-class AdminMenuSystem:
+class MenuType(Enum):
+    MAIN_ADMIN = "main_admin"
+    MAIN_USER = "main_user"
+    CHANNELS = "channels"
+    GAMIFICATION = "gamification"
+    NARRATIVE = "narrative"
+    USERS = "users"
+    CONFIG = "config"
+    ANALYTICS = "analytics"
+
+class UserRole(Enum):
+    ADMIN = "admin"
+    VIP = "vip" 
+    FREE = "free"
+
+@dataclass
+class MenuOption:
+    text: str
+    callback: str
+    icon: str
+    description: str
+    required_role: UserRole = UserRole.FREE
+    submenu: Optional[str] = None
+
+@dataclass
+class MenuConfig:
+    title: str
+    description: str
+    options: List[MenuOption]
+    back_menu: Optional[str] = None
+    auto_delete_seconds: int = 0  # 0 = no auto delete
+
+class DianaMenuSystem:
     """
-    Sistema de menús administrativos elegante con:
-    - Edición de mensajes (no spam)
-    - Auto-eliminación de notificaciones
-    - Navegación fluida
-    - Breadcrumbs y historial
+    Sistema de menús elegante con edición de mensajes
+    ¡Navegación fluida sin spam de mensajes!
     """
     
-    def __init__(self, bot_application):
-        self.app = bot_application
-        self.active_menus: Dict[int, Dict] = {}  # user_id -> menu_data
-        self.temp_messages: List[Dict] = []  # Mensajes temporales para eliminar
+    def __init__(self):
+        self.menus = self._initialize_menus()
+        self.user_sessions = {}  # Trackear sesiones de usuario
+        self.temp_messages = {}  # Mensajes temporales para auto-eliminar
         
-        # Configuración de auto-eliminación
-        self.notification_delete_time = 8  # segundos
-        self.success_delete_time = 5       # segundos
-        self.error_delete_time = 10        # segundos
+    def _initialize_menus(self) -> Dict[str, MenuConfig]:
+        """Inicializar todos los menús del sistema"""
         
-        self.setup_handlers()
-        
-        log.startup("Sistema de Menú Administrativo inicializado")
-    
-    def setup_handlers(self):
-        """Configurar handlers para el sistema de menús"""
-        self.app.add_handler(CallbackQueryHandler(
-            self.handle_admin_callback, 
-            pattern=r"^admin_"
-        ))
-        
-        # Task para limpiar mensajes temporales
-        asyncio.create_task(self.cleanup_temp_messages())
-    
-    # ============================================
-    # MENÚ PRINCIPAL ADMINISTRATIVO
-    # ============================================
-    
-    async def show_main_admin_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Mostrar menú principal administrativo"""
-        user_id = update.effective_user.id
-        
-        # Verificar permisos de admin
-        if not await self.is_admin(user_id):
-            await self.send_temp_message(
-                update, "❌ No tienes permisos de administrador", 
-                delete_time=self.error_delete_time
+        return {
+            # ============================================
+            # MENÚ PRINCIPAL ADMINISTRADOR
+            # ============================================
+            "main_admin": MenuConfig(
+                title="🎛️ PANEL DE ADMINISTRACIÓN DIANA",
+                description="Sistema de control principal del bot",
+                options=[
+                    MenuOption("📺 Canales", "menu_channels", "📺", "Administrar canales y accesos", UserRole.ADMIN),
+                    MenuOption("👥 Usuarios", "menu_users", "👥", "Gestión de usuarios y roles", UserRole.ADMIN),
+                    MenuOption("🎮 Gamificación", "menu_gamification", "🎮", "Puntos, misiones y recompensas", UserRole.ADMIN),
+                    MenuOption("📖 Narrativa", "menu_narrative", "📖", "Historia, pistas y fragmentos", UserRole.ADMIN),
+                    MenuOption("⚙️ Configuración", "menu_config", "⚙️", "Ajustes del sistema", UserRole.ADMIN),
+                    MenuOption("📊 Analytics", "menu_analytics", "📊", "Estadísticas y reportes", UserRole.ADMIN),
+                    MenuOption("🔄 Refresh", "refresh_admin", "🔄", "Actualizar estado del bot", UserRole.ADMIN),
+                    MenuOption("❌ Cerrar", "close_menu", "❌", "Cerrar panel de administración", UserRole.ADMIN)
+                ]
+            ),
+            
+            # ============================================
+            # MENÚ PRINCIPAL USUARIO
+            # ============================================
+            "main_user": MenuConfig(
+                title="🎭 DIANA BOT - MENÚ PRINCIPAL",
+                description="Bienvenido al mundo de Diana",
+                options=[
+                    MenuOption("👤 Mi Perfil", "user_profile", "👤", "Ver perfil y estadísticas"),
+                    MenuOption("🎒 Mochila", "user_inventory", "🎒", "Pistas narrativas desbloqueadas"),
+                    MenuOption("🎮 Juegos", "user_games", "🎮", "Trivias y minijuegos"),
+                    MenuOption("🎯 Misiones", "user_missions", "🎯", "Misiones y desafíos"),
+                    MenuOption("🎁 Regalo Diario", "daily_gift", "🎁", "Reclamar regalo del día"),
+                    MenuOption("🛍️ Tienda", "shop", "🛍️ ", "Tienda de besitos"),
+                    MenuOption("👑 VIP", "vip_section", "👑", "Contenido exclusivo VIP", UserRole.VIP),
+                    MenuOption("🔧 Admin", "admin_panel", "🔧", "Panel de administración", UserRole.ADMIN)
+                ]
+            ),
+            
+            # ============================================
+            # MENÚ DE CANALES
+            # ============================================
+            "channels": MenuConfig(
+                title="📺 ADMINISTRACIÓN DE CANALES",
+                description="Gestión completa de canales y accesos",
+                options=[
+                    MenuOption("➕ Agregar Canal", "add_channel", "➕", "Añadir nuevo canal al sistema", UserRole.ADMIN),
+                    MenuOption("📝 Editar Canales", "edit_channels", "📝", "Modificar canales existentes", UserRole.ADMIN),
+                    MenuOption("🗑️ Eliminar Canal", "delete_channel", "🗑️", "Remover canal del sistema", UserRole.ADMIN),
+                    MenuOption("🔍 Ver Estado", "channel_status", "🔍", "Estado de todos los canales", UserRole.ADMIN),
+                    MenuOption("👥 Miembros", "channel_members", "👥", "Gestionar miembros de canales", UserRole.ADMIN),
+                    MenuOption("🎟️ Tokens VIP", "vip_tokens", "🎟️", "Generar y gestionar tokens", UserRole.ADMIN),
+                    MenuOption("⚡ Acciones Rápidas", "quick_actions", "⚡", "Expulsar/añadir usuarios", UserRole.ADMIN),
+                    MenuOption("◀️ Volver", "main_admin", "◀️", "Volver al menú principal")
+                ],
+                back_menu="main_admin"
+            ),
+            
+            # ============================================
+            # MENÚ DE USUARIOS
+            # ============================================
+            "users": MenuConfig(
+                title="👥 GESTIÓN DE USUARIOS",
+                description="Control de usuarios y roles del sistema",
+                options=[
+                    MenuOption("🔍 Buscar Usuario", "search_user", "🔍", "Buscar por ID o username", UserRole.ADMIN),
+                    MenuOption("📊 Top Usuarios", "top_users", "📊", "Rankings de puntos y actividad", UserRole.ADMIN),
+                    MenuOption("👑 Gestión VIP", "manage_vip", "👑", "Promover/demover usuarios VIP", UserRole.ADMIN),
+                    MenuOption("🎭 Roles", "manage_roles", "🎭", "Asignar roles especiales", UserRole.ADMIN),
+                    MenuOption("🚫 Moderar", "moderate_user", "🚫", "Banear/desbanear usuarios", UserRole.ADMIN),
+                    MenuOption("📈 Estadísticas", "user_stats", "📈", "Estadísticas generales", UserRole.ADMIN),
+                    MenuOption("💌 Mensaje Masivo", "mass_message", "💌", "Enviar mensaje a todos", UserRole.ADMIN),
+                    MenuOption("◀️ Volver", "main_admin", "◀️", "Volver al menú principal")
+                ],
+                back_menu="main_admin"
+            ),
+            
+            # ============================================
+            # MENÚ DE GAMIFICACIÓN
+            # ============================================
+            "gamification": MenuConfig(
+                title="🎮 SISTEMA DE GAMIFICACIÓN",
+                description="Puntos, misiones, recompensas y progresión",
+                options=[
+                    MenuOption("🎯 Misiones", "manage_missions", "🎯", "Crear y editar misiones", UserRole.ADMIN),
+                    MenuOption("🧩 Trivias", "manage_trivia", "🧩", "Gestionar trivias y preguntas", UserRole.ADMIN),
+                    MenuOption("🏆 Logros", "manage_achievements", "🏆", "Sistema de logros e insignias", UserRole.ADMIN),
+                    MenuOption("🎁 Regalos", "manage_gifts", "🎁", "Configurar regalos diarios", UserRole.ADMIN),
+                    MenuOption("💰 Puntos", "manage_points", "💰", "Ajustar puntos de usuarios", UserRole.ADMIN),
+                    MenuOption("🏪 Tienda", "manage_shop", "🏪", "Configurar tienda de besitos", UserRole.ADMIN),
+                    MenuOption("🎰 Subastas VIP", "manage_auctions", "🎰", "Gestionar subastas exclusivas", UserRole.ADMIN),
+                    MenuOption("◀️ Volver", "main_admin", "◀️", "Volver al menú principal")
+                ],
+                back_menu="main_admin"
+            ),
+            
+            # ============================================
+            # MENÚ DE NARRATIVA
+            # ============================================
+            "narrative": MenuConfig(
+                title="📖 SISTEMA NARRATIVO",
+                description="Historia, fragmentos y progresión narrativa",
+                options=[
+                    MenuOption("📝 Fragmentos", "manage_fragments", "📝", "Crear y editar fragmentos", UserRole.ADMIN),
+                    MenuOption("🧩 Pistas", "manage_clues", "🧩", "Gestionar LorePieces", UserRole.ADMIN),
+                    MenuOption("🗺️ Mapa Narrativo", "narrative_map", "🗺️", "Visualizar progresión global", UserRole.ADMIN),
+                    MenuOption("🎭 Personajes", "manage_characters", "🎭", "Diana, Lucien y otros", UserRole.ADMIN),
+                    MenuOption("📊 Progreso Global", "narrative_progress", "📊", "Ver avance de usuarios", UserRole.ADMIN),
+                    MenuOption("🔀 Combinaciones", "manage_combinations", "🔀", "Configurar combinaciones de pistas", UserRole.ADMIN),
+                    MenuOption("✨ Eventos Especiales", "special_events", "✨", "Crear eventos narrativos", UserRole.ADMIN),
+                    MenuOption("◀️ Volver", "main_admin", "◀️", "Volver al menú principal")
+                ],
+                back_menu="main_admin"
+            ),
+            
+            # ============================================
+            # MENÚ DE CONFIGURACIÓN
+            # ============================================
+            "config": MenuConfig(
+                title="⚙️ CONFIGURACIÓN DEL SISTEMA",
+                description="Ajustes generales y parámetros del bot",
+                options=[
+                    MenuOption("🔧 Parámetros", "system_params", "🔧", "Configurar parámetros globales", UserRole.ADMIN),
+                    MenuOption("⏰ Horarios", "schedule_config", "⏰", "Configurar horarios automáticos", UserRole.ADMIN),
+                    MenuOption("💌 Notificaciones", "notification_config", "💌", "Ajustar mensajes automáticos", UserRole.ADMIN),
+                    MenuOption("🛡️ Seguridad", "security_config", "🛡️", "Configuración de seguridad", UserRole.ADMIN),
+                    MenuOption("🔄 Backup", "backup_system", "🔄", "Respaldo de datos", UserRole.ADMIN),
+                    MenuOption("📋 Logs", "system_logs", "📋", "Ver logs del sistema", UserRole.ADMIN),
+                    MenuOption("🔌 Integraciones", "integrations", "🔌", "APIs y servicios externos", UserRole.ADMIN),
+                    MenuOption("◀️ Volver", "main_admin", "◀️", "Volver al menú principal")
+                ],
+                back_menu="main_admin"
+            ),
+            
+            # ============================================
+            # MENÚ DE ANALYTICS
+            # ============================================
+            "analytics": MenuConfig(
+                title="📊 ANALYTICS Y REPORTES",
+                description="Estadísticas y métricas del bot",
+                options=[
+                    MenuOption("📈 Dashboard", "analytics_dashboard", "📈", "Dashboard principal", UserRole.ADMIN),
+                    MenuOption("👥 Usuarios Activos", "user_analytics", "👥", "Métricas de usuarios", UserRole.ADMIN),
+                    MenuOption("🎮 Engagement", "engagement_analytics", "🎮", "Participación en actividades", UserRole.ADMIN),
+                    MenuOption("💰 Economía", "economy_analytics", "💰", "Flujo de puntos y recompensas", UserRole.ADMIN),
+                    MenuOption("📖 Narrativa", "narrative_analytics", "📖", "Progreso narrativo global", UserRole.ADMIN),
+                    MenuOption("📺 Canales", "channel_analytics", "📺", "Estadísticas de canales", UserRole.ADMIN),
+                    MenuOption("📊 Reportes", "generate_reports", "📊", "Generar reportes personalizados", UserRole.ADMIN),
+                    MenuOption("◀️ Volver", "main_admin", "◀️", "Volver al menú principal")
+                ],
+                back_menu="main_admin"
             )
-            return
-        
-        # Header con información del sistema
-        system_info = await self.get_system_info()
-        
-        menu_text = f"""
-🎭 **DIANA BOT - PANEL ADMINISTRATIVO**
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 **Estado del Sistema:**
-👥 Usuarios Activos: {system_info['active_users']}
-💎 Usuarios VIP: {system_info['vip_users']}
-🎮 Misiones Activas: {system_info['active_missions']}
-📺 Canales Monitoreados: {system_info['monitored_channels']}
-🏆 Subastas Activas: {system_info['active_auctions']}
-
-⏰ Última actualización: {datetime.now().strftime('%H:%M:%S')}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Selecciona una categoría para administrar:
+        }
+    
+    # ============================================
+    # MÉTODO PRINCIPAL: MOSTRAR MENÚ
+    # ============================================
+    
+    async def show_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE, 
+                       menu_name: str, user_role: UserRole = UserRole.FREE) -> None:
         """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("👥 Usuarios", callback_data="admin_users"),
-                InlineKeyboardButton("📺 Canales", callback_data="admin_channels")
-            ],
-            [
-                InlineKeyboardButton("🎮 Gamificación", callback_data="admin_gamification"),
-                InlineKeyboardButton("📖 Narrativa", callback_data="admin_narrative")
-            ],
-            [
-                InlineKeyboardButton("🏆 Subastas VIP", callback_data="admin_auctions"),
-                InlineKeyboardButton("⚙️ Configuración", callback_data="admin_config")
-            ],
-            [
-                InlineKeyboardButton("📊 Estadísticas", callback_data="admin_stats"),
-                InlineKeyboardButton("🔔 Notificaciones", callback_data="admin_notifications")
-            ],
-            [
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_refresh"),
-                InlineKeyboardButton("❌ Cerrar", callback_data="admin_close")
+        Muestra un menú editando el mensaje actual (no crear nuevo)
+        """
+        try:
+            menu_config = self.menus.get(menu_name)
+            if not menu_config:
+                log.error(f"Menú no encontrado: {menu_name}")
+                return
+            
+            user_id = update.effective_user.id
+            
+            # Log de navegación
+            log.user_action(
+                f"Navegando a menú: {menu_name}",
+                user_id=user_id,
+                action="menu_navigation"
+            )
+            
+            # Filtrar opciones según rol del usuario
+            available_options = [
+                option for option in menu_config.options
+                if self._user_has_access(user_role, option.required_role)
             ]
+            
+            # Crear texto del menú
+            menu_text = self._build_menu_text(menu_config, available_options, user_role)
+            
+            # Crear teclado
+            keyboard = self._build_keyboard(available_options, menu_config.back_menu)
+            
+            # Editar mensaje existente o enviar nuevo
+            if update.callback_query:
+                # Editar mensaje existente
+                await update.callback_query.edit_message_text(
+                    text=menu_text,
+                    reply_markup=keyboard,
+                    parse_mode='HTML'
+                )
+                await update.callback_query.answer()  # Quitar loading
+                
+            else:
+                # Enviar nuevo mensaje (desde comando)
+                message = await update.message.reply_text(
+                    text=menu_text,
+                    reply_markup=keyboard,
+                    parse_mode='HTML'
+                )
+                
+                # Guardar referencia del mensaje para futuras ediciones
+                self.user_sessions[user_id] = {
+                    'message_id': message.message_id,
+                    'chat_id': message.chat_id,
+                    'menu_stack': [menu_name]
+                }
+            
+            # Auto-eliminar si está configurado
+            if menu_config.auto_delete_seconds > 0:
+                await self._schedule_auto_delete(update, menu_config.auto_delete_seconds)
+                
+        except Exception as e:
+            log.error(f"Error mostrando menú {menu_name}", error=e)
+            await self._send_error_message(update, "Error mostrando menú")
+    
+    # ============================================
+    # CONSTRUCCIÓN DE MENÚS
+    # ============================================
+    
+    def _build_menu_text(self, menu_config: MenuConfig, options: List[MenuOption], 
+                        user_role: UserRole) -> str:
+        """Construir texto del menú con formato elegante"""
+        
+        lines = [
+            f"<b>{menu_config.title}</b>",
+            f"<i>{menu_config.description}</i>",
+            "",
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            ""
         ]
         
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        # Agrupar opciones por categoría si es necesario
+        for option in options:
+            status_icon = self._get_status_icon(option, user_role)
+            lines.append(f"{option.icon} <b>{option.text}</b> {status_icon}")
+            lines.append(f"   <i>{option.description}</i>")
+            lines.append("")
         
-        # Editar mensaje existente o crear nuevo
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup, 
-            menu_id="main_admin"
-        )
+        lines.extend([
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            f"👤 <b>Rol:</b> {user_role.value.upper()}",
+            f"🕐 <b>Última actualización:</b> {time.strftime('%H:%M:%S')}"
+        ])
         
-        log.user_action(f"Panel administrativo accedido", user_id=user_id, action="admin_menu_open")
+        return "\n".join(lines)
+    
+    def _build_keyboard(self, options: List[MenuOption], back_menu: Optional[str] = None) -> InlineKeyboardMarkup:
+        """Construir teclado inline con disposición inteligente"""
+        
+        keyboard = []
+        
+        # Opciones principales (máximo 2 por fila)
+        main_options = [opt for opt in options if not opt.callback.startswith(('close_', 'back_'))]
+        
+        for i in range(0, len(main_options), 2):
+            row = []
+            for j in range(2):
+                if i + j < len(main_options):
+                    option = main_options[i + j]
+                    row.append(InlineKeyboardButton(
+                        f"{option.icon} {option.text}",
+                        callback_data=option.callback
+                    ))
+            keyboard.append(row)
+        
+        # Fila de navegación (volver, cerrar, etc.)
+        nav_row = []
+        for option in options:
+            if option.callback.startswith(('close_', 'back_', 'refresh_')):
+                nav_row.append(InlineKeyboardButton(
+                    f"{option.icon} {option.text}",
+                    callback_data=option.callback
+                ))
+        
+        if nav_row:
+            keyboard.append(nav_row)
+        
+        return InlineKeyboardMarkup(keyboard)
     
     # ============================================
-    # GESTIÓN DE USUARIOS
+    # UTILIDADES
     # ============================================
     
-    async def show_users_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Menú de gestión de usuarios"""
+    def _user_has_access(self, user_role: UserRole, required_role: UserRole) -> bool:
+        """Verificar si el usuario tiene acceso a una opción"""
+        role_hierarchy = {
+            UserRole.FREE: 0,
+            UserRole.VIP: 1,
+            UserRole.ADMIN: 2
+        }
+        return role_hierarchy.get(user_role, 0) >= role_hierarchy.get(required_role, 0)
+    
+    def _get_status_icon(self, option: MenuOption, user_role: UserRole) -> str:
+        """Obtener icono de estado para una opción"""
+        if option.required_role == UserRole.ADMIN:
+            return "🔒" if user_role != UserRole.ADMIN else "✅"
+        elif option.required_role == UserRole.VIP:
+            return "👑" if user_role == UserRole.FREE else "✅"
+        return "✅"
+    
+    async def _schedule_auto_delete(self, update: Update, seconds: int) -> None:
+        """Programar auto-eliminación de mensaje"""
+        async def delete_message():
+            await asyncio.sleep(seconds)
+            try:
+                if update.callback_query:
+                    await update.callback_query.message.delete()
+                elif update.message:
+                    await update.message.delete()
+            except:
+                pass  # Mensaje ya eliminado o sin permisos
         
-        user_stats = await self.get_user_stats()
+        asyncio.create_task(delete_message())
+    
+    async def _send_error_message(self, update: Update, error_text: str) -> None:
+        """Enviar mensaje de error temporal"""
+        try:
+            if update.callback_query:
+                await update.callback_query.answer(f"❌ {error_text}", show_alert=True)
+            else:
+                message = await update.message.reply_text(f"❌ {error_text}")
+                # Auto-eliminar error en 5 segundos
+                await self._schedule_auto_delete_message(message, 5)
+        except Exception as e:
+            log.error("Error enviando mensaje de error", error=e)
+    
+    async def _schedule_auto_delete_message(self, message: Message, seconds: int) -> None:
+        """Auto-eliminar mensaje específico"""
+        async def delete():
+            await asyncio.sleep(seconds)
+            try:
+                await message.delete()
+            except:
+                pass
         
-        menu_text = f"""
-👥 **GESTIÓN DE USUARIOS**
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📈 **Estadísticas de Usuarios:**
-• Total de usuarios: {user_stats['total_users']}
-• Usuarios activos (7 días): {user_stats['active_7d']}
-• Usuarios VIP activos: {user_stats['vip_active']}
-• Nuevos registros (hoy): {user_stats['new_today']}
-
-🏆 **Top 5 por Besitos:**
-{user_stats['top_users_text']}
-
-💎 **Tokens VIP:**
-• Tokens activos: {user_stats['active_tokens']}
-• Expirarán en 24h: {user_stats['expiring_tokens']}
-        """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("🔍 Buscar Usuario", callback_data="admin_users_search"),
-                InlineKeyboardButton("👑 Gestionar VIP", callback_data="admin_users_vip")
-            ],
-            [
-                InlineKeyboardButton("🎟️ Tokens VIP", callback_data="admin_users_tokens"),
-                InlineKeyboardButton("📊 Estadísticas", callback_data="admin_users_stats")
-            ],
-            [
-                InlineKeyboardButton("⚠️ Moderación", callback_data="admin_users_moderation"),
-                InlineKeyboardButton("📤 Envío Masivo", callback_data="admin_users_broadcast")
-            ],
-            [
-                InlineKeyboardButton("🔙 Volver", callback_data="admin_main"),
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_users_refresh")
-            ]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup,
-            menu_id="users", breadcrumb="👥 Usuarios"
-        )
+        asyncio.create_task(delete())
     
     # ============================================
-    # GESTIÓN DE CANALES
+    # NOTIFICACIONES TEMPORALES
     # ============================================
     
-    async def show_channels_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Menú de gestión de canales"""
+    async def send_temp_notification(self, update: Update, text: str, 
+                                   seconds: int = 5, alert: bool = False) -> None:
+        """Enviar notificación temporal que se auto-elimina"""
         
-        channels_info = await self.get_channels_info()
-        
-        menu_text = f"""
-📺 **GESTIÓN DE CANALES**
-━━━━━━━━━━━━━━━━━━━━━━━━━
+        try:
+            if update.callback_query and alert:
+                # Mostrar como alert popup
+                await update.callback_query.answer(text, show_alert=True)
+            else:
+                # Enviar como mensaje temporal
+                if update.callback_query:
+                    chat_id = update.callback_query.message.chat_id
+                elif update.message:
+                    chat_id = update.message.chat_id
+                else:
+                    return
+                
+                message = await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"💫 {text}",
+                    parse_mode='HTML'
+                )
+                
+                # Auto-eliminar
+                await self._schedule_auto_delete_message(message, seconds)
+                
+                log.info(f"📨 Notificación temporal enviada: {text} (auto-delete en {seconds}s)")
+                
+        except Exception as e:
+            log.error("Error enviando notificación temporal", error=e)
 
-📊 **Estado de Canales:**
-• Canales gratuitos: {channels_info['free_channels']}
-• Canales VIP: {channels_info['vip_channels']}
-• Total monitoreados: {channels_info['total_monitored']}
 
-🔗 **Canales Activos:**
-{channels_info['channels_list']}
+# ============================================
+# HANDLERS DE CALLBACK
+# ============================================
 
-⚡ **Actividad Reciente:**
-• Nuevas uniones (24h): {channels_info['new_joins_24h']}
-• Validaciones pendientes: {channels_info['pending_validations']}
-        """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("➕ Agregar Canal", callback_data="admin_channels_add"),
-                InlineKeyboardButton("✏️ Editar Canal", callback_data="admin_channels_edit")
-            ],
-            [
-                InlineKeyboardButton("🔗 Canales Gratuitos", callback_data="admin_channels_free"),
-                InlineKeyboardButton("💎 Canales VIP", callback_data="admin_channels_vip")
-            ],
-            [
-                InlineKeyboardButton("🔍 Monitoreo", callback_data="admin_channels_monitor"),
-                InlineKeyboardButton("⚠️ Validaciones", callback_data="admin_channels_validate")
-            ],
-            [
-                InlineKeyboardButton("🔙 Volver", callback_data="admin_main"),
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_channels_refresh")
-            ]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup,
-            menu_id="channels", breadcrumb="📺 Canales"
-        )
+class DianaMenuHandlers:
+    """Handlers para manejar todas las acciones de los menús"""
     
-    # ============================================
-    # GAMIFICACIÓN
-    # ============================================
+    def __init__(self, menu_system: DianaMenuSystem):
+        self.menu_system = menu_system
     
-    async def show_gamification_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Menú de gamificación"""
+    async def handle_menu_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handler principal para todos los callbacks de menú"""
         
-        game_stats = await self.get_gamification_stats()
-        
-        menu_text = f"""
-🎮 **GESTIÓN DE GAMIFICACIÓN**
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📈 **Estadísticas Generales:**
-• Besitos distribuidos hoy: {game_stats['points_today']}
-• Misiones completadas (24h): {game_stats['missions_completed_24h']}
-• Trivias respondidas: {game_stats['trivia_responses']}
-• Regalos reclamados: {game_stats['gifts_claimed']}
-
-🎯 **Misiones Activas:**
-{game_stats['active_missions_text']}
-
-🏆 **Engagement:**
-• Usuarios activos en juegos: {game_stats['active_gamers']}
-• Tasa de completado de misiones: {game_stats['mission_completion_rate']}%
-        """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("🎯 Misiones", callback_data="admin_game_missions"),
-                InlineKeyboardButton("❓ Trivias", callback_data="admin_game_trivia")
-            ],
-            [
-                InlineKeyboardButton("🎁 Regalos Diarios", callback_data="admin_game_gifts"),
-                InlineKeyboardButton("🏪 Tienda", callback_data="admin_game_shop")
-            ],
-            [
-                InlineKeyboardButton("💎 Besitos", callback_data="admin_game_points"),
-                InlineKeyboardButton("🏆 Logros", callback_data="admin_game_achievements")
-            ],
-            [
-                InlineKeyboardButton("📊 Reportes", callback_data="admin_game_reports"),
-                InlineKeyboardButton("⚙️ Configurar", callback_data="admin_game_config")
-            ],
-            [
-                InlineKeyboardButton("🔙 Volver", callback_data="admin_main"),
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_game_refresh")
-            ]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup,
-            menu_id="gamification", breadcrumb="🎮 Gamificación"
-        )
-    
-    # ============================================
-    # NARRATIVA
-    # ============================================
-    
-    async def show_narrative_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Menú de gestión narrativa"""
-        
-        narrative_stats = await self.get_narrative_stats()
-        
-        menu_text = f"""
-📖 **GESTIÓN NARRATIVA**
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📚 **Estado de la Narrativa:**
-• Fragmentos totales: {narrative_stats['total_fragments']}
-• Pistas disponibles: {narrative_stats['total_clues']}
-• Usuarios en progreso: {narrative_stats['users_in_progress']}
-
-🎭 **Progresión Diana:**
-• Nivel 1 (Los Kinkys): {narrative_stats['level_1_users']} usuarios
-• Nivel 4 (El Diván): {narrative_stats['level_4_users']} usuarios
-• Círculo Íntimo: {narrative_stats['inner_circle_users']} usuarios
-
-📊 **Engagement Narrativo:**
-• Fragmentos completados (24h): {narrative_stats['fragments_completed_24h']}
-• Pistas combinadas: {narrative_stats['clues_combined']}
-• Tasa de progresión: {narrative_stats['progression_rate']}%
-        """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("📄 Fragmentos", callback_data="admin_narrative_fragments"),
-                InlineKeyboardButton("🗝️ Pistas", callback_data="admin_narrative_clues")
-            ],
-            [
-                InlineKeyboardButton("🎭 Niveles Diana", callback_data="admin_narrative_levels"),
-                InlineKeyboardButton("👑 Validaciones", callback_data="admin_narrative_validations")
-            ],
-            [
-                InlineKeyboardButton("🎒 Mochilas", callback_data="admin_narrative_backpacks"),
-                InlineKeyboardButton("📊 Progresión", callback_data="admin_narrative_progress")
-            ],
-            [
-                InlineKeyboardButton("🔙 Volver", callback_data="admin_main"),
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_narrative_refresh")
-            ]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup,
-            menu_id="narrative", breadcrumb="📖 Narrativa"
-        )
-    
-    # ============================================
-    # SUBASTAS VIP
-    # ============================================
-    
-    async def show_auctions_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Menú de subastas VIP"""
-        
-        auction_stats = await self.get_auction_stats()
-        
-        menu_text = f"""
-🏆 **GESTIÓN DE SUBASTAS VIP**
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 **Estado de Subastas:**
-• Subastas activas: {auction_stats['active_auctions']}
-• Próximas a finalizar: {auction_stats['ending_soon']}
-• Participantes únicos: {auction_stats['unique_bidders']}
-
-💰 **Actividad Económica:**
-• Besitos en juego: {auction_stats['total_bids']}
-• Subasta más activa: {auction_stats['most_active_auction']}
-• Promedio de ofertas: {auction_stats['average_bids']}
-
-🏅 **Subastas Recientes:**
-{auction_stats['recent_auctions_text']}
-        """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("➕ Nueva Subasta", callback_data="admin_auctions_create"),
-                InlineKeyboardButton("📝 Editar Subasta", callback_data="admin_auctions_edit")
-            ],
-            [
-                InlineKeyboardButton("🔴 Subastas Activas", callback_data="admin_auctions_active"),
-                InlineKeyboardButton("📋 Historial", callback_data="admin_auctions_history")
-            ],
-            [
-                InlineKeyboardButton("🏆 Ganadores", callback_data="admin_auctions_winners"),
-                InlineKeyboardButton("📊 Estadísticas", callback_data="admin_auctions_stats")
-            ],
-            [
-                InlineKeyboardButton("🔙 Volver", callback_data="admin_main"),
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_auctions_refresh")
-            ]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup,
-            menu_id="auctions", breadcrumb="🏆 Subastas VIP"
-        )
-    
-    # ============================================
-    # CONFIGURACIÓN
-    # ============================================
-    
-    async def show_config_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Menú de configuración del sistema"""
-        
-        config_info = await self.get_config_info()
-        
-        menu_text = f"""
-⚙️ **CONFIGURACIÓN DEL SISTEMA**
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔧 **Configuraciones Activas:**
-• Modo de operación: {config_info['operation_mode']}
-• Auto-limpieza de mensajes: {config_info['auto_cleanup']}
-• Validaciones automáticas: {config_info['auto_validations']}
-• Notificaciones push: {config_info['push_notifications']}
-
-📋 **Parámetros Principales:**
-• Besitos por reacción: {config_info['points_per_reaction']}
-• Límite diario de regalos: {config_info['daily_gift_limit']}
-• Duración token VIP: {config_info['vip_token_duration']} días
-• Tiempo de cache: {config_info['cache_duration']} min
-
-⚡ **Sistema:**
-• Versión del bot: {config_info['bot_version']}
-• Última actualización: {config_info['last_update']}
-        """
-        
-        keyboard = [
-            [
-                InlineKeyboardButton("🎮 Gamificación", callback_data="admin_config_game"),
-                InlineKeyboardButton("📖 Narrativa", callback_data="admin_config_narrative")
-            ],
-            [
-                InlineKeyboardButton("💎 Tokens VIP", callback_data="admin_config_vip"),
-                InlineKeyboardButton("🔔 Notificaciones", callback_data="admin_config_notifications")
-            ],
-            [
-                InlineKeyboardButton("🛡️ Seguridad", callback_data="admin_config_security"),
-                InlineKeyboardButton("⚡ Performance", callback_data="admin_config_performance")
-            ],
-            [
-                InlineKeyboardButton("💾 Backup", callback_data="admin_config_backup"),
-                InlineKeyboardButton("🔄 Restart Bot", callback_data="admin_config_restart")
-            ],
-            [
-                InlineKeyboardButton("🔙 Volver", callback_data="admin_main"),
-                InlineKeyboardButton("🔄 Actualizar", callback_data="admin_config_refresh")
-            ]
-        ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await self.edit_or_send_menu(
-            update, context, menu_text, reply_markup,
-            menu_id="config", breadcrumb="⚙️ Configuración"
-        )
-    
-    # ============================================
-    # HANDLER PRINCIPAL DE CALLBACKS
-    # ============================================
-    
-    async def handle_admin_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handler principal para todos los callbacks administrativos"""
         query = update.callback_query
         user_id = update.effective_user.id
-        data = query.data
+        callback_data = query.data
         
-        await query.answer()  # Responder inmediatamente para evitar timeout
-        
-        # Verificar permisos
-        if not await self.is_admin(user_id):
-            await self.send_temp_message(
-                update, "❌ No tienes permisos de administrador",
-                delete_time=self.error_delete_time
-            )
-            return
-        
-        # Log de acción administrativa
-        log.user_action(f"Admin callback: {data}", user_id=user_id, action="admin_callback")
-        
-        # Router de callbacks
-        if data == "admin_main":
-            await self.show_main_admin_menu(update, context)
-        
-        elif data == "admin_users":
-            await self.show_users_menu(update, context)
-        elif data == "admin_channels":
-            await self.show_channels_menu(update, context)
-        elif data == "admin_gamification":
-            await self.show_gamification_menu(update, context)
-        elif data == "admin_narrative":
-            await self.show_narrative_menu(update, context)
-        elif data == "admin_auctions":
-            await self.show_auctions_menu(update, context)
-        elif data == "admin_config":
-            await self.show_config_menu(update, context)
-        
-        # Refresh callbacks
-        elif data.endswith("_refresh"):
-            await self.handle_refresh_callback(update, context, data)
-        
-        # Acciones específicas
-        elif data == "admin_close":
-            await self.close_admin_menu(update, context)
-        
-        else:
-            # Delegar a handlers específicos
-            await self.handle_specific_callback(update, context, data)
-    
-    async def handle_refresh_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
-        """Manejar callbacks de refresh"""
-        
-        # Mostrar notificación de actualización
-        await self.send_temp_message(
-            update, "🔄 Actualizando información...",
-            delete_time=2
+        log.user_action(
+            f"Callback recibido: {callback_data}",
+            user_id=user_id,
+            action="menu_callback"
         )
         
-        # Determinar qué menú refrescar
-        if data == "admin_refresh":
-            await self.show_main_admin_menu(update, context)
-        elif data == "admin_users_refresh":
-            await self.show_users_menu(update, context)
-        elif data == "admin_channels_refresh":
-            await self.show_channels_menu(update, context)
-        elif data == "admin_game_refresh":
-            await self.show_gamification_menu(update, context)
-        elif data == "admin_narrative_refresh":
+        try:
+            # Determinar rol del usuario (integrar con tu sistema de roles)
+            user_role = await self._get_user_role(user_id)
+            
+            # Enrutar callback
+            if callback_data.startswith("menu_"):
+                menu_name = callback_data.replace("menu_", "")
+                await self.menu_system.show_menu(update, context, menu_name, user_role)
+                
+            elif callback_data == "main_admin":
+                await self.menu_system.show_menu(update, context, "main_admin", user_role)
+                
+            elif callback_data == "main_user":
+                await self.menu_system.show_menu(update, context, "main_user", user_role)
+                
+            elif callback_data == "close_menu":
+                await query.message.delete()
+                await query.answer("🔒 Panel cerrado")
+                
+            elif callback_data == "refresh_admin":
+                await self.menu_system.show_menu(update, context, "main_admin", user_role)
+                await query.answer("🔄 Panel actualizado")
+                
+            else:
+                # Callbacks específicos de funcionalidad
+                await self._handle_specific_callback(update, context, callback_data, user_role)
+                
+        except Exception as e:
+            log.error(f"Error manejando callback {callback_data}", error=e)
+            await query.answer("❌ Error procesando acción", show_alert=True)
     
+    async def _get_user_role(self, user_id: int) -> UserRole:
+        """Obtener rol del usuario (integrar con tu sistema)"""
+        # TODO: Integrar con tu sistema de roles
+        # Por ahora, placeholder
+        return UserRole.ADMIN  # Cambiar por lógica real
+    
+    async def _handle_specific_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE,
+                                      callback_data: str, user_role: UserRole) -> None:
+        """Manejar callbacks específicos de funcionalidades"""
+        
+        # Aquí integrarías con tus handlers existentes
+        if callback_data == "user_profile":
+            await self._show_user_profile(update, context)
+        elif callback_data == "daily_gift":
+            await self._handle_daily_gift(update, context)
+        elif callback_data == "manage_missions":
+            await self._manage_missions(update, context)
+        # ... más handlers específicos
+        
+        # Enviar notificación temporal
+        await self.menu_system.send_temp_notification(
+            update, 
+            f"Función '{callback_data}' ejecutada correctamente",
+            seconds=3
+        )
+    
+    async def _show_user_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Mostrar perfil de usuario"""
+        # TODO: Integrar con tu comando /profile existente
+        await update.callback_query.answer("👤 Abriendo perfil...")
+    
+    async def _handle_daily_gift(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Manejar regalo diario"""
+        # TODO: Integrar con tu comando /regalo existente
+        await update.callback_query.answer("🎁 Procesando regalo diario...")
+    
+    async def _manage_missions(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Gestionar misiones"""
+        # TODO: Integrar con tu sistema de misiones
+        await update.callback_query.answer("🎯 Abriendo gestión de misiones...")
+
+
+# ============================================
+# INSTANCIA GLOBAL Y SETUP
+# ============================================
+
+# Instancias globales
+diana_menu_system = DianaMenuSystem()
+diana_menu_handlers = DianaMenuHandlers(diana_menu_system)
+
+def setup_menu_handlers(application):
+    """Configurar handlers de menú en la aplicación"""
+    
+    application.add_handler(
+        CallbackQueryHandler(
+            diana_menu_handlers.handle_menu_callback,
+            pattern="^(menu_|main_|close_|refresh_|user_|daily_|manage_|add_|edit_|delete_)"
+        )
+    )
+    
+    log.startup("🎛️ Sistema de menús configurado")
+
+# ============================================
+# COMANDOS PARA ACTIVAR MENÚS
+# ============================================
+
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /admin para abrir panel de administración"""
+    user_id = update.effective_user.id
+    
+    # Verificar permisos de admin (integrar con tu sistema)
+    user_role = UserRole.ADMIN  # TODO: Obtener rol real
+    
+    if user_role != UserRole.ADMIN:
+        await update.message.reply_text("❌ No tienes permisos de administrador")
+        return
+    
+    await diana_menu_system.show_menu(update, context, "main_admin", user_role)
+
+async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /menu para abrir menú principal de usuario"""
+    user_id = update.effective_user.id
+    
+    # Obtener rol del usuario
+    user_role = UserRole.FREE  # TODO: Obtener rol real
+    
+    await diana_menu_system.show_menu(update, context, "main_user", user_role)
+
+
+if __name__ == "__main__":
+    # Demo del sistema de menús
+    print("🎛️ Diana Menu System - Demo")
+    print("=" * 50)
+    
+    menu_system = DianaMenuSystem()
+    
+    print("📋 Menús disponibles:")
+    for menu_name, config in menu_system.menus.items():
+        print(f"  • {menu_name}: {config.title}")
+    
+    print(f"\n📊 Total de opciones: {sum(len(config.options) for config in menu_system.menus.values())}")
+    print("✅ Sistemade menús listo para integrar")
