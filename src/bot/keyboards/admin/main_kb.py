@@ -15,7 +15,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from ...database.engine import get_session
 from ...database.models.channel import Channel
-from ...utils.sexy_logger import log
+from ....utils.sexy_logger import log
 
 class UserRole(Enum):
     ADMIN = "admin"
