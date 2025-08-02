@@ -55,6 +55,286 @@ class AdminMenuSystem:
         asyncio.create_task(self.cleanup_temp_messages())
     
     # ============================================
+    # MENÚ PRINCIPAL DE USUARIO
+    # ============================================
+    
+    async def show_main_user_menu(self, message_or_query, user_data=None):
+        """Mostrar menú principal para usuarios"""
+        if isinstance(message_or_query, types.CallbackQuery):
+            user_id = message_or_query.from_user.id
+            message = message_or_query.message
+        else:
+            user_id = message_or_query.from_user.id
+            message = message_or_query
+        
+        # Obtener datos del usuario
+        if not user_data:
+            user_data = await self.get_user_data(user_id)
+        
+        # Mensaje de bienvenida dinámico con reacción de Diana
+        diana_reaction = await self.get_diana_reaction(user_data)
+        
+        menu_text = f"""
+🎭 **DIANA BOT - MENÚ PRINCIPAL**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{diana_reaction}
+
+📊 **Tu Progreso:**
+💰 Besitos: {user_data['points']:,}
+🎯 Nivel: {user_data['level']} ({user_data['experience']}/100 XP)
+🔥 Racha: {user_data['streak']} días
+📖 Historia: {user_data['narrative_progress']}%
+
+{await self.get_progress_bars(user_data)}
+
+🎁 **Estado VIP:** {user_data['vip_status']}
+⏰ Última conexión: {user_data['last_seen']}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        """
+        
+        # Teclado contextual basado en el estado del usuario
+        keyboard = await self.build_user_menu_keyboard(user_data)
+        
+        # Editar mensaje existente o crear nuevo
+        await self.edit_or_send_menu(
+            message, menu_text, keyboard, 
+            menu_id="main_user"
+        )
+        
+        log.user_action(f"Menú principal accedido", user_id=user_id, action="user_menu_open")
+    
+    # ============================================
+    # DASHBOARD DE PROGRESO PERSONAL
+    # ============================================
+    
+    async def show_user_dashboard(self, query: types.CallbackQuery):
+        """Dashboard completo del progreso personal"""
+        user_id = query.from_user.id
+        user_data = await self.get_user_data(user_id)
+        achievements = await self.get_user_achievements(user_id)
+        
+        menu_text = f"""
+📊 **DASHBOARD PERSONAL - {user_data['name']}**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 **Progreso Narrativo:**
+📖 Historia completada: {user_data['narrative_progress']}%
+🧩 Pistas en mochila: {user_data['clues_count']}
+🔗 Combinaciones realizadas: {user_data['combinations_made']}
+🎭 Nivel Diana actual: {user_data['diana_level']}
+
+🎮 **Estadísticas de Juego:**
+💰 Total besitos ganados: {user_data['total_points_earned']:,}
+🎯 Misiones completadas: {user_data['missions_completed']}
+❓ Trivias respondidas: {user_data['trivia_answered']}
+🏆 Tasa de acierto: {user_data['success_rate']}%
+
+📈 **Actividad Reciente:**
+{await self.get_recent_activity(user_id)}
+
+🏆 **Logros Recientes:**
+{achievements['recent_text']}
+
+📅 **Próximos Objetivos:**
+{await self.get_next_objectives(user_data)}
+        """
+        
+        keyboard = [
+            [
+                InlineKeyboardButton(text="🎯 Misiones", callback_data="user_missions"),
+                InlineKeyboardButton(text="🎒 Mochila", callback_data="user_backpack")
+            ],
+            [
+                InlineKeyboardButton(text="🏆 Logros", callback_data="user_achievements"),
+                InlineKeyboardButton(text="📊 Estadísticas", callback_data="user_stats")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="user_main"),
+                InlineKeyboardButton(text="🔄 Actualizar", callback_data="refresh_dashboard")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        
+        await self.edit_or_send_menu(query.message, menu_text, reply_markup)
+    
+    # ============================================
+    # GESTIÓN DE USUARIO - PERFIL
+    # ============================================
+    
+    async def show_user_profile(self, query: types.CallbackQuery):
+        """Perfil detallado del usuario con opciones de personalización"""
+        user_id = query.from_user.id
+        profile_data = await self.get_detailed_profile(user_id)
+        
+        menu_text = f"""
+👤 **PERFIL DE USUARIO**
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🆔 **Información Básica:**
+• Nombre: {profile_data['display_name']}
+• Username: @{profile_data['username']}
+• ID: {profile_data['user_id']}
+• Registro: {profile_data['join_date']}
+
+📊 **Estadísticas:**
+• Nivel: {profile_data['level']} ({profile_data['rank']})
+• Experiencia: {profile_data['experience']}/100 XP
+• Besitos totales: {profile_data['total_points']:,}
+• Tiempo en bot: {profile_data['total_time']}
+
+🎭 **Estado Narrativo:**
+• Nivel Diana: {profile_data['diana_level']}
+• Fragmentos completados: {profile_data['fragments_completed']}
+• Pistas encontradas: {profile_data['clues_found']}
+
+👑 **Estado VIP:**
+{profile_data['vip_details']}
+
+⚙️ **Configuración:**
+• Notificaciones: {profile_data['notifications_enabled']}
+• Horario preferido: {profile_data['preferred_time']}
+• Dificultad: {profile_data['difficulty_level']}
+        """
+        
+        keyboard = [
+            [
+                InlineKeyboardButton(text="✏️ Editar Perfil", callback_data="edit_profile"),
+                InlineKeyboardButton(text="⚙️ Configuración", callback_data="user_settings")
+            ],
+            [
+                InlineKeyboardButton(text="🏆 Ver Logros", callback_data="profile_achievements"),
+                InlineKeyboardButton(text="📈 Estadísticas", callback_data="profile_stats")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="user_main"),
+                InlineKeyboardButton(text="📤 Compartir", callback_data="share_profile")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        
+        await self.edit_or_send_menu(query.message, menu_text, reply_markup)
+    
+    # ============================================
+    # MOCHILA DE PISTAS (LOREPIECES)
+    # ============================================
+    
+    async def show_user_backpack(self, query: types.CallbackQuery):
+        """Mochila con pistas narrativas y opciones de combinación"""
+        user_id = query.from_user.id
+        backpack_data = await self.get_backpack_data(user_id)
+        
+        menu_text = f"""
+🎒 **TU MOCHILA DE PISTAS**
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧩 **Pistas Disponibles ({backpack_data['total_clues']}):**
+{backpack_data['clues_list']}
+
+🔗 **Combinaciones Posibles:**
+{backpack_data['available_combinations']}
+
+📚 **Progreso Narrativo:**
+• Fragmentos desbloqueados: {backpack_data['unlocked_fragments']}
+• Siguiente objetivo: {backpack_data['next_goal']}
+
+💡 **Pista de Diana:**
+"{backpack_data['diana_hint']}"
+
+⚡ **Acciones Rápidas:**
+{backpack_data['quick_actions']}
+        """
+        
+        keyboard = []
+        
+        # Botones dinámicos para combinaciones disponibles
+        if backpack_data['combinations']:
+            for combo in backpack_data['combinations']:
+                keyboard.append([
+                    InlineKeyboardButton(
+                        text=f"🔗 {combo['name']}", 
+                        callback_data=f"combine_{combo['id']}"
+                    )
+                ])
+        
+        # Botones de navegación
+        keyboard.extend([
+            [
+                InlineKeyboardButton(text="🔍 Explorar", callback_data="explore_clues"),
+                InlineKeyboardButton(text="📖 Leer Fragmento", callback_data="read_fragment")
+            ],
+            [
+                InlineKeyboardButton(text="🎁 Usar Pista", callback_data="use_clue"),
+                InlineKeyboardButton(text="📊 Ver Progreso", callback_data="narrative_progress")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="user_main"),
+                InlineKeyboardButton(text="🔄 Actualizar", callback_data="refresh_backpack")
+            ]
+        ])
+        
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        await self.edit_or_send_menu(query.message, menu_text, reply_markup)
+    
+    # ============================================
+    # MISIONES Y DESAFÍOS
+    # ============================================
+    
+    async def show_user_missions(self, query: types.CallbackQuery):
+        """Menú de misiones con progreso y recompensas"""
+        user_id = query.from_user.id
+        missions_data = await self.get_user_missions_data(user_id)
+        
+        menu_text = f"""
+🎯 **TUS MISIONES ACTIVAS**
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 **Estado General:**
+• Misiones activas: {missions_data['active_count']}
+• Completadas hoy: {missions_data['completed_today']}
+• Puntos ganados: {missions_data['points_earned']} besitos
+
+🎮 **Misiones Diarias:**
+{missions_data['daily_missions']}
+
+🏆 **Misiones Semanales:**
+{missions_data['weekly_missions']}
+
+✨ **Misiones Especiales:**
+{missions_data['special_missions']}
+
+🎁 **Recompensas Disponibles:**
+{missions_data['available_rewards']}
+        """
+        
+        keyboard = []
+        
+        # Botones dinámicos para misiones
+        for mission in missions_data['actionable_missions']:
+            keyboard.append([
+                InlineKeyboardButton(
+                    text=f"{mission['icon']} {mission['name']}", 
+                    callback_data=f"mission_{mission['id']}"
+                )
+            ])
+        
+        # Botones de navegación
+        keyboard.extend([
+            [
+                InlineKeyboardButton(text="🎁 Reclamar Todo", callback_data="claim_all_rewards"),
+                InlineKeyboardButton(text="📊 Ver Progreso", callback_data="missions_progress")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="user_main"),
+                InlineKeyboardButton(text="🔄 Actualizar", callback_data="refresh_missions")
+            ]
+        ])
+        
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        await self.edit_or_send_menu(query.message, menu_text, reply_markup)
+    
+    # ============================================
     # MENÚ PRINCIPAL ADMINISTRATIVO
     # ============================================
     
@@ -424,7 +704,26 @@ Selecciona una categoría para administrar:
         # Router de callbacks
         if data == "admin_main":
             await self.show_main_admin_menu(query)
+        elif data == "user_main":
+            await self.show_main_user_menu(query)
         
+        # Callbacks de usuario
+        elif data == "user_dashboard":
+            await self.show_user_dashboard(query)
+        elif data == "user_profile":
+            await self.show_user_profile(query)
+        elif data == "user_backpack":
+            await self.show_user_backpack(query)
+        elif data == "user_missions":
+            await self.show_user_missions(query)
+        elif data == "daily_gift":
+            await self.handle_daily_gift(query)
+        elif data == "user_games":
+            await self.show_user_games(query)
+        elif data == "user_shop":
+            await self.show_user_shop(query)
+        
+        # Callbacks de admin
         elif data == "admin_users":
             await self.show_users_menu(query)
         elif data == "admin_channels":
@@ -1265,3 +1564,326 @@ Envía el ID del canal para comenzar:
     async def show_engagement_analytics(self, query): await query.answer("🎮 Analytics de engagement en desarrollo", show_alert=True)
     async def show_economy_analytics(self, query): await query.answer("💰 Analytics de economía en desarrollo", show_alert=True)
     async def show_channel_analytics(self, query): await query.answer("📺 Analytics de canales en desarrollo", show_alert=True)
+    
+    # ============================================
+    # FUNCIONES AUXILIARES PARA USUARIO
+    # ============================================
+    
+    async def get_user_data(self, user_id: int) -> Dict:
+        """Obtener datos completos del usuario"""
+        try:
+            # Aquí integrarías con tus servicios reales
+            # Por ahora datos mock
+            return {
+                'name': 'Usuario Diana',
+                'points': 1250,
+                'level': 5,
+                'experience': 67,
+                'streak': 12,
+                'narrative_progress': 45,
+                'vip_status': '👑 VIP Gold (15 días restantes)',
+                'last_seen': 'Hace 2 horas',
+                'clues_count': 8,
+                'combinations_made': 3,
+                'diana_level': 'Nivel 1 - Los Kinkys',
+                'total_points_earned': 15420,
+                'missions_completed': 23,
+                'trivia_answered': 45,
+                'success_rate': 78
+            }
+        except Exception as e:
+            log.error(f"Error obteniendo datos de usuario {user_id}: {e}")
+            return self.get_default_user_data()
+    
+    def get_default_user_data(self) -> Dict:
+        """Datos por defecto para nuevos usuarios"""
+        return {
+            'name': 'Nuevo Usuario',
+            'points': 0,
+            'level': 1,
+            'experience': 0,
+            'streak': 0,
+            'narrative_progress': 0,
+            'vip_status': 'Usuario Gratuito',
+            'last_seen': 'Ahora',
+            'clues_count': 0,
+            'combinations_made': 0,
+            'diana_level': 'Principiante',
+            'total_points_earned': 0,
+            'missions_completed': 0,
+            'trivia_answered': 0,
+            'success_rate': 0
+        }
+    
+    async def get_diana_reaction(self, user_data: Dict) -> str:
+        """Generar reacción dinámica de Diana basada en el progreso del usuario"""
+        level = user_data['level']
+        narrative_progress = user_data['narrative_progress']
+        streak = user_data['streak']
+        
+        if narrative_progress >= 80:
+            return "🎭 Diana te mira con una sonrisa misteriosa... 'Estás cerca de la verdad'"
+        elif narrative_progress >= 50:
+            return "🎭 'Interesante progreso', susurra Diana mientras revisa tus avances"
+        elif streak >= 10:
+            return f"🎭 Diana asiente aprobatoriamente: 'Tu constancia me impresiona ({streak} días seguidos)'"
+        elif level >= 5:
+            return "🎭 Diana observa tu nivel con curiosidad: 'Veo potencial en ti'"
+        else:
+            return "🎭 Diana te saluda con una mirada enigmática: 'Bienvenido a mi mundo'"
+    
+    async def get_progress_bars(self, user_data: Dict) -> str:
+        """Generar barras de progreso visuales"""
+        def create_bar(percentage: int, length: int = 10) -> str:
+            filled = int(percentage / 100 * length)
+            empty = length - filled
+            return "█" * filled + "░" * empty
+        
+        level_progress = user_data['experience']
+        narrative_progress = user_data['narrative_progress']
+        
+        return f"""
+📊 **Barras de Progreso:**
+🎯 Nivel {user_data['level']}: {create_bar(level_progress)} {level_progress}%
+📖 Historia: {create_bar(narrative_progress)} {narrative_progress}%"""
+    
+    async def build_user_menu_keyboard(self, user_data: Dict) -> InlineKeyboardMarkup:
+        """Construir teclado contextual basado en el estado del usuario"""
+        keyboard = []
+        
+        # Primera fila - acciones principales
+        row1 = [
+            InlineKeyboardButton(text="👤 Mi Perfil", callback_data="user_profile"),
+            InlineKeyboardButton(text="📊 Dashboard", callback_data="user_dashboard")
+        ]
+        keyboard.append(row1)
+        
+        # Segunda fila - funcionalidades core
+        row2 = [
+            InlineKeyboardButton(text="🎒 Mochila", callback_data="user_backpack"),
+            InlineKeyboardButton(text="🎯 Misiones", callback_data="user_missions")
+        ]
+        keyboard.append(row2)
+        
+        # Tercera fila - juegos y entretenimiento
+        row3 = [
+            InlineKeyboardButton(text="🎮 Juegos", callback_data="user_games"),
+            InlineKeyboardButton(text="🎁 Regalo", callback_data="daily_gift")
+        ]
+        keyboard.append(row3)
+        
+        # Cuarta fila - tienda y VIP
+        row4 = []
+        if user_data.get('points', 0) > 0:
+            row4.append(InlineKeyboardButton(text="🛍️ Tienda", callback_data="user_shop"))
+        
+        if 'VIP' not in user_data.get('vip_status', ''):
+            row4.append(InlineKeyboardButton(text="👑 Ser VIP", callback_data="upgrade_vip"))
+        else:
+            row4.append(InlineKeyboardButton(text="👑 Mi VIP", callback_data="vip_status"))
+        
+        if row4:
+            keyboard.append(row4)
+        
+        # Quinta fila - configuración y soporte
+        row5 = [
+            InlineKeyboardButton(text="⚙️ Configuración", callback_data="user_settings"),
+            InlineKeyboardButton(text="❓ Ayuda", callback_data="user_help")
+        ]
+        keyboard.append(row5)
+        
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
+    async def get_user_achievements(self, user_id: int) -> Dict:
+        """Obtener logros del usuario"""
+        return {
+            'recent_text': "🏆 Primer Beso (hace 2 días)\n🎯 Misionero (hace 1 semana)\n📖 Explorador (hace 2 semanas)"
+        }
+    
+    async def get_recent_activity(self, user_id: int) -> str:
+        """Obtener actividad reciente del usuario"""
+        return "• Completó misión 'Interactuar 10 veces'\n• Combinó pistas misteriosas\n• Respondió trivia correctamente\n• Reclamó regalo diario"
+    
+    async def get_next_objectives(self, user_data: Dict) -> str:
+        """Obtener próximos objetivos para el usuario"""
+        objectives = []
+        
+        if user_data['narrative_progress'] < 50:
+            objectives.append("📖 Continuar explorando la historia de Diana")
+        
+        if user_data['clues_count'] >= 3:
+            objectives.append("🔗 Intentar nueva combinación de pistas")
+        
+        if user_data['experience'] > 80:
+            objectives.append("🎯 ¡Estás cerca del siguiente nivel!")
+        
+        objectives.append("🎁 Reclamar regalo diario")
+        
+        return "\n".join([f"• {obj}" for obj in objectives])
+    
+    async def get_detailed_profile(self, user_id: int) -> Dict:
+        """Obtener perfil detallado del usuario"""
+        return {
+            'display_name': 'Usuario Diana',
+            'username': 'diana_user',
+            'user_id': user_id,
+            'join_date': '15 de enero, 2025',
+            'level': 5,
+            'rank': 'Top 20%',
+            'experience': 67,
+            'total_points': 1250,
+            'total_time': '2 semanas',
+            'diana_level': 'Nivel 1 - Los Kinkys',
+            'fragments_completed': 12,
+            'clues_found': 8,
+            'vip_details': '👑 VIP Gold hasta 2025-08-15',
+            'notifications_enabled': 'Activadas',
+            'preferred_time': '18:00 - 22:00',
+            'difficulty_level': 'Intermedio'
+        }
+    
+    async def get_backpack_data(self, user_id: int) -> Dict:
+        """Obtener datos de la mochila del usuario"""
+        return {
+            'total_clues': 8,
+            'clues_list': "🗝️ Pista del Espejo\n🧩 Fragmento Misterioso\n📜 Carta Antigua\n💎 Gema de la Verdad\n🔍 Lupa Encantada\n📸 Foto Reveladora\n🎭 Máscara de Diana\n⚡ Energía Oculta",
+            'available_combinations': "🔗 Espejo + Carta (Desbloquea Nivel 2)\n🔗 Gema + Máscara (Secreto de Diana)\n🔗 Foto + Lupa (Pista Especial)",
+            'unlocked_fragments': 12,
+            'next_goal': "Encontrar la Llave Maestra",
+            'diana_hint': "Las apariencias engañan, busca más allá de lo evidente...",
+            'quick_actions': "✨ Tienes 3 combinaciones disponibles\n🎁 Nueva pista disponible en 2 horas",
+            'combinations': [
+                {'id': 1, 'name': 'Espejo + Carta'},
+                {'id': 2, 'name': 'Gema + Máscara'},
+                {'id': 3, 'name': 'Foto + Lupa'}
+            ]
+        }
+    
+    async def get_user_missions_data(self, user_id: int) -> Dict:
+        """Obtener datos de misiones del usuario"""
+        return {
+            'active_count': 5,
+            'completed_today': 2,
+            'points_earned': 150,
+            'daily_missions': "✅ Enviar saludo (completada) +20 besitos\n🔄 Interactuar 10 veces (7/10) +50 besitos\n⏳ Responder trivia (pendiente) +30 besitos",
+            'weekly_missions': "🎯 Completar 5 misiones diarias (2/5) +200 besitos\n📖 Leer 3 fragmentos (1/3) +150 besitos",
+            'special_missions': "✨ Descubrir secreto de Diana (en progreso) +500 besitos\n💎 Alcanzar 2000 besitos (1250/2000) +Premium 7 días",
+            'available_rewards': "🎁 2 recompensas listas para reclamar (+70 besitos)",
+            'actionable_missions': [
+                {'id': 1, 'name': 'Responder Trivia', 'icon': '❓'},
+                {'id': 2, 'name': 'Interactuar más', 'icon': '💬'},
+                {'id': 3, 'name': 'Explorar mochila', 'icon': '🎒'}
+            ]
+        }
+    
+    # Funciones de usuario adicionales
+    async def handle_daily_gift(self, query: types.CallbackQuery):
+        """Manejar regalo diario"""
+        await query.answer("🎁 Procesando regalo diario...", show_alert=False)
+        
+        # Simular procesamiento
+        import asyncio
+        await asyncio.sleep(1)
+        
+        # Mostrar resultado
+        await self.send_temp_message(
+            query.message, 
+            "🎉 ¡Regalo reclamado! +50 besitos\n🔥 Racha: 13 días consecutivos", 
+            7
+        )
+    
+    async def show_user_games(self, query: types.CallbackQuery):
+        """Mostrar menú de juegos para usuario"""
+        menu_text = """
+🎮 **JUEGOS Y ENTRETENIMIENTO**
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧠 **Trivias:**
+❓ Trivia de Diana (disponible)
+🏆 Trivia Semanal (3 días restantes)
+
+🎯 **Desafíos:**
+⚡ Desafío Rápido (15 preguntas)
+🎭 Adivina la Frase de Diana
+
+🎲 **Mini Juegos:**
+🔍 Encuentra las Diferencias
+🧩 Rompecabezas Narrativo
+
+🏆 **Tu Record:**
+• Mejor racha trivia: 8 aciertos
+• Puntos en juegos: 450 besitos
+        """
+        
+        keyboard = [
+            [
+                InlineKeyboardButton(text="❓ Trivia Diana", callback_data="play_trivia"),
+                InlineKeyboardButton(text="🎯 Desafío", callback_data="play_challenge")
+            ],
+            [
+                InlineKeyboardButton(text="🔍 Mini Juegos", callback_data="mini_games"),
+                InlineKeyboardButton(text="🏆 Rankings", callback_data="game_rankings")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="user_main"),
+                InlineKeyboardButton(text="🎁 Premio Diario", callback_data="daily_game_reward")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        
+        await self.edit_or_send_menu(query.message, menu_text, reply_markup)
+    
+    async def show_user_shop(self, query: types.CallbackQuery):
+        """Mostrar tienda de besitos"""
+        user_id = query.from_user.id
+        user_data = await self.get_user_data(user_id)
+        
+        menu_text = f"""
+🛍️ **TIENDA DE BESITOS**
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 **Tus Besitos:** {user_data['points']:,}
+
+🎁 **Artículos Disponibles:**
+
+📦 **Paquetes de Pistas:**
+🗝️ Pista Básica - 100 besitos
+💎 Pista Premium - 250 besitos
+✨ Pista Legendaria - 500 besitos
+
+👑 **Mejoras VIP:**
+⭐ VIP 7 días - 1,000 besitos
+💎 VIP 15 días - 2,000 besitos
+👑 VIP 30 días - 3,500 besitos
+
+🎮 **Extras de Juego:**
+🍀 Suerte x2 (1 día) - 200 besitos
+⚡ XP Boost (3 días) - 300 besitos
+🎯 Misiones Extra - 150 besitos
+
+🎭 **Especiales de Diana:**
+💌 Mensaje Personal - 800 besitos
+🎪 Evento Privado - 1,500 besitos
+        """
+        
+        keyboard = [
+            [
+                InlineKeyboardButton(text="🗝️ Pistas", callback_data="shop_clues"),
+                InlineKeyboardButton(text="👑 VIP", callback_data="shop_vip")
+            ],
+            [
+                InlineKeyboardButton(text="🎮 Extras", callback_data="shop_extras"),
+                InlineKeyboardButton(text="🎭 Diana", callback_data="shop_diana")
+            ],
+            [
+                InlineKeyboardButton(text="🛒 Mis Compras", callback_data="my_purchases"),
+                InlineKeyboardButton(text="🎁 Ofertas", callback_data="shop_offers")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="user_main"),
+                InlineKeyboardButton(text="💰 Ganar Besitos", callback_data="earn_points")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        
+        await self.edit_or_send_menu(query.message, menu_text, reply_markup)
