@@ -13,6 +13,7 @@ from src.infrastructure.telegram.keyboards import (
     get_tariff_view_kb
 )
 from src.bot.handlers.admin.menu_system import AdminMenuSystem
+from src.bot.handlers.menu_handler import MenuHandler, menu_router
 
 class AdminStates(StatesGroup):
     waiting_for_channel_id = State()
@@ -25,12 +26,13 @@ class AdminStates(StatesGroup):
 
 class Handlers:
     def __init__(self, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, 
-                 narrative_service=None, channel_service=None):
+                 narrative_service=None, channel_service=None, user_service=None):
         self._event_bus = event_bus
         self._gamification_service = gamification_service
         self._admin_service = admin_service
         self._narrative_service = narrative_service
         self._channel_service = channel_service
+        self._user_service = user_service
         
         # Initialize AdminMenuSystem
         self.admin_menu_system = AdminMenuSystem(
@@ -38,6 +40,15 @@ class Handlers:
             gamification_service=gamification_service,
             narrative_service=narrative_service,
             channel_service=channel_service
+        )
+        
+        # Initialize new MenuHandler system
+        self.menu_handler = MenuHandler(
+            admin_service=admin_service,
+            gamification_service=gamification_service,
+            narrative_service=narrative_service,
+            channel_service=channel_service,
+            user_service=user_service
         )
 
     async def handle_start(self, message: types.Message, command: types.BotCommand):
@@ -141,6 +152,9 @@ class Handlers:
         
         # Register admin menu system handlers
         self.admin_menu_system.register_handlers(dp)
+        
+        # Register NEW menu system
+        dp.include_router(menu_router)
         dp.callback_query.register(self.handle_free_channel_menu_callback, F.data == "admin:free_channel_menu")
         dp.callback_query.register(self.handle_setup_free_channel_callback, F.data == "admin:setup_free_channel")
         dp.callback_query.register(self.handle_set_wait_time_callback, F.data == "admin:set_wait_time")
@@ -235,7 +249,7 @@ class Handlers:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
 def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, 
-                  narrative_service=None, channel_service=None):
+                  narrative_service=None, channel_service=None, user_service=None):
     """Configura todos los handlers de la aplicación."""
-    handler_instance = Handlers(event_bus, gamification_service, admin_service, narrative_service, channel_service)
+    handler_instance = Handlers(event_bus, gamification_service, admin_service, narrative_service, channel_service, user_service)
     handler_instance.register(dp)

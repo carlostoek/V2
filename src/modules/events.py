@@ -1,5 +1,6 @@
 from src.core.interfaces.IEventBus import IEvent
 from typing import Dict, List, Optional, Any
+from datetime import datetime
 
 class UserMessageEvent(IEvent):
     """Evento que se dispara cuando un usuario envía un mensaje."""
@@ -111,5 +112,93 @@ class AdminStatusChangedEvent(IEvent):
     def __init__(self, user_id: int, is_admin: bool, changed_by: Optional[int] = None):
         self.user_id = user_id
         self.is_admin = is_admin
+        self.changed_by = changed_by
+        self.timestamp = datetime.now().isoformat()
+
+# ============================================
+# EVENTOS DEL SISTEMA DE CANALES
+# ============================================
+
+class ChannelJoinRequestEvent(IEvent):
+    """Evento que se dispara cuando un usuario solicita unirse a un canal."""
+    def __init__(self, user_id: int, channel_id: int, request_metadata: Optional[Dict[str, Any]] = None):
+        self.user_id = user_id
+        self.channel_id = channel_id
+        self.request_metadata = request_metadata or {}
+        self.timestamp = datetime.now().isoformat()
+
+class ChannelJoinApprovedEvent(IEvent):
+    """Evento que se dispara cuando se aprueba la solicitud de unión a un canal."""
+    def __init__(self, user_id: int, channel_id: int, approved_by: Optional[int] = None):
+        self.user_id = user_id
+        self.channel_id = channel_id
+        self.approved_by = approved_by
+        self.timestamp = datetime.now().isoformat()
+
+class ChannelJoinRejectedEvent(IEvent):
+    """Evento que se dispara cuando se rechaza la solicitud de unión a un canal."""
+    def __init__(self, user_id: int, channel_id: int, reason: str, rejected_by: Optional[int] = None):
+        self.user_id = user_id
+        self.channel_id = channel_id
+        self.reason = reason
+        self.rejected_by = rejected_by
+        self.timestamp = datetime.now().isoformat()
+
+class ChannelContentPublishedEvent(IEvent):
+    """Evento que se dispara cuando se publica contenido en un canal."""
+    def __init__(self, channel_id: int, content_id: int, content_type: str, published_by: Optional[int] = None):
+        self.channel_id = channel_id
+        self.content_id = content_id
+        self.content_type = content_type
+        self.published_by = published_by
+        self.timestamp = datetime.now().isoformat()
+
+class UserReactionEvent(IEvent):
+    """Evento que se dispara cuando un usuario reacciona a contenido de canal."""
+    def __init__(self, user_id: int, channel_id: int, content_id: int, reaction_type: str, points: int = 0):
+        self.user_id = user_id
+        self.channel_id = channel_id
+        self.content_id = content_id
+        self.reaction_type = reaction_type
+        self.points = points
+        self.timestamp = datetime.now().isoformat()
+
+# ============================================
+# EVENTOS DEL SISTEMA DE TOKENS
+# ============================================
+
+class TokenCreatedEvent(IEvent):
+    """Evento que se dispara cuando se crea un nuevo token."""
+    def __init__(self, token_id: int, token_value: str, token_type: str, created_by: Optional[int] = None):
+        self.token_id = token_id
+        self.token_value = token_value
+        self.token_type = token_type
+        self.created_by = created_by
+        self.timestamp = datetime.now().isoformat()
+
+class TokenRedeemedEvent(IEvent):
+    """Evento que se dispara cuando un usuario canjea un token."""
+    def __init__(self, token_id: int, user_id: int, subscription_id: int, expires_at: str):
+        self.token_id = token_id
+        self.user_id = user_id
+        self.subscription_id = subscription_id
+        self.expires_at = expires_at
+        self.timestamp = datetime.now().isoformat()
+
+class SubscriptionExpiredEvent(IEvent):
+    """Evento que se dispara cuando una suscripción expira."""
+    def __init__(self, subscription_id: int, user_id: int, subscription_type: str):
+        self.subscription_id = subscription_id
+        self.user_id = user_id
+        self.subscription_type = subscription_type
+        self.timestamp = datetime.now().isoformat()
+
+class ChannelMembershipChangedEvent(IEvent):
+    """Evento que se dispara cuando cambia la membresía de un usuario a un canal."""
+    def __init__(self, user_id: int, channel_id: int, old_status: str, new_status: str, changed_by: Optional[int] = None):
+        self.user_id = user_id
+        self.channel_id = channel_id
+        self.old_status = old_status
+        self.new_status = new_status
         self.changed_by = changed_by
         self.timestamp = datetime.now().isoformat()

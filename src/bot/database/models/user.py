@@ -74,6 +74,12 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan"
     )
     
+    subscriptions = relationship(
+        "Subscription",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
     def __repr__(self) -> str:
         """Representación de texto del usuario."""
         return f"<User(id={self.id}, username={self.username}, is_vip={self.is_vip})>"

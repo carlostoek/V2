@@ -47,3 +47,62 @@ class SubscriptionToken(Base, TimestampMixin):
     tariff = relationship("Tariff", back_populates="tokens")
     generator = relationship("User", foreign_keys=[generated_by])
     user = relationship("User", foreign_keys=[used_by])
+
+
+class Subscription(Base, TimestampMixin):
+    """Modelo para almacenar suscripciones activas de usuarios."""
+    
+    __tablename__ = "subscriptions"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    token_id = Column(Integer, ForeignKey("subscription_tokens.id"), nullable=True)
+    
+    # Información de la suscripción
+    type = Column(String(50), nullable=False)  # "vip", "premium", etc.
+    starts_at = Column(DateTime, nullable=False, default=datetime.now)
+    expires_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, default=True)
+    
+    # Metadatos adicionales
+    metadata = Column(JSON, default={})
+    
+    # Relaciones
+    user = relationship("User", back_populates="subscriptions")
+    token = relationship("SubscriptionToken")
+    
+    def __repr__(self) -> str:
+        """Representación de texto de la suscripción."""
+        return f"<Subscription(id={self.id}, user_id={self.user_id}, type={self.type}, active={self.is_active})>"
+
+
+class Token(Base, TimestampMixin):
+    """Modelo genérico para tokens de acceso."""
+    
+    __tablename__ = "tokens"
+    
+    id = Column(Integer, primary_key=True)
+    token = Column(String(64), unique=True, nullable=False)
+    type = Column(String(50), nullable=False)  # "vip", "channel_access", "reward"
+    
+    # Configuración del token
+    duration_days = Column(Integer, nullable=False)
+    max_uses = Column(Integer, default=1)
+    uses_left = Column(Integer, nullable=False)
+    
+    # Control de uso
+    created_by = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+    last_used_by = Column(BigInteger, ForeignKey("users.id"), nullable=True)
+    last_used_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    
+    # Metadatos
+    metadata = Column(JSON, default={})
+    
+    # Relaciones
+    creator = relationship("User", foreign_keys=[created_by])
+    last_user = relationship("User", foreign_keys=[last_used_by])
+    
+    def __repr__(self) -> str:
+        """Representación de texto del token."""
+        return f"<Token(id={self.id}, type={self.type}, uses_left={self.uses_left})>"

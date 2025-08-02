@@ -1,6 +1,5 @@
 """Servicio para la gestión de canales."""
 
-import logging
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
 
@@ -10,12 +9,12 @@ from sqlalchemy.orm import selectinload
 
 from src.core.interfaces.IEventBus import IEvent, IEventBus
 from src.core.interfaces.ICoreService import ICoreService
-from src.modules.channel.events import (
+from src.modules.events import (
     ChannelJoinRequestEvent,
     ChannelJoinApprovedEvent,
     ChannelJoinRejectedEvent,
     ChannelContentPublishedEvent,
-    ChannelMembershipExpiredEvent,
+    ChannelMembershipChangedEvent,
     UserReactionEvent
 )
 from src.bot.database.engine import get_session
@@ -26,6 +25,7 @@ from src.bot.database.models.channel import (
     ChannelAccess,
     ChannelContent
 )
+from src.utils.sexy_logger import log
 
 
 class ChannelService(ICoreService):
@@ -42,7 +42,6 @@ class ChannelService(ICoreService):
     def __init__(self, event_bus: IEventBus):
         self._event_bus = event_bus
         self.channels = {}  # Cache en memoria para canales
-        self.logger = logging.getLogger(__name__)
     
     async def setup(self) -> None:
         """Suscribe el servicio a los eventos relevantes y carga datos iniciales."""
@@ -70,9 +69,9 @@ class ChannelService(ICoreService):
                         "description": channel.description
                     }
                 
-                self.logger.info(f"Cargados {len(self.channels)} canales activos en cache")
+                log.startup(f"Cargados {len(self.channels)} canales activos en cache")
         except Exception as e:
-            self.logger.error(f"Error al cargar datos iniciales: {e}")
+            log.error(f"Error al cargar datos iniciales", error=e)
     
     async def handle_join_request(self, event: ChannelJoinRequestEvent) -> None:
         """
@@ -89,7 +88,7 @@ class ChannelService(ICoreService):
                 user = user_result.scalars().first()
                 
                 if not user:
-                    self.logger.error(f"Usuario {event.user_id} no existe en la base de datos. No se puede procesar solicitud.")
+                    log.error(f"Usuario {event.user_id} no existe en la base de datos")
                     return
                 
                 # Obtener canal
@@ -100,7 +99,7 @@ class ChannelService(ICoreService):
                 channel = channel_result.scalars().first()
                 
                 if not channel:
-                    self.logger.error(f"Canal {event.channel_id} no existe en la base de datos.")
+                    log.error(f"Canal {event.channel_id} no existe en la base de datos")
                     return
                 
                 # Verificar si el usuario ya es miembro
@@ -108,14 +107,14 @@ class ChannelService(ICoreService):
                     and_(
                         ChannelMembership.user_id == event.user_id,
                         ChannelMembership.channel_id == event.channel_id,
-                        ChannelMembership.is_active == True
+                        ChannelMembership.status == "active"
                     )
                 )
                 membership_result = await session.execute(membership_query)
                 existing_membership = membership_result.scalars().first()
                 
                 if existing_membership:
-                    self.logger.info(f"Usuario {event.user_id} ya es miembro del canal {event.channel_id}.")
+                    log.info(f"Usuario {event.user_id} ya es miembro del canal {event.channel_id}")
                     return
                 
                 # Verificar reglas de acceso
@@ -125,35 +124,27 @@ class ChannelService(ICoreService):
                 
                 if channel.type == "vip" and access_rules:
                     # Verificar nivel mínimo si está configurado
-                    if access_rules.min_level and user.level < access_rules.min_level:
+                    if access_rules.level_required and user.level < access_rules.level_required:
                         can_join = False
-                        rejection_reason = f"Se requiere nivel {access_rules.min_level} para unirse a este canal."
+                        rejection_reason = f"Se requiere nivel {access_rules.level_required} para unirse a este canal."
                     
                     # Verificar requisitos VIP si están configurados
-                    if access_rules.requires_vip and not user.is_vip:
+                    if access_rules.is_vip_only and not user.is_vip:
                         can_join = False
                         rejection_reason = "Este canal requiere membresía VIP."
-                    
-                    # Verificar tokens requeridos si están configurados
-                    if access_rules.tokens_required > 0:
-                        # Aquí iría la verificación de tokens disponibles del usuario
-                        # Por ahora asumimos que no tiene suficientes tokens
-                        can_join = False
-                        rejection_reason = f"Se requieren {access_rules.tokens_required} tokens para unirse a este canal."
                 
                 if can_join:
                     # Crear membresía
                     expires_at = None
-                    if channel.type == "vip" and access_rules and access_rules.duration_days:
-                        expires_at = datetime.now() + timedelta(days=access_rules.duration_days)
+                    if channel.type == "vip" and access_rules and access_rules.wait_time_minutes:
+                        expires_at = datetime.now() + timedelta(minutes=access_rules.wait_time_minutes)
                     
                     new_membership = ChannelMembership(
                         user_id=event.user_id,
                         channel_id=event.channel_id,
-                        is_active=True,
-                        join_date=datetime.now(),
-                        expires_at=expires_at,
-                        role="member"
+                        status="active",
+                        joined_at=datetime.now(),
+                        expires_at=expires_at
                     )
                     
                     session.add(new_membership)
@@ -166,7 +157,7 @@ class ChannelService(ICoreService):
                     )
                     await self._event_bus.publish(approval_event)
                     
-                    self.logger.info(f"Usuario {event.user_id} añadido al canal {event.channel_id}.")
+                    log.success(f"Usuario {event.user_id} añadido al canal {event.channel_id}")
                 else:
                     # Publicar evento de rechazo
                     rejection_event = ChannelJoinRejectedEvent(
@@ -176,10 +167,10 @@ class ChannelService(ICoreService):
                     )
                     await self._event_bus.publish(rejection_event)
                     
-                    self.logger.info(f"Solicitud de unión de usuario {event.user_id} al canal {event.channel_id} rechazada: {rejection_reason}")
+                    log.warning(f"Solicitud de unión rechazada: Usuario {event.user_id}, Canal {event.channel_id}, Razón: {rejection_reason}")
         
         except Exception as e:
-            self.logger.error(f"Error al procesar solicitud de unión a canal: {e}")
+            log.error("Error al procesar solicitud de unión a canal", error=e)
     
     async def handle_user_reaction(self, event: UserReactionEvent) -> None:
         """
@@ -224,10 +215,10 @@ class ChannelService(ICoreService):
                 content.metadata["engagement"] += 1
                 
                 await session.commit()
-                self.logger.info(f"Usuario {event.user_id} reaccionó con {event.reaction_type} al contenido {event.content_id}.")
+                log.user_action(f"Reacción {event.reaction_type} al contenido {event.content_id}", user_id=event.user_id, action="reaction")
         
         except Exception as e:
-            self.logger.error(f"Error al procesar reacción de usuario: {e}")
+            log.error("Error al procesar reacción de usuario", error=e)
     
     async def create_channel(self, telegram_id: str, name: str, description: str, channel_type: str) -> Optional[int]:
         """
