@@ -10,107 +10,63 @@ admin_main_router = Router()
 @admin_main_router.message(Command("admin"), IsAdminFilter())
 async def admin_start(message: Message):
     """Handler para el comando /admin."""
-    user_role = getattr(message, 'user_role', 'free')
-    user_permissions = getattr(message, 'user_permissions', {})
-    
-    # Mensaje personalizado según permisos
-    welcome_text = "🛠️ **Panel de Administración**\n\n"
-    
-    if user_permissions.get("can_manage_users"):
-        welcome_text += "• Gestión completa de usuarios y roles\n"
-    if user_permissions.get("can_manage_channels"):
-        welcome_text += "• Administración de canales VIP y gratuitos\n"
-    if user_permissions.get("can_manage_tariffs"):
-        welcome_text += "• Gestión de tarifas y tokens\n"
-    if user_permissions.get("can_view_analytics"):
-        welcome_text += "• Acceso a estadísticas y analíticas\n"
-    
-    welcome_text += "\nSelecciona una opción del menú:"
+    welcome_text = (
+        "🛠️ **Panel de Administración**\n\n"
+        "Bienvenido al centro de control del bot.\n"
+        "Desde aquí puedes gestionar canales, configurar\n"
+        "el juego, narrativa y configuración general.\n\n"
+        "Selecciona una opción del menú:"
+    )
     
     await message.answer(
         welcome_text,
         parse_mode="Markdown",
-        reply_markup=get_admin_main_keyboard()
+        reply_markup=await get_admin_main_keyboard()
     )
 
 @admin_main_router.callback_query(F.data == "admin:main")
 async def admin_main_callback(callback: CallbackQuery):
     """Callback para volver al menú principal del admin."""
-    user_role = getattr(callback.message, 'user_role', 'free')
-    user_permissions = getattr(callback.message, 'user_permissions', {})
-    
-    welcome_text = "🛠️ **Panel de Administración**\n\n"
-    
-    if user_permissions.get("can_manage_users"):
-        welcome_text += "• Gestión completa de usuarios y roles\n"
-    if user_permissions.get("can_manage_channels"):
-        welcome_text += "• Administración de canales VIP y gratuitos\n"
-    if user_permissions.get("can_manage_tariffs"):
-        welcome_text += "• Gestión de tarifas y tokens\n"
-    if user_permissions.get("can_view_analytics"):
-        welcome_text += "• Acceso a estadísticas y analíticas\n"
-    
-    welcome_text += "\nSelecciona una opción del menú:"
+    welcome_text = (
+        "🛠️ **Panel de Administración**\n\n"
+        "Bienvenido al centro de control del bot.\n"
+        "Desde aquí puedes gestionar canales, configurar\n"
+        "el juego, narrativa y configuración general.\n\n"
+        "Selecciona una opción del menú:"
+    )
     
     await callback.message.edit_text(
         welcome_text,
         parse_mode="Markdown",
-        reply_markup=get_admin_main_keyboard()
+        reply_markup=await get_admin_main_keyboard()
     )
     await callback.answer()
 
-@admin_main_router.callback_query(F.data == "admin:tariffs")
-async def admin_tariffs_callback(callback: CallbackQuery):
-    """Callback para gestión de tarifas."""
-    from ...keyboards.admin_keyboards import AdminKeyboardFactory
-    
-    text = (
-        "🏷️ **Gestión de Tarifas**\n\n"
-        "Desde aquí puedes crear nuevas tarifas, generar enlaces de invitación "
-        "y ver estadísticas de uso.\n\n"
-        "**Funciones disponibles:**\n"
-        "• Crear nuevas tarifas VIP\n"
-        "• Generar enlaces de invitación\n"
-        "• Ver estadísticas de tokens\n"
-        "• Administrar tarifas existentes"
-    )
-    
-    # Crear teclado inline para tarifas
+@admin_main_router.callback_query(F.data == "admin:channel_vip")
+async def admin_channel_vip_callback(callback: CallbackQuery):
+    """Callback para configuración del canal VIP."""
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🆕 Nueva Tarifa", callback_data="tariff:new")],
-        [InlineKeyboardButton(text="🔗 Generar Token", callback_data="tariff:generate")],
-        [InlineKeyboardButton(text="📊 Estadísticas", callback_data="tariff:stats")],
-        [InlineKeyboardButton(text="📋 Ver Tarifas", callback_data="tariff:list")],
-        [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
-    ])
+    from ...keyboards.admin.main_kb import get_channel_name
     
-    await callback.message.edit_text(
-        text,
-        parse_mode="Markdown",
-        reply_markup=keyboard
-    )
-    await callback.answer()
-
-@admin_main_router.callback_query(F.data == "admin:tokens")
-async def admin_tokens_callback(callback: CallbackQuery):
-    """Callback para generación de tokens."""
+    channel_name = await get_channel_name("vip")
+    
     text = (
-        "🔑 **Generación de Tokens**\n\n"
-        "Genera tokens de acceso para usuarios VIP.\n\n"
+        f"💎 **Configuración Canal VIP: {channel_name}**\n\n"
+        "Administra tu canal VIP desde este menú.\n\n"
         "**Opciones disponibles:**\n"
-        "• Generar token individual\n"
-        "• Generar tokens masivos\n"
-        "• Ver tokens activos\n"
-        "• Invalidar tokens"
+        "• Configurar canal\n"
+        "• Gestionar miembros\n"
+        "• Contenido programado\n"
+        "• Estadísticas\n"
+        "• Configuración de acceso"
     )
     
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎯 Token Individual", callback_data="token:individual")],
-        [InlineKeyboardButton(text="📦 Tokens Masivos", callback_data="token:bulk")],
-        [InlineKeyboardButton(text="👀 Ver Activos", callback_data="token:active")],
-        [InlineKeyboardButton(text="🚫 Invalidar Token", callback_data="token:invalidate")],
+        [InlineKeyboardButton(text="⚙️ Configurar Canal", callback_data="vip:configure")],
+        [InlineKeyboardButton(text="👥 Gestionar Miembros", callback_data="vip:members")],
+        [InlineKeyboardButton(text="📅 Contenido Programado", callback_data="vip:content")],
+        [InlineKeyboardButton(text="📊 Estadísticas", callback_data="vip:stats")],
+        [InlineKeyboardButton(text="🔐 Configuración Acceso", callback_data="vip:access")],
         [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
     ])
     
@@ -121,63 +77,122 @@ async def admin_tokens_callback(callback: CallbackQuery):
     )
     await callback.answer()
 
-@admin_main_router.callback_query(F.data == "admin:stats")
-async def admin_stats_callback(callback: CallbackQuery):
-    """Callback para estadísticas del sistema."""
+@admin_main_router.callback_query(F.data == "admin:channel_free")
+async def admin_channel_free_callback(callback: CallbackQuery):
+    """Callback para configuración del canal Free."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from ...keyboards.admin.main_kb import get_channel_name
+    
+    channel_name = await get_channel_name("free")
+    
     text = (
-        "📊 **Estadísticas del Sistema**\n\n"
-        "Analíticas completas de tu bot y usuarios.\n\n"
-        "**Estadísticas disponibles:**\n"
-        "• Usuarios activos\n"
-        "• Conversiones VIP\n"
-        "• Engagement narrativo\n"
-        "• Performance de gamificación"
+        f"🆓 **Configuración Canal Free: {channel_name}**\n\n"
+        "Administra tu canal gratuito desde este menú.\n\n"
+        "**Opciones disponibles:**\n"
+        "• Configurar canal\n"
+        "• Gestionar miembros\n"
+        "• Contenido programado\n"
+        "• Estadísticas\n"
+        "• Moderación automática"
     )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⚙️ Configurar Canal", callback_data="free:configure")],
+        [InlineKeyboardButton(text="👥 Gestionar Miembros", callback_data="free:members")],
+        [InlineKeyboardButton(text="📅 Contenido Programado", callback_data="free:content")],
+        [InlineKeyboardButton(text="📊 Estadísticas", callback_data="free:stats")],
+        [InlineKeyboardButton(text="🤖 Moderación Auto", callback_data="free:moderation")],
+        [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
+    ])
     
     await callback.message.edit_text(
         text,
         parse_mode="Markdown",
-        reply_markup=get_admin_stats_keyboard()
+        reply_markup=keyboard
+    )
+    await callback.answer()
+
+@admin_main_router.callback_query(F.data == "admin:gamification")
+async def admin_gamification_callback(callback: CallbackQuery):
+    """Callback para configuración de gamificación."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    text = (
+        "🎮 **Configuración Juego el Diván**\n\n"
+        "Administra el sistema de gamificación del bot.\n\n"
+        "**Opciones disponibles:**\n"
+        "• Configurar misiones\n"
+        "• Sistema de puntos\n"
+        "• Recompensas y premios\n"
+        "• Ranking de usuarios\n"
+        "• Eventos especiales"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎯 Configurar Misiones", callback_data="game:missions")],
+        [InlineKeyboardButton(text="🎆 Sistema de Puntos", callback_data="game:points")],
+        [InlineKeyboardButton(text="🏆 Recompensas", callback_data="game:rewards")],
+        [InlineKeyboardButton(text="🏅 Ranking", callback_data="game:ranking")],
+        [InlineKeyboardButton(text="🎉 Eventos", callback_data="game:events")],
+        [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
+    ])
+    
+    await callback.message.edit_text(
+        text,
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+    await callback.answer()
+
+@admin_main_router.callback_query(F.data == "admin:narrative")
+async def admin_narrative_callback(callback: CallbackQuery):
+    """Callback para configuración de narrativa."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    text = (
+        "📖 **Configuración de Narrativa**\n\n"
+        "Administra el sistema narrativo del bot.\n\n"
+        "**Opciones disponibles:**\n"
+        "• Configurar historias\n"
+        "• Personajes y diálogos\n"
+        "• Progreso narrativo\n"
+        "• Integración con Diana\n"
+        "• Contenido adaptativo"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📜 Configurar Historias", callback_data="narrative:stories")],
+        [InlineKeyboardButton(text="👥 Personajes", callback_data="narrative:characters")],
+        [InlineKeyboardButton(text="📋 Progreso", callback_data="narrative:progress")],
+        [InlineKeyboardButton(text="🤖 Integración Diana", callback_data="narrative:diana")],
+        [InlineKeyboardButton(text="🎭 Contenido Adaptativo", callback_data="narrative:adaptive")],
+        [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
+    ])
+    
+    await callback.message.edit_text(
+        text,
+        parse_mode="Markdown",
+        reply_markup=keyboard
     )
     await callback.answer()
 
 @admin_main_router.callback_query(F.data == "admin:settings")
 async def admin_settings_callback(callback: CallbackQuery):
-    """Callback para configuración del sistema."""
+    """Callback para configuración general del sistema."""
     text = (
-        "⚙️ **Configuración del Sistema**\n\n"
-        "Ajustes generales del bot y funcionalidades.\n\n"
+        "⚙️ **Configuración General**\n\n"
+        "Ajustes generales del bot y sistema.\n\n"
         "**Configuraciones disponibles:**\n"
-        "• Mensajes automáticos\n"
-        "• Timeouts y eliminación\n"
-        "• Configuración de canales\n"
-        "• Ajustes de gamificación"
+        "• Configuración del bot\n"
+        "• Gestión de usuarios\n"
+        "• Tarifas y tokens\n"
+        "• Notificaciones\n"
+        "• Mantenimiento"
     )
     
     await callback.message.edit_text(
         text,
         parse_mode="Markdown",
         reply_markup=get_admin_settings_keyboard()
-    )
-    await callback.answer()
-
-@admin_main_router.callback_query(F.data == "admin:roles")
-async def admin_roles_callback(callback: CallbackQuery):
-    """Callback para gestión de roles."""
-    text = (
-        "👑 **Gestión de Roles**\n\n"
-        "Administra usuarios, roles y permisos del sistema.\n\n"
-        "**Funciones disponibles:**\n"
-        "• Buscar y modificar usuarios\n"
-        "• Otorgar/revocar roles VIP\n"
-        "• Gestionar administradores\n"
-        "• Ver estadísticas de roles\n"
-        "• Mantenimiento automático"
-    )
-    
-    await callback.message.edit_text(
-        text,
-        parse_mode="Markdown",
-        reply_markup=get_admin_roles_keyboard()
     )
     await callback.answer()

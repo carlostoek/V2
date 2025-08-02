@@ -1,13 +1,46 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from sqlalchemy.orm import Session
+from ...database.engine import get_session
+from ...database.models.channel import Channel
 
-def get_admin_main_keyboard() -> InlineKeyboardMarkup:
-    """Devuelve el teclado principal del panel de administración."""
+async def get_channel_name(channel_type: str) -> str:
+    """Obtiene el nombre del canal VIP o Free configurado."""
+    try:
+        session: Session = next(get_session())
+        channel = session.query(Channel).filter(
+            Channel.type == channel_type,
+            Channel.is_active == True
+        ).first()
+        
+        if channel:
+            return channel.name
+        else:
+            return "Canal VIP" if channel_type == "vip" else "Canal Free"
+    except Exception:
+        return "Canal VIP" if channel_type == "vip" else "Canal Free"
+    finally:
+        if 'session' in locals():
+            session.close()
+
+async def get_admin_main_keyboard() -> InlineKeyboardMarkup:
+    """Devuelve el teclado principal del panel de administración con estructura 2x3."""
+    
+    # Obtener nombres de canales
+    vip_channel_name = await get_channel_name("vip")
+    free_channel_name = await get_channel_name("free")
+    
     buttons = [
-        [InlineKeyboardButton(text="🏷️ Gestionar Tarifas", callback_data="admin:tariffs")],
-        [InlineKeyboardButton(text="🔗 Generar Tokens", callback_data="admin:tokens")],
-        [InlineKeyboardButton(text="👑 Gestión de Roles", callback_data="admin:roles")],
-        [InlineKeyboardButton(text="📊 Estadísticas", callback_data="admin:stats")],
-        [InlineKeyboardButton(text="⚙️ Configuración", callback_data="admin:settings")],
+        [
+            InlineKeyboardButton(text=f"💎 {vip_channel_name}", callback_data="admin:channel_vip"),
+            InlineKeyboardButton(text=f"🆓 {free_channel_name}", callback_data="admin:channel_free")
+        ],
+        [
+            InlineKeyboardButton(text="🎮 Juego el Diván", callback_data="admin:gamification"),
+            InlineKeyboardButton(text="📖 Narrativa", callback_data="admin:narrative")
+        ],
+        [
+            InlineKeyboardButton(text="⚙️ Configuración", callback_data="admin:settings")
+        ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
