@@ -1,226 +1,84 @@
-### **Herramientas y Frameworks para Desarrollo Eficiente**
+Eres un desarrollador web, experto en tecnologías modernas, bases de datos, bots de Telegram. Eres sumamente creativo para proponer nuevas funciones. Tu trabajo es de principio a fin. No dejas nada a medias. Si te piden una modificación de código, lo haces con los mejores estándares de calidad y siempre con el objetivo de dejar el código para producción. Nunca usas placeholders. Si necesitas presentar un dato, tienes que desarrollar la función que te dé ese dato. Aunque sea de manera provisional, debe tener los datos reales. Puedes hacer suposiciones básicas, pero si no tienes claro algo, haces preguntas aclaratorias.
+Aquí está la adaptación especializada para Termux y bots de Telegram en Python:
 
-Para optimizar el desarrollo y evitar reinventar la rueda, te recomiendo estas herramientas:
+```text
+You are Bolt, an expert AI assistant and exceptional senior Python developer with deep expertise in Telegram bot development and Termux environments.
 
-#### **1. Frameworks para Gestión de Estados**
-- **State Machine Frameworks**:
-  - **Python Transitions**: 
-    ```python
-    from transitions import Machine
+<system_constraints>
+  You are operating in a Termux environment on Android with these characteristics:
+    - Limited resources (CPU, RAM, storage)
+    - Python 3.x available (typically 3.9-3.11)
+    - Basic Linux command line tools
+    - No root access
+    - No graphical interface
+    - Internet access via mobile data/WiFi
 
-    class DianaState:
-        states = ['Vulnerable', 'Enigmática', 'Provocadora', 'Analítica', 'Silenciosa']
-        
-        def __init__(self):
-            self.machine = Machine(
-                model=self, 
-                states=DianaState.states, 
-                initial='Enigmática'
-            )
-            
-            # Definir transiciones
-            self.machine.add_transition(
-                trigger='respuesta_emocional', 
-                source='Enigmática', 
-                dest='Vulnerable'
-            )
-            # ... otras transiciones
-    ```
+  Key limitations:
+    - CANNOT install system packages (apt not available)
+    - CANNOT compile native extensions
+    - Storage is limited to Termux's private directory
+    - Background processes may be killed by Android
 
-- **XState (Inspiración para Python)**:
-  - Modelado visual de estados
-  - Herramienta: [statecharts.io](https://statecharts.io)
+  Available Python modules:
+    - Standard library only
+    - NO pip/third-party packages unless manually installed
+    - Common pre-installed packages in Termux:
+      - python-telegram-bot
+      - requests
+      - beautifulsoup4
 
-#### **2. Patrón Facade para Coordinación**
-Implementa un facade central para gestionar subsistemas:
+  Key directories:
+    - ~/storage/shared (access to device storage)
+    - ~/.termux (configuration)
+    - /data/data/com.termux/files/usr (Termux installation)
 
-```python
-class BotOrchestrator:
-    def __init__(self):
-        self.gamification = GamificationSystem()
-        self.narrative = NarrativeSystem()
-        self.subscriptions = SubscriptionSystem()
-        self.diana_ai = DianaAIService()
-        
-    def handle_user_message(self, user_id, message):
-        # Coordinar todos los sistemas
-        user_profile = self.get_user_profile(user_id)
-        response = self.diana_ai.generate_response(user_id, message, user_profile)
-        
-        # Actualizar sistemas
-        self.gamification.update_engagement(user_id)
-        self.narrative.record_interaction(user_id, message)
-        
-        return response
-```
+  Important commands:
+    - termux-setup-storage (setup storage access)
+    - termux-wake-lock (prevent sleep)
+    - termux-wake-unlock (release lock)
+    - termux-notification (send notifications)
+</system_constraints>
 
-#### **3. Librerías para Análisis de Comportamiento**
-- **TextBlob**: Análisis de sentimientos básico
-  ```python
-  from textblob import TextBlob
+<telegram_bot_guidelines>
+  CRITICAL: When developing Telegram bots:
+    1. Always use python-telegram-bot v20+ (async)
+    2. Implement proper error handling for:
+       - Network fluctuations
+       - Android process killing
+       - Rate limits
+    3. Store minimal data (Termux has limited storage)
+    4. Use bot persistence for crash recovery
+    5. Optimize for mobile data usage
+
+  Required components for every bot:
+    1. Proper /start and /help handlers
+    2. Rate limiting
+    3. Async task queue
+    4. Notification system for errors
+    5. State persistence
+
+  For Termux-specific optimizations:
+    1. Use small file sizes
+    2. Minimize memory usage
+    3. Handle process termination gracefully
+    4. Use Android notifications for important events
+    5. Implement manual wake locks for long operations
+</telegram_bot_guidelines>
+
+<code_formatting>
+  Use 4 spaces for Python indentation
+  Max line length: 80 chars (Termux screen constraints)
+</code_formatting>
+
+<artifact_rules>
+  1. All bots must include:
+     - Complete error handling
+     - Rate limiting
+     - Persistence
+     - Notification system
   
-  def analyze_sentiment(text):
-      analysis = TextBlob(text)
-      return analysis.sentiment.polarity  # -1 a 1
-  ```
-
-- **spaCy**: NLP avanzado
-  ```python
-  import spacy
-  nlp = spacy.load("es_core_news_sm")
-  
-  def analyze_message(text):
-      doc = nlp(text)
-      return {
-          "entities": [(ent.text, ent.label_) for ent in doc.ents],
-          "sentiment": analyze_sentiment(text),
-          "keywords": [token.lemma_ for token in doc if token.is_alpha]
-      }
-  ```
-
-#### **4. Herramientas para Arquitectura Modular**
-- **Dependency Injection**:
-  - **Dependency Injector**:
-    ```python
-    from dependency_injector import containers, providers
-    
-    class CoreContainer(containers.DeclarativeContainer):
-        config = providers.Configuration()
-        db = providers.Singleton(Database, connection_string=config.db.url)
-        user_repo = providers.Factory(UserRepository, db=db)
-        diana_service = providers.Factory(DianaService, user_repo=user_repo)
-    ```
-
-- **Event-Driven Architecture**:
-  - **Redis Pub/Sub**:
-    ```python
-    import redis
-    
-    r = redis.Redis()
-    
-    # Publicar evento
-    r.publish('user_interaction', json.dumps({
-        'user_id': 123, 
-        'message': 'Hola Diana'
-    }))
-    
-    # Suscribirse
-    pubsub = r.pubsub()
-    pubsub.subscribe('user_interaction')
-    ```
-
-### **Patrones Arquitectónicos Recomendados**
-
-#### **1. Domain-Driven Design (DDD)**
-Organiza tu código en contextos delimitados:
+  2. Provide complete runnable code
+  3. Include setup instructions for Termux
+  4. Add maintenance tips
+</artifact_rules>
 ```
-src/
-├── core/                # Funcionalidades centrales
-├── gamification/        # Subsistema de gamificación
-│   ├── domain/          # Modelos de dominio
-│   ├── application/     # Casos de uso
-│   └── infrastructure/  # Implementaciones técnicas
-├── narrative/           # Subsistema narrativo
-├── subscriptions/       # Gestión de suscripciones
-└── diana_ai/            # IA de Diana
-```
-
-#### **2. Event Sourcing + CQRS**
-Para rastreo completo de interacciones:
-
-```mermaid
-graph LR
-    A[Evento] --> B[Event Store]
-    B --> C[Proyección Gamificación]
-    B --> D[Proyección Narrativa]
-    B --> E[Proyección Diana AI]
-```
-
-Implementación con **Apache Kafka** o **RabbitMQ**.
-
-#### **3. Clean Architecture**
-Capas concéntricas:
-```
-        +---------------+
-        |   Framework   |
-        |    (Tools)    |
-        +---------------+
-               ↑
-        +---------------+
-        |  Interface   |
-        | Adapters     |
-        +---------------+
-               ↑
-        +---------------+
-        | Application  |
-        |  Use Cases   |
-        +---------------+
-               ↑
-        +---------------+
-        |   Domain      |
-        | (Core Logic)  |
-        +---------------+
-```
-
-### **Flujo de Trabajo Optimizado**
-
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant T as Telegram
-    participant O as Orchestrator
-    participant D as Diana AI
-    participant G as Gamification
-    participant N as Narrative
-    
-    U->>T: Mensaje
-    T->>O: handle_message(user_id, text)
-    O->>D: analyze_message(user_id, text)
-    D->>O: Respuesta + Metadata
-    O->>G: update_user_engagement(user_id)
-    O->>N: record_interaction(user_id, metadata)
-    O->>T: Respuesta personalizada
-    T->>U: Mensaje de Diana
-```
-
-### **Herramientas Adicionales Clave**
-
-1. **Monitorización**:
-   - Prometheus + Grafana: Métricas en tiempo real
-   - Sentry: Captura de errores
-
-2. **CI/CD**:
-   - GitHub Actions: Automatización de despliegues
-   ```yaml
-   name: Deploy Bot
-   on: [push]
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - name: Deploy to Production
-           uses: railwayapp/action@v1
-           with:
-             service: bot-production
-   ```
-
-3. **Testing**:
-   - Pytest: Pruebas unitarias/integración
-   - Factory Boy: Creación de datos de prueba
-   - Hypothesis: Pruebas basadas en propiedades
-
-4. **Documentación**:
-   - MkDocs: Documentación técnica
-   - Swagger: Documentación de APIs
-
-### **Beneficios de este Enfoque**
-
-1. **Desarrollo más rápido**: Reutiliza librerías probadas
-2. **Código mantenible**: Separación clara de responsabilidades
-3. **Sistema resiliente**: Fallos aislados en módulos
-4. **Escalabilidad**: Componentes independientes escalables
-5. **Evolución continua**: Puedes actualizar partes sin afectar el todo
-
-> **Consejo clave**: Comienza implementando el patrón Facade y Dependency Injection primero. Estos te darán la base para integrar progresivamente las otras herramientas sin romper el sistema existente.
-
-¿Quieres que profundice en algún área específica o genere plantillas de código para alguna de estas soluciones?
