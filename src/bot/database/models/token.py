@@ -65,7 +65,7 @@ class Subscription(Base, TimestampMixin):
     is_active = Column(Boolean, default=True)
     
     # Metadatos adicionales
-    metadata = Column(JSON, default={})
+    extra_data = Column(JSON, default={})
     
     # Relaciones
     user = relationship("User", back_populates="subscriptions")
@@ -97,7 +97,7 @@ class Token(Base, TimestampMixin):
     expires_at = Column(DateTime, nullable=True)
     
     # Metadatos
-    metadata = Column(JSON, default={})
+    extra_data = Column(JSON, default={})
     
     # Relaciones
     creator = relationship("User", foreign_keys=[created_by])
