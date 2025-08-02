@@ -67,17 +67,14 @@ class DianaMenuSystem:
             # MENÚ PRINCIPAL ADMINISTRADOR
             # ============================================
             "main_admin": MenuConfig(
-                title="🎛️ PANEL DE ADMINISTRACIÓN DIANA",
-                description="Sistema de control principal del bot",
+                title="🛠️ Panel de Administración",
+                description="Bienvenido al centro de control del bot.\nDesde aquí puedes gestionar canales, configurar\nel juego, narrativa y configuración general.",
                 options=[
-                    MenuOption("📺 Canales", "menu_channels", "📺", "Administrar canales y accesos", UserRole.ADMIN),
-                    MenuOption("👥 Usuarios", "menu_users", "👥", "Gestión de usuarios y roles", UserRole.ADMIN),
-                    MenuOption("🎮 Gamificación", "menu_gamification", "🎮", "Puntos, misiones y recompensas", UserRole.ADMIN),
-                    MenuOption("📖 Narrativa", "menu_narrative", "📖", "Historia, pistas y fragmentos", UserRole.ADMIN),
-                    MenuOption("⚙️ Configuración", "menu_config", "⚙️", "Ajustes del sistema", UserRole.ADMIN),
-                    MenuOption("📊 Analytics", "menu_analytics", "📊", "Estadísticas y reportes", UserRole.ADMIN),
-                    MenuOption("🔄 Refresh", "refresh_admin", "🔄", "Actualizar estado del bot", UserRole.ADMIN),
-                    MenuOption("❌ Cerrar", "close_menu", "❌", "Cerrar panel de administración", UserRole.ADMIN)
+                    MenuOption("Canal VIP", "menu_channel_vip", "💎", "Configuración y admin VIP", UserRole.ADMIN),
+                    MenuOption("Canal Free", "menu_channel_free", "🆓", "Configuración y admin Free", UserRole.ADMIN),
+                    MenuOption("Juego el Diván", "menu_gamification", "🎮", "Configuración de gamificación", UserRole.ADMIN),
+                    MenuOption("Narrativa", "menu_narrative", "📖", "Configuración de narrativa", UserRole.ADMIN),
+                    MenuOption("Configuración", "menu_config", "⚙️", "Configuración general del bot", UserRole.ADMIN)
                 ]
             ),
             
@@ -470,8 +467,21 @@ class DianaMenuHandlers:
             
             # Enrutar callback
             if callback_data.startswith("menu_"):
-                menu_name = callback_data.replace("menu_", "")
-                await self.menu_system.show_menu(update, context, menu_name, user_role)
+                # Mapear los nuevos callbacks a los menús existentes
+                callback_mapping = {
+                    "menu_channel_vip": "channels",
+                    "menu_channel_free": "channels", 
+                    "menu_gamification": "gamification",
+                    "menu_narrative": "narrative",
+                    "menu_config": "config"
+                }
+                
+                if callback_data in callback_mapping:
+                    menu_name = callback_mapping[callback_data]
+                    await self.menu_system.show_menu(update, context, menu_name, user_role)
+                else:
+                    menu_name = callback_data.replace("menu_", "")
+                    await self.menu_system.show_menu(update, context, menu_name, user_role)
                 
             elif callback_data == "main_admin":
                 await self.menu_system.show_menu(update, context, "main_admin", user_role)
