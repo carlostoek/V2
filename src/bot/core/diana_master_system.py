@@ -21,6 +21,19 @@ from aiogram.filters import Command
 
 import structlog
 
+# === HELPER FUNCTIONS ===
+
+async def safe_edit_message(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
+    """Safely edit message handling Telegram's 'message not modified' error"""
+    try:
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode=parse_mode)
+    except Exception as e:
+        if "message is not modified" in str(e).lower():
+            await callback.answer("🔄 Actualizado")
+        else:
+            await callback.answer(f"Error: {str(e)}")
+            raise e
+
 # === REVOLUTIONARY CONTEXT ENGINE ===
 
 class UserMoodState(Enum):
@@ -546,7 +559,7 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     # Route to specialized handlers based on action
     if action == "refresh":
         text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
-        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+        await safe_edit_message(callback, text, keyboard)
         
     elif action.startswith("epic_shop"):
         await handle_epic_shop(callback, diana_master)
@@ -572,8 +585,51 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     else:
         # Unknown action - show main menu
         text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
-        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+        await safe_edit_message(callback, text, keyboard)
     
+    await callback.answer()
+
+
+@master_router.callback_query(F.data.startswith("trivia:"))
+async def handle_trivia_callbacks(callback: CallbackQuery):
+    """🧠 Handle trivia answer callbacks"""
+    if not diana_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+    
+    trivia_data = callback.data.replace("trivia:", "")
+    user_id = callback.from_user.id
+    
+    # Parse trivia answer: "correct:jupiter" or "wrong:earth"
+    if trivia_data.startswith("correct:"):
+        answer = trivia_data.replace("correct:", "")
+        result_text = "🎉 **¡RESPUESTA CORRECTA!**\n\n"
+        result_text += f"✅ ¡Bien hecho! {answer.capitalize()} es efectivamente el planeta más grande del sistema solar.\n\n"
+        result_text += "🏆 **Recompensas obtenidas:**\n"
+        result_text += "• 💰 20 Besitos\n"
+        result_text += "• 🎯 +1 Pregunta correcta\n"
+        result_text += "• ⭐ Experiencia en trivia\n\n"
+        result_text += "🚀 ¡Sigue así y conviértete en un maestro del conocimiento!"
+        
+    elif trivia_data.startswith("wrong:"):
+        answer = trivia_data.replace("wrong:", "")
+        result_text = "😅 **Respuesta Incorrecta**\n\n"
+        result_text += f"❌ {answer.capitalize()} no es correcto, pero ¡no te desanimes!\n\n"
+        result_text += "💡 **Respuesta correcta:** Júpiter es el planeta más grande de nuestro sistema solar.\n\n"
+        result_text += "🎁 **Consolación:**\n"
+        result_text += "• 💰 5 Besitos por intentarlo\n"
+        result_text += "• 🧠 Conocimiento adquirido\n\n"
+        result_text += "📚 ¡Cada error es una oportunidad de aprender!"
+    
+    else:
+        result_text = "🤔 Respuesta no reconocida. ¡Inténtalo de nuevo!"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎲 Nueva Pregunta", callback_data="diana:trivia_challenge")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, result_text, keyboard)
     await callback.answer()
 
 
