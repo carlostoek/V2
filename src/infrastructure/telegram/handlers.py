@@ -33,10 +33,10 @@ class Handlers:
         user_id = message.from_user.id
 
         if token:
-            validated_token = self._admin_service.validate_token(token, user_id)
+            validated_token = await self._admin_service.validate_token(token, user_id)
             if validated_token:
-                tariff = self._admin_service.get_tariff(validated_token['tariff_id'])
-                await message.answer(f"¡Felicidades! Has canjeado un token para la tarifa '{tariff['name']}'.\nDisfruta de tu acceso VIP por {tariff['duration_days']} días.")
+                tariff = await self._admin_service.get_tariff(validated_token.tariff_id)
+                await message.answer(f"¡Felicidades! Has canjeado un token para la tarifa '{tariff.name}'.\nDisfruta de tu acceso VIP por {tariff.duration_days} días.")
             else:
                 await message.answer("El token que has usado no es válido o ya ha sido canjeado.")
         else:
@@ -150,7 +150,7 @@ class Handlers:
 
     # Flujo de Admin VIP
     async def handle_vip_channel_menu_callback(self, query: types.CallbackQuery):
-        tariffs = self._admin_service.get_all_tariffs()
+        tariffs = await self._admin_service.get_all_tariffs()
         await query.message.edit_text(
             "💎 **Administración Canal VIP**\n\nSelecciona una tarifa para ver sus detalles o crea una nueva.",
             reply_markup=get_vip_admin_menu_kb(tariffs)
@@ -180,32 +180,32 @@ class Handlers:
         try:
             duration = int(message.text)
             data = await state.get_data()
-            self._admin_service.create_tariff(data['tariff_name'], data['tariff_price'], duration)
+            await self._admin_service.create_tariff(data['tariff_name'], data['tariff_price'], duration)
             await message.answer("¡Tarifa creada con éxito!")
             await state.clear()
             # Volver al menú de admin VIP
-            tariffs = self._admin_service.get_all_tariffs()
+            tariffs = await self._admin_service.get_all_tariffs()
             await message.answer("💎 **Administración Canal VIP**", reply_markup=get_vip_admin_menu_kb(tariffs))
         except ValueError:
             await message.answer("Duración inválida. Por favor, introduce un número entero.")
 
     async def handle_view_tariff_callback(self, query: types.CallbackQuery):
         tariff_id = int(query.data.split("_")[-1])
-        tariff = self._admin_service.get_tariff(tariff_id)
+        tariff = await self._admin_service.get_tariff(tariff_id)
         if tariff:
-            text = f"**Tarifa: {tariff['name']}**\n\n"
-            text += f"**Precio:** ${tariff['price']}\n"
-            text += f"**Duración:** {tariff['duration_days']} días"
+            text = f"**Tarifa: {tariff.name}**\n\n"
+            text += f"**Precio:** ${tariff.price}\n"
+            text += f"**Duración:** {tariff.duration_days} días"
             await query.message.edit_text(text, reply_markup=get_tariff_view_kb(tariff_id))
         else:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
     async def handle_delete_tariff_callback(self, query: types.CallbackQuery):
         tariff_id = int(query.data.split("_")[-1])
-        self._admin_service.delete_tariff(tariff_id)
+        await self._admin_service.delete_tariff(tariff_id)
         await query.answer("Tarifa eliminada con éxito.", show_alert=True)
         # Volver al menú de admin VIP
-        tariffs = self._admin_service.get_all_tariffs()
+        tariffs = await self._admin_service.get_all_tariffs()
         await query.message.edit_text(
             "💎 **Administración Canal VIP**",
             reply_markup=get_vip_admin_menu_kb(tariffs)
@@ -213,10 +213,10 @@ class Handlers:
 
     async def handle_generate_token_callback(self, query: types.CallbackQuery):
         tariff_id = int(query.data.split("_")[-1])
-        token = self._admin_service.generate_subscription_token(tariff_id)
+        token = await self._admin_service.generate_subscription_token(tariff_id)
         if token:
             bot_username = (await query.bot.get_me()).username
-            await query.message.edit_text(f"Token generado: `t.me/{bot_username}?start={token['token']}`")
+            await query.message.edit_text(f"Token generado: `t.me/{bot_username}?start={token.token}`")
         else:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
