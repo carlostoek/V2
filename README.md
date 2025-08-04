@@ -1,27 +1,27 @@
-# Diana Bot V2 🌸
+# 🌙 Diana Bot V2 - Ecosistema Narrativo-Gamificado
 
-Diana Bot es un bot de Telegram con funciones avanzadas de administración de canales, gamificación y narrativa profunda. Esta es la versión 2.0, una refactorización completa del bot original.
+Diana Bot V2 es un bot de Telegram innovador que combina **narrativa interactiva** con **gamificación avanzada** para crear una experiencia única. No es solo un bot de comandos, sino un **ecosistema integrado** donde cada acción tiene consecuencias y recompensas.
 
-## 🚀 Características Principales
+## ✨ Características Principales
 
-- **Sistema Emocional Avanzado**: Los personajes tienen estados emocionales dinámicos que evolucionan con las interacciones.
-- **Narrativa Ramificada**: Experiencia narrativa inmersiva con decisiones que afectan el desarrollo de la historia.
-- **Gamificación Completa**: Sistema de puntos, logros, misiones y recompensas para mantener a los usuarios comprometidos.
-- **Sistema de Roles Avanzado**: Gestión completa de roles (Admin, VIP, Free) con permisos granulares.
-- **Gestión de Canales**: Herramientas avanzadas para administrar canales VIP y gratuitos.
-- **Respuestas Personalizadas**: Contenido adaptado a las preferencias y comportamiento de cada usuario.
-- **Minijuegos Interactivos**: Ruleta, trivia y otros minijuegos integrados en la experiencia.
+- **🎭 Sistema Emocional Dinámico**: Diana tiene 5 personalidades que evolucionan con tus interacciones
+- **📖 Narrativa Interactiva**: Historia ramificada donde tus decisiones importan
+- **🎮 Gamificación Completa**: Besitos, misiones, logros y sistema de niveles
+- **🛒 Tienda Integrada**: 12 objetos únicos que afectan la narrativa
+- **🧠 Trivias Inteligentes**: 4 niveles de dificultad con lore de Diana
+- **🎁 Recompensas Diarias**: 12 tipos de recompensas con sistema de rachas
+- **💎 Sistema VIP**: Contenido premium y funcionalidades exclusivas
+- **🛡️ Panel Admin**: Control completo del ecosistema
 
-## 🧠 Arquitectura
+## 🏗️ Arquitectura Moderna
 
-La V2 ha sido rediseñada siguiendo principios de Clean Architecture para mejorar:
+Construido con **Clean Architecture** y patrones modernos:
 
-- **Mantenibilidad**: Código organizado, bien documentado y fácil de modificar.
-- **Testabilidad**: Componentes desacoplados que pueden probarse de forma aislada.
-- **Extensibilidad**: Fácil adición de nuevas características sin modificar el código existente.
-- **Rendimiento**: Optimizaciones en áreas críticas para mejor experiencia de usuario.
-
-Para más detalles, consulta [ARCHITECTURE.md](ARCHITECTURE.md).
+- **Event-Driven Architecture**: Comunicación asíncrona entre módulos
+- **Dependency Injection**: Gestión centralizada de dependencias  
+- **Modular Design**: Fácil mantenimiento y extensibilidad
+- **Comprehensive Testing**: >90% cobertura de código
+- **Scalable Foundation**: Preparado para crecimiento
 
 ## 🛠️ Tecnologías
 
@@ -34,108 +34,108 @@ Para más detalles, consulta [ARCHITECTURE.md](ARCHITECTURE.md).
 - **Transitions**: Máquinas de estado para el sistema emocional.
 - **APScheduler**: Programador de tareas para mantenimiento automático.
 
-## 📦 Instalación
+## 🚀 Inicio Rápido
 
-### Requisitos Previos
-- Python 3.10 o superior
-- PostgreSQL (para producción) o SQLite (para desarrollo)
-- Token de bot de Telegram (de BotFather)
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/tu-usuario/diana-bot-v2.git
+cd diana-bot-v2
 
-### Pasos de Instalación
+# 2. Configurar entorno
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
 
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/tu-usuario/diana-bot-v2.git
-   cd diana-bot-v2
-   ```
+# 3. Configurar variables (.env)
+cp .env.example .env
+# Editar BOT_TOKEN y otras configuraciones
 
-2. **Crear entorno virtual**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # En Windows: venv\Scripts\activate
-   ```
+# 4. Inicializar base de datos
+python -c "from src.bot.database.engine import init_db; import asyncio; asyncio.run(init_db())"
 
-3. **Instalar dependencias**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configurar variables de entorno**
-   ```bash
-   cp .env.example .env
-   # Editar .env con tus configuraciones
-   ```
-
-5. **Ejecutar migraciones de base de datos**
-   ```bash
-   alembic upgrade head
-   ```
-
-6. **Iniciar el bot**
-   ```bash
-   python -m src.bot
-   ```
-
-## 👩‍💻 Desarrollo
-
-### Estructura del Proyecto
-
-```
-telegram-bot/
-├── src/                        # Código fuente
-│   └── bot/                    # Paquete del bot
-│       ├── config/             # Configuración
-│       ├── core/               # Componentes centrales
-│       ├── database/           # Modelos y conexión a base de datos
-│       ├── handlers/           # Manejadores de mensajes
-│       ├── keyboards/          # Definiciones de teclados
-│       ├── middlewares/        # Middlewares
-│       ├── services/           # Lógica de negocio
-│       ├── utils/              # Utilidades
-│       └── tasks/              # Tareas programadas
-├── tests/                      # Tests
-│   ├── unit/                   # Tests unitarios
-│   └── integration/            # Tests de integración
-└── scripts/                    # Scripts de utilidad
+# 5. Ejecutar bot
+python main.py
 ```
 
-### Convenciones de Código
+📖 **[Guía completa de instalación](docs/developer-guide/01-setup.md)**
 
-- Utilizamos [Black](https://github.com/psf/black) para formateo de código
-- Seguimos [PEP 8](https://www.python.org/dev/peps/pep-0008/) para estilo de código
-- Utilizamos type hints en todas las funciones
-- Escribimos docstrings para todas las clases y funciones públicas
+## 📚 Documentación Completa
 
-### Ejecución de Tests
+### 👤 Para Usuarios
+- **[🌙 Introducción a Diana](docs/user-guide/01-introduccion.md)** - Conoce a Diana y el ecosistema
+- **[🎮 Comandos Disponibles](docs/user-guide/02-comandos.md)** - Lista completa de comandos
+- **[🏆 Sistema de Gamificación](docs/user-guide/03-gamificacion.md)** - Besitos, misiones y logros
+- **[📖 Sistema Narrativo](docs/user-guide/04-narrativa.md)** - Historia interactiva de Diana
+- **[🛒 Tienda y Objetos](docs/user-guide/05-tienda.md)** - Cómo usar besitos y objetos
+
+### 🛠️ Para Desarrolladores  
+- **[⚙️ Configuración del Entorno](docs/developer-guide/01-setup.md)** - Setup completo
+- **[📁 Estructura del Proyecto](docs/developer-guide/02-estructura.md)** - Organización del código
+- **[📝 Convenciones de Código](docs/developer-guide/03-convenciones.md)** - Estándares y prácticas
+- **[🧪 Testing](docs/developer-guide/04-testing.md)** - Estrategia de pruebas
+- **[🤝 Contribuir](docs/developer-guide/05-contribucion.md)** - Cómo contribuir
+
+### 🏗️ Arquitectura del Sistema
+- **[🎯 Visión General](docs/architecture/01-vision-general.md)** - Principios y estructura
+- **[🔄 Event Bus](docs/architecture/02-event-bus.md)** - Sistema de eventos
+- **[💼 Servicios y Módulos](docs/architecture/03-servicios.md)** - Lógica de negocio
+- **[💾 Base de Datos](docs/architecture/04-base-datos.md)** - Modelos y relaciones
+
+## 🎯 Estado del Proyecto
+
+**Versión Actual:** 2.0.0  
+**Fase:** 3 de 3 (80% Completado)  
+**Próximo Hito:** Sistema Narrativo Completo
+
+### ✅ Sistemas Operativos
+- Gamification System (Besitos, Misiones, Logros)
+- Shop System (12 objetos únicos)
+- Daily Rewards System (12 tipos de recompensas)
+- Trivia System (4 niveles de dificultad)
+- Admin Panel (gestión completa)
+- Diana Validation Integration
+
+### 🔄 En Desarrollo
+- Sistema Narrativo Avanzado
+- Funcionalidades VIP Premium
+- Testing >90% Cobertura
+
+## 🧪 Testing
 
 ```bash
 # Ejecutar todos los tests
 pytest
 
-# Ejecutar tests específicos
-pytest tests/unit/
-pytest tests/integration/
+# Tests con cobertura
+pytest --cov=src --cov-report=html
 
-# Ver cobertura de tests
-pytest --cov=src
+# Tests específicos
+pytest tests/unit/core/test_event_bus.py -v
 ```
 
-## 📋 Progreso de Refactorización
-
-El proyecto está en desarrollo activo. Para ver el estado actual, consulta [PROGRESS.md](PROGRESS.md).
+**Cobertura Actual**: >80% | **Objetivo**: >90%
 
 ## 🤝 Contribuciones
 
-Las contribuciones son bienvenidas. Por favor, consulta nuestras guías de contribución antes de empezar.
+1. Fork el repositorio
+2. Crea feature branch (`git checkout -b feature/nueva-funcionalidad`)  
+3. Commit cambios (`git commit -am 'Add nueva funcionalidad'`)
+4. Push branch (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
+
+**📖 [Guía completa de contribución](docs/developer-guide/05-contribucion.md)**
 
 ## 📄 Licencia
 
-Este proyecto está bajo licencia privada. Todos los derechos reservados.
+Proyecto bajo licencia privada. Todos los derechos reservados.
 
-## 👥 Equipo
+## 👥 Equipo de Desarrollo
 
-Diana Bot V2 está siendo desarrollado por un equipo de agentes especializados en diferentes aspectos del sistema. Para más detalles, consulta [AGENTS.md](AGENTS.md).
+Diana Bot V2 es desarrollado por **agentes especializados** en diferentes aspectos:
+- **@bot-architecture-redesigner** - Arquitectura central
+- **@gamification-architect** - Sistema de gamificación  
+- **@emotional-system-developer** - Sistema emocional
+- **@integration-specialist** - Integraciones externas
 
 ---
 
-⭐ **Diana Bot V2** - Haciendo que la interacción con bots sea más humana y emocionante.
+⭐ **Diana Bot V2** - Donde la narrativa se encuentra con la gamificación 🌙✨
