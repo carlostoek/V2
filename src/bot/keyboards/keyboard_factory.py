@@ -139,6 +139,32 @@ class KeyboardFactory:
         return cls.create_inline(buttons)
     
     
+    @classmethod
+    def wait_time_selection(cls) -> types.InlineKeyboardMarkup:
+        """Crea el teclado para seleccionar el tiempo de espera."""
+        buttons = [
+            [
+                {"text": "Inmediato", "callback_data": "admin:set_wait_time_0"},
+                {"text": "15 min", "callback_data": "admin:set_wait_time_15"},
+                {"text": "1 hora", "callback_data": "admin:set_wait_time_60"}
+            ],
+            [
+                {"text": "12 horas", "callback_data": "admin:set_wait_time_720"},
+                {"text": "24 horas", "callback_data": "admin:set_wait_time_1440"}
+            ],
+            [{"text": "⬅️ Volver", "callback_data": "admin:free_channel_menu"}]
+        ]
+        return cls.create_inline(buttons)
+    
+    @classmethod
+    def post_confirmation(cls) -> types.InlineKeyboardMarkup:
+        """Crea el teclado para confirmar un post."""
+        buttons = [
+            [{"text": "✅ Enviar Post", "callback_data": "admin:confirm_post"}],
+            [{"text": "❌ Cancelar", "callback_data": "admin:cancel_post"}]
+        ]
+        return cls.create_inline(buttons)
+    
     
     @classmethod
     def narrative_menu(cls) -> types.InlineKeyboardMarkup:

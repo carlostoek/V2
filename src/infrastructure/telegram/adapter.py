@@ -5,9 +5,9 @@ from src.core.interfaces.IEventBus import IEventBus
 from src.modules.gamification.service import GamificationService
 from src.modules.admin.service import AdminService
 from src.modules.narrative.service import NarrativeService
-# from src.bot.core.handlers import setup_handlers as setup_modern_handlers
+from src.bot.core.handlers import setup_handlers as setup_modern_handlers
 # from src.bot.core.di import Container
-from .handlers import setup_handlers  # Volver al sistema legacy temporalmente
+# from .handlers import setup_handlers  # DESACTIVADO - Migrando a sistema moderno
 
 class TelegramAdapter:
     def __init__(self, bot_token: str, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, narrative_service: NarrativeService = None):
@@ -20,9 +20,9 @@ class TelegramAdapter:
 
     def _register_handlers(self):
         """Registra los handlers de Telegram."""
-        print("🔧 TelegramAdapter: Registrando handlers (sistema legacy)...")
-        # Pasa las dependencias (event_bus, servicios) a los handlers
-        setup_handlers(self.dp, self._event_bus, self._gamification_service, self._admin_service)
+        print("🔧 TelegramAdapter: Registrando handlers (sistema moderno)...")
+        # Activar sistema moderno unificado
+        setup_modern_handlers(self.dp, self._event_bus, self._gamification_service, self._admin_service)
 
     async def start(self):
         """Inicia el bot."""

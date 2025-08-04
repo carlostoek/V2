@@ -65,7 +65,7 @@ async def admin_main_callback(callback: CallbackQuery):
 @admin_main_router.callback_query(F.data == "admin:tariffs")
 async def admin_tariffs_callback(callback: CallbackQuery):
     """Callback para gestión de tarifas."""
-    from ...keyboards.admin_keyboards import AdminKeyboardFactory
+    # NOTE: AdminKeyboardFactory import removed - using inline keyboard instead
     
     text = (
         "🏷️ **Gestión de Tarifas**\n\n"

@@ -16,15 +16,19 @@ from ..handlers.gamification import register_gamification_handlers
 
 logger = structlog.get_logger()
 
-def setup_handlers(dp: Dispatcher) -> None:
+def setup_handlers(dp: Dispatcher, event_bus: IEventBus = None, gamification_service: GamificationService = None, admin_service = None) -> None:
     """Configura todos los manejadores de eventos."""
     
-    # Obtener servicios del contenedor de dependencias
-    container = dp["di"]
-    event_bus = container.resolve(IEventBus)
-    gamification_service = container.resolve(GamificationService)
-    narrative_service = container.resolve(NarrativeService)
-    admin_service = container.resolve(AdminService)
+    # Si no se pasan servicios, obtenerlos del contenedor de dependencias
+    if event_bus is None or gamification_service is None or admin_service is None:
+        container = dp["di"]
+        event_bus = event_bus or container.resolve(IEventBus)
+        gamification_service = gamification_service or container.resolve(GamificationService)
+        narrative_service = container.resolve(NarrativeService)
+        admin_service = admin_service or container.resolve(AdminService)
+    else:
+        # Usar servicios pasados directamente (para compatibilidad con TelegramAdapter)
+        narrative_service = None  # Por ahora
     
     # Registrar manejadores de usuarios regulares
     register_user_handlers(dp, event_bus, gamification_service, admin_service)
