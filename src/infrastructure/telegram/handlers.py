@@ -47,9 +47,10 @@ class Handlers:
                 reply_markup=get_main_menu_keyboard()
             )
 
-    async def handle_admin_command(self, message: types.Message):
-        # Aquí iría la lógica para verificar si el usuario es admin
-        await message.answer("Menú de Administración", reply_markup=get_admin_menu_keyboard())
+    # async def handle_admin_command(self, message: types.Message):
+    #     # Aquí iría la lógica para verificar si el usuario es admin
+    #     await message.answer("Menú de Administración", reply_markup=get_admin_menu_keyboard())
+    #     # Comentado: Reemplazado por nuevo handler en src/bot/handlers/admin/main.py
 
     async def handle_free_channel_menu_callback(self, query: types.CallbackQuery):
         is_configured = self._admin_service.get_free_channel_id() is not None
@@ -125,7 +126,7 @@ class Handlers:
 
     def register(self, dp: Dispatcher):
         dp.message.register(self.handle_start, CommandStart())
-        dp.message.register(self.handle_admin_command, Command("admin"))
+        # dp.message.register(self.handle_admin_command, Command("admin"))  # Comentado: conflicto con nuevo handler admin
         dp.callback_query.register(self.handle_free_channel_menu_callback, F.data == "admin:free_channel_menu")
         dp.callback_query.register(self.handle_setup_free_channel_callback, F.data == "admin:setup_free_channel")
         dp.callback_query.register(self.handle_set_wait_time_callback, F.data == "admin:set_wait_time")
