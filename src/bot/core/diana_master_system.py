@@ -436,55 +436,55 @@ class DianaMasterInterface:
         # === ROW 2: MOOD-SPECIFIC PRIMARY ACTIONS ===
         if context.current_mood == UserMoodState.ACHIEVER:
             buttons.append([
-                InlineKeyboardButton("🎯 Centro de Misiones", callback_data="diana:missions_hub"),
-                InlineKeyboardButton("📊 Mi Progreso", callback_data="diana:progress_tracker")
+                InlineKeyboardButton(text="🎯 Centro de Misiones", callback_data="diana:missions_hub"),
+                InlineKeyboardButton(text="📊 Mi Progreso", callback_data="diana:progress_tracker")
             ])
         
         elif context.current_mood == UserMoodState.COLLECTOR:
             buttons.append([
-                InlineKeyboardButton("🛒 Tienda Épica", callback_data="diana:epic_shop"),
-                InlineKeyboardButton("🎒 Mi Colección", callback_data="diana:collection")
+                InlineKeyboardButton(text="🛒 Tienda Épica", callback_data="diana:epic_shop"),
+                InlineKeyboardButton(text="🎒 Mi Colección", callback_data="diana:collection")
             ])
         
         elif context.current_mood == UserMoodState.STORYTELLER:
             buttons.append([
-                InlineKeyboardButton("📖 Historia Viva", callback_data="diana:narrative_hub"),
-                InlineKeyboardButton("🎭 Decisiones", callback_data="diana:story_choices")
+                InlineKeyboardButton(text="📖 Historia Viva", callback_data="diana:narrative_hub"),
+                InlineKeyboardButton(text="🎭 Decisiones", callback_data="diana:story_choices")
             ])
         
         elif context.current_mood == UserMoodState.EXPLORER:
             buttons.append([
-                InlineKeyboardButton("🗺️ Explorar Todo", callback_data="diana:explore_mode"),
-                InlineKeyboardButton("🔮 Sorpréndeme", callback_data="diana:surprise_me")
+                InlineKeyboardButton(text="🗺️ Explorar Todo", callback_data="diana:explore_mode"),
+                InlineKeyboardButton(text="🔮 Sorpréndeme", callback_data="diana:surprise_me")
             ])
         
         elif context.current_mood == UserMoodState.OPTIMIZER:
             buttons.append([
-                InlineKeyboardButton("📊 Dashboard Pro", callback_data="diana:pro_dashboard"),
-                InlineKeyboardButton("⚙️ Configuración", callback_data="diana:settings")
+                InlineKeyboardButton(text="📊 Dashboard Pro", callback_data="diana:pro_dashboard"),
+                InlineKeyboardButton(text="⚙️ Configuración", callback_data="diana:settings")
             ])
         
         else:  # Newcomer/Socializer/Default
             buttons.append([
-                InlineKeyboardButton("🌟 Comenzar Aventura", callback_data="diana:start_journey"),
-                InlineKeyboardButton("💫 Tour Guiado", callback_data="diana:guided_tour")
+                InlineKeyboardButton(text="🌟 Comenzar Aventura", callback_data="diana:start_journey"),
+                InlineKeyboardButton(text="💫 Tour Guiado", callback_data="diana:guided_tour")
             ])
         
         # === ROW 3: CORE FEATURES (Always available) ===
         buttons.append([
-            InlineKeyboardButton("🎁 Regalo Diario", callback_data="diana:daily_gift"),
-            InlineKeyboardButton("🧠 Trivia", callback_data="diana:trivia_challenge")
+            InlineKeyboardButton(text="🎁 Regalo Diario", callback_data="diana:daily_gift"),
+            InlineKeyboardButton(text="🧠 Trivia", callback_data="diana:trivia_challenge")
         ])
         
         # === ROW 4: ADMIN ACCESS (If applicable) ===
         # TODO: Check if user is admin
         # if await self._is_admin(context.user_id):
-        #     buttons.append([InlineKeyboardButton("👑 Centro de Comando", callback_data="diana:admin_center")])
+        #     buttons.append([InlineKeyboardButton(text="👑 Centro de Comando", callback_data="diana:admin_center")])
         
         # === ROW 5: NAVIGATION ===
         buttons.append([
-            InlineKeyboardButton("🔄 Actualizar", callback_data="diana:refresh"),
-            InlineKeyboardButton("❓ Ayuda Inteligente", callback_data="diana:smart_help")
+            InlineKeyboardButton(text="🔄 Actualizar", callback_data="diana:refresh"),
+            InlineKeyboardButton(text="❓ Ayuda Inteligente", callback_data="diana:smart_help")
         ])
         
         return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -608,9 +608,9 @@ async def handle_epic_shop(callback: CallbackQuery, master: DianaMasterInterface
         shop_text += "🔧 *Próximamente nuevos productos exclusivos...*\n"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("💎 Ver Tarifas VIP", callback_data="diana:tariff_list")],
-        [InlineKeyboardButton("🎁 Canjear Token", callback_data="diana:redeem_token")],
-        [InlineKeyboardButton("🏠 Volver al Inicio", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="💎 Ver Tarifas VIP", callback_data="diana:tariff_list")],
+        [InlineKeyboardButton(text="🎁 Canjear Token", callback_data="diana:redeem_token")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
     ])
     
     await callback.message.edit_text(shop_text, reply_markup=keyboard, parse_mode="Markdown")
@@ -662,10 +662,10 @@ async def handle_missions_hub(callback: CallbackQuery, master: DianaMasterInterf
     missions_text += f"🔥 Racha actual: {user_stats.get('streak', 0)} días"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("🎲 Iniciar Trivia", callback_data="diana:trivia_challenge")],
-        [InlineKeyboardButton("📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
-        [InlineKeyboardButton("🏆 Logros Desbloqueados", callback_data="diana:achievements")],
-        [InlineKeyboardButton("🏠 Volver al Inicio", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="🎲 Iniciar Trivia", callback_data="diana:trivia_challenge")],
+        [InlineKeyboardButton(text="📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
+        [InlineKeyboardButton(text="🏆 Logros Desbloqueados", callback_data="diana:achievements")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
     ])
     
     await callback.message.edit_text(missions_text, reply_markup=keyboard, parse_mode="Markdown")
@@ -693,8 +693,8 @@ async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInter
         story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Principiante\n"
         
         next_actions = [
-            InlineKeyboardButton("🔍 Buscar Pistas", callback_data="diana:story_search_clues"),
-            InlineKeyboardButton("⚔️ Enfrentar el Desafío", callback_data="diana:story_challenge")
+            InlineKeyboardButton(text="🔍 Buscar Pistas", callback_data="diana:story_search_clues"),
+            InlineKeyboardButton(text="⚔️ Enfrentar el Desafío", callback_data="diana:story_challenge")
         ]
         
     elif narrative_progress < 50:
@@ -703,8 +703,8 @@ async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInter
         story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Explorador\n"
         
         next_actions = [
-            InlineKeyboardButton("🤝 Confiar en Aliados", callback_data="diana:story_trust"),
-            InlineKeyboardButton("🛡️ Ir Solo", callback_data="diana:story_solo")
+            InlineKeyboardButton(text="🤝 Confiar en Aliados", callback_data="diana:story_trust"),
+            InlineKeyboardButton(text="🛡️ Ir Solo", callback_data="diana:story_solo")
         ]
         
     elif narrative_progress < 75:
@@ -713,8 +713,8 @@ async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInter
         story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Héroe\n"
         
         next_actions = [
-            InlineKeyboardButton("👑 Aceptar el Destino", callback_data="diana:story_accept"),
-            InlineKeyboardButton("🔄 Cambiar las Reglas", callback_data="diana:story_rebel")
+            InlineKeyboardButton(text="👑 Aceptar el Destino", callback_data="diana:story_accept"),
+            InlineKeyboardButton(text="🔄 Cambiar las Reglas", callback_data="diana:story_rebel")
         ]
         
     else:
@@ -723,8 +723,8 @@ async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInter
         story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Leyenda\n"
         
         next_actions = [
-            InlineKeyboardButton("🌟 Nueva Aventura", callback_data="diana:story_new_chapter"),
-            InlineKeyboardButton("📜 Releer Historia", callback_data="diana:story_review")
+            InlineKeyboardButton(text="🌟 Nueva Aventura", callback_data="diana:story_new_chapter"),
+            InlineKeyboardButton(text="📜 Releer Historia", callback_data="diana:story_review")
         ]
     
     # Add narrative stats
@@ -735,8 +735,8 @@ async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInter
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         next_actions,
-        [InlineKeyboardButton("📊 Mi Historia Completa", callback_data="diana:story_progress")],
-        [InlineKeyboardButton("🏠 Volver al Inicio", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="📊 Mi Historia Completa", callback_data="diana:story_progress")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
     ])
     
     await callback.message.edit_text(story_text, reply_markup=keyboard, parse_mode="Markdown")
@@ -756,8 +756,8 @@ async def handle_surprise_feature(callback: CallbackQuery, master: DianaMasterIn
     surprise = random.choice(surprises)
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("🔄 Otra Sorpresa", callback_data="diana:surprise_me")],
-        [InlineKeyboardButton("🏠 Volver", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="🔄 Otra Sorpresa", callback_data="diana:surprise_me")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
     ])
     
     await callback.message.edit_text(surprise, reply_markup=keyboard, parse_mode="Markdown")
@@ -786,8 +786,8 @@ async def handle_daily_gift(callback: CallbackQuery, master: DianaMasterInterfac
         gift_text += "🌟 ¡Vuelve mañana por más sorpresas!"
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton("🎲 Usar Pregunta Bonus", callback_data="diana:trivia_bonus")],
-            [InlineKeyboardButton("🏠 Volver al Inicio", callback_data="diana:refresh")]
+            [InlineKeyboardButton(text="🎲 Usar Pregunta Bonus", callback_data="diana:trivia_bonus")],
+            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
         ])
     else:
         gift_text = "🎁 **REGALO DIARIO**\n\n"
@@ -799,8 +799,8 @@ async def handle_daily_gift(callback: CallbackQuery, master: DianaMasterInterfac
         gift_text += "💡 *Mantén tu racha diaria para mejores recompensas*"
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton("📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
-            [InlineKeyboardButton("🏠 Volver al Inicio", callback_data="diana:refresh")]
+            [InlineKeyboardButton(text="📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
+            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
         ])
     
     await callback.message.edit_text(gift_text, reply_markup=keyboard, parse_mode="Markdown")
@@ -826,11 +826,11 @@ async def handle_trivia_challenge(callback: CallbackQuery, master: DianaMasterIn
     trivia_text += "• Racha perfecta: Bonus x2"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("🪐 Júpiter", callback_data="trivia:correct:jupiter")],
-        [InlineKeyboardButton("🌍 Tierra", callback_data="trivia:wrong:earth")],
-        [InlineKeyboardButton("♄ Saturno", callback_data="trivia:wrong:saturn")],
-        [InlineKeyboardButton("♆ Neptuno", callback_data="trivia:wrong:neptune")],
-        [InlineKeyboardButton("🏠 Volver", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="🪐 Júpiter", callback_data="trivia:correct:jupiter")],
+        [InlineKeyboardButton(text="🌍 Tierra", callback_data="trivia:wrong:earth")],
+        [InlineKeyboardButton(text="♄ Saturno", callback_data="trivia:wrong:saturn")],
+        [InlineKeyboardButton(text="♆ Neptuno", callback_data="trivia:wrong:neptune")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
     ])
     
     await callback.message.edit_text(trivia_text, reply_markup=keyboard, parse_mode="Markdown")
@@ -869,9 +869,9 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
     help_text += "El sistema se adapta a tu estilo de juego automáticamente."
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("🎯 Ir a Misiones", callback_data="diana:missions_hub")],
-        [InlineKeyboardButton("📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
-        [InlineKeyboardButton("🏠 Volver al Inicio", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="🎯 Ir a Misiones", callback_data="diana:missions_hub")],
+        [InlineKeyboardButton(text="📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
     ])
     
     await callback.message.edit_text(help_text, reply_markup=keyboard, parse_mode="Markdown")
