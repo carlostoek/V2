@@ -4,7 +4,12 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from ...keyboards.admin.main_kb import get_admin_main_keyboard
+from ...keyboards.admin.main_kb import (
+    get_admin_main_keyboard,
+    get_admin_stats_keyboard, 
+    get_admin_settings_keyboard,
+    get_admin_roles_keyboard
+)
 from ...filters.role import IsAdminFilter
 
 admin_callbacks_router = Router()
