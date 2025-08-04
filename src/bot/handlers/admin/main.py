@@ -15,26 +15,28 @@ async def admin_debug(message: Message):
     print(f"🔍 DEBUG: Username: {message.from_user.username}")
     # No procesar aquí, solo loggear
 
-@admin_main_router.message(Command("admin"), IsAdminFilter())
+@admin_main_router.message(Command("admin"))
 async def admin_start(message: Message):
     """Handler para el comando /admin."""
-    print(f"🎯 ADMIN HANDLER: Ejecutando comando admin para user_id: {message.from_user.id}")
-    user_role = getattr(message, 'user_role', 'free')
-    user_permissions = getattr(message, 'user_permissions', {})
+    user_id = message.from_user.id
+    print(f"🎯 ADMIN HANDLER MODERNO: Ejecutando comando admin para user_id: {user_id}")
     
-    # Mensaje personalizado según permisos
-    welcome_text = "🛠️ **Panel de Administración**\n\n"
+    # Verificar admin hardcodeado
+    if user_id != 1280444712:
+        print(f"🚫 ADMIN MODERNO: Usuario {user_id} no es administrador")
+        await message.answer("❌ No tienes permisos de administrador.")
+        return
     
-    if user_permissions.get("can_manage_users"):
-        welcome_text += "• Gestión completa de usuarios y roles\n"
-    if user_permissions.get("can_manage_channels"):
-        welcome_text += "• Administración de canales VIP y gratuitos\n"
-    if user_permissions.get("can_manage_tariffs"):
-        welcome_text += "• Gestión de tarifas y tokens\n"
-    if user_permissions.get("can_view_analytics"):
-        welcome_text += "• Acceso a estadísticas y analíticas\n"
+    print(f"✅ ADMIN MODERNO: Usuario admin autenticado: {user_id}")
     
-    welcome_text += "\nSelecciona una opción del menú:"
+    # Mensaje personalizado del panel moderno
+    welcome_text = "🛠️ **Panel de Administración Moderno**\n\n"
+    welcome_text += "• Gestión completa de usuarios y roles\n"
+    welcome_text += "• Administración de canales VIP y gratuitos\n"
+    welcome_text += "• Gestión de tarifas y tokens\n"
+    welcome_text += "• Acceso a estadísticas y analíticas\n"
+    welcome_text += "\n🆕 **SISTEMA MODERNO ACTIVO**\n"
+    welcome_text += "Selecciona una opción del menú:"
     
     await message.answer(
         welcome_text,

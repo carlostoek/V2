@@ -139,7 +139,7 @@ class Handlers:
 
     def register(self, dp: Dispatcher):
         dp.message.register(self.handle_start, CommandStart())
-        dp.message.register(self.handle_admin_command, Command("admin"))  # Reactivado para debugging
+        # dp.message.register(self.handle_admin_command, Command("admin"))  # Desactivado: sistema moderno activo
         dp.callback_query.register(self.handle_free_channel_menu_callback, F.data == "admin:free_channel_menu")
         dp.callback_query.register(self.handle_setup_free_channel_callback, F.data == "admin:setup_free_channel")
         dp.callback_query.register(self.handle_set_wait_time_callback, F.data == "admin:set_wait_time")
@@ -233,7 +233,8 @@ class Handlers:
         else:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
-def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
-    """Configura todos los handlers de la aplicación."""
-    handler_instance = Handlers(event_bus, gamification_service, admin_service)
-    handler_instance.register(dp)
+# def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
+#     """Configura todos los handlers de la aplicación.""" 
+#     handler_instance = Handlers(event_bus, gamification_service, admin_service)
+#     handler_instance.register(dp)
+#     # COMENTADO: Sistema legacy reemplazado por src/bot/core/handlers.py

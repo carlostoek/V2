@@ -49,7 +49,8 @@ async def main():
             bot_token=settings.bot_token, 
             event_bus=event_bus, 
             gamification_service=gamification_service,
-            admin_service=admin_service
+            admin_service=admin_service,
+            narrative_service=narrative_service
         )
         
         log.startup("Iniciando Bot de Telegram...")
