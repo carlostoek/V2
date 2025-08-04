@@ -10,7 +10,7 @@ from ..services.admin import AdminService
 
 from ..handlers.user import register_user_handlers
 from ..handlers.admin import register_admin_handlers
-from ..handlers.vip import register_vip_handlers
+# from ..handlers.vip import register_vip_handlers  # Módulo no existe
 from ..handlers.narrative import register_narrative_handlers
 from ..handlers.gamification import register_gamification_handlers
 
@@ -35,8 +35,8 @@ def setup_handlers(dp: Dispatcher) -> None:
     logger.info("Manejadores de administradores registrados")
     
     # Registrar manejadores de usuarios VIP
-    register_vip_handlers(dp)
-    logger.info("Manejadores de usuarios VIP registrados")
+    # register_vip_handlers(dp)  # Módulo no existe
+    # logger.info("Manejadores de usuarios VIP registrados")
     
     # Registrar manejadores de narrativa
     register_narrative_handlers(dp, event_bus, narrative_service)
