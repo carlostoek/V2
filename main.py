@@ -11,8 +11,6 @@ from src.modules.admin.service import AdminService
 from src.bot.database.engine import init_db
 from src.utils.sexy_logger import log
 
-# AGREGAR ESTA IMPORTACIÓN AL INICIO:
-from src.bot.handlers.diana_menu_system import setup_diana_menu_system
 
 async def main():
     """Punto de entrada principal de la aplicación V2."""
