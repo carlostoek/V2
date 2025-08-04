@@ -76,6 +76,120 @@ class Handlers:
             reply_markup=get_admin_main_keyboard()
         )
 
+    # Callbacks del menú moderno
+    async def handle_admin_tariffs_callback(self, query: types.CallbackQuery):
+        """Callback para gestión de tarifas."""
+        text = (
+            "🏷️ **Gestión de Tarifas**\n\n"
+            "Desde aquí puedes crear nuevas tarifas, generar enlaces de invitación "
+            "y ver estadísticas de uso.\n\n"
+            "**Funciones disponibles:**\n"
+            "• Crear nuevas tarifas VIP\n"
+            "• Generar enlaces de invitación\n"
+            "• Ver estadísticas de tokens\n"
+            "• Administrar tarifas existentes"
+        )
+        
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🆕 Nueva Tarifa", callback_data="tariff:new")],
+            [InlineKeyboardButton(text="🔗 Generar Token", callback_data="tariff:generate")],
+            [InlineKeyboardButton(text="📊 Estadísticas", callback_data="tariff:stats")],
+            [InlineKeyboardButton(text="📋 Ver Tarifas", callback_data="tariff:list")],
+            [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
+        ])
+        
+        await query.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+        await query.answer()
+
+    async def handle_admin_tokens_callback(self, query: types.CallbackQuery):
+        """Callback para generación de tokens."""
+        text = (
+            "🔑 **Generación de Tokens**\n\n"
+            "Genera tokens de acceso para usuarios VIP.\n\n"
+            "**Opciones disponibles:**\n"
+            "• Generar token individual\n"
+            "• Generar tokens masivos\n"
+            "• Ver tokens activos\n"
+            "• Invalidar tokens"
+        )
+        
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎯 Token Individual", callback_data="token:individual")],
+            [InlineKeyboardButton(text="📦 Tokens Masivos", callback_data="token:bulk")],
+            [InlineKeyboardButton(text="👀 Ver Activos", callback_data="token:active")],
+            [InlineKeyboardButton(text="🚫 Invalidar Token", callback_data="token:invalidate")],
+            [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main")]
+        ])
+        
+        await query.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+        await query.answer()
+
+    async def handle_admin_roles_callback(self, query: types.CallbackQuery):
+        """Callback para gestión de roles."""
+        text = (
+            "👑 **Gestión de Roles**\n\n"
+            "Administra usuarios, roles y permisos del sistema.\n\n"
+            "**Funciones disponibles:**\n"
+            "• Buscar y modificar usuarios\n"
+            "• Otorgar/revocar roles VIP\n"
+            "• Gestionar administradores\n"
+            "• Ver estadísticas de roles\n"
+            "• Mantenimiento automático"
+        )
+        
+        from src.bot.keyboards.admin.main_kb import get_admin_roles_keyboard
+        await query.message.edit_text(text, parse_mode="Markdown", reply_markup=get_admin_roles_keyboard())
+        await query.answer()
+
+    async def handle_admin_stats_callback(self, query: types.CallbackQuery):
+        """Callback para estadísticas del sistema."""
+        text = (
+            "📊 **Estadísticas del Sistema**\n\n"
+            "Analíticas completas de tu bot y usuarios.\n\n"
+            "**Estadísticas disponibles:**\n"
+            "• Usuarios activos\n"
+            "• Conversiones VIP\n"
+            "• Engagement narrativo\n"
+            "• Performance de gamificación"
+        )
+        
+        from src.bot.keyboards.admin.main_kb import get_admin_stats_keyboard
+        await query.message.edit_text(text, parse_mode="Markdown", reply_markup=get_admin_stats_keyboard())
+        await query.answer()
+
+    async def handle_admin_settings_callback(self, query: types.CallbackQuery):
+        """Callback para configuración del sistema."""
+        text = (
+            "⚙️ **Configuración del Sistema**\n\n"
+            "Ajustes generales del bot y funcionalidades.\n\n"
+            "**Configuraciones disponibles:**\n"
+            "• Mensajes automáticos\n"
+            "• Timeouts y eliminación\n"
+            "• Configuración de canales\n"
+            "• Ajustes de gamificación"
+        )
+        
+        from src.bot.keyboards.admin.main_kb import get_admin_settings_keyboard
+        await query.message.edit_text(text, parse_mode="Markdown", reply_markup=get_admin_settings_keyboard())
+        await query.answer()
+
+    async def handle_admin_main_callback(self, query: types.CallbackQuery):
+        """Callback para volver al menú principal del admin."""
+        from src.bot.keyboards.admin.main_kb import get_admin_main_keyboard
+        
+        welcome_text = "🛠️ **Panel de Administración Moderno**\n\n"
+        welcome_text += "• Gestión completa de usuarios y roles\n"
+        welcome_text += "• Administración de canales VIP y gratuitos\n"
+        welcome_text += "• Gestión de tarifas y tokens\n"
+        welcome_text += "• Acceso a estadísticas y analíticas\n"
+        welcome_text += "\n🆕 **SISTEMA MODERNO ACTIVO**\n"
+        welcome_text += "Selecciona una opción del menú:"
+        
+        await query.message.edit_text(welcome_text, parse_mode="Markdown", reply_markup=get_admin_main_keyboard())
+        await query.answer()
+
     async def handle_free_channel_menu_callback(self, query: types.CallbackQuery):
         is_configured = self._admin_service.get_free_channel_id() is not None
         await query.message.edit_text(
@@ -171,6 +285,14 @@ class Handlers:
         dp.callback_query.register(self.handle_view_tariff_callback, F.data.startswith("admin:view_tariff_"))
         dp.callback_query.register(self.handle_delete_tariff_callback, F.data.startswith("admin:delete_tariff_"))
         dp.callback_query.register(self.handle_generate_token_callback, F.data.startswith("admin:generate_token_"))
+        
+        # Callbacks del menú moderno
+        dp.callback_query.register(self.handle_admin_tariffs_callback, F.data == "admin:tariffs")
+        dp.callback_query.register(self.handle_admin_tokens_callback, F.data == "admin:tokens")
+        dp.callback_query.register(self.handle_admin_roles_callback, F.data == "admin:roles")
+        dp.callback_query.register(self.handle_admin_stats_callback, F.data == "admin:stats")
+        dp.callback_query.register(self.handle_admin_settings_callback, F.data == "admin:settings")
+        dp.callback_query.register(self.handle_admin_main_callback, F.data == "admin:main")
 
     # Flujo de Admin VIP
     async def handle_vip_channel_menu_callback(self, query: types.CallbackQuery):
