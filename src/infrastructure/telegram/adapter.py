@@ -34,9 +34,10 @@ class TelegramAdapter:
 
     def _register_handlers(self):
         """🚀 Registra el sistema maestro Diana."""
-        # Setup tariff service
+        # Setup services
         import asyncio
         asyncio.create_task(self._tariff_service.setup())
+        asyncio.create_task(self._daily_rewards_service.setup())
         
         # Register the Diana Master System
         self.diana_master = register_diana_master_system(self.dp, self._services)

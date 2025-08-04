@@ -51,6 +51,11 @@ class DailyRewardsService(ICoreService):
         self._user_claims = {}  # user_id -> RewardClaim
         self._consecutive_streaks = {}  # user_id -> days
         
+    async def setup(self) -> None:
+        """Inicializa el servicio de recompensas diarias."""
+        # Nothing to setup for now - all data is in memory
+        logger.info("DailyRewardsService initialized successfully")
+        
     def _initialize_rewards(self) -> Dict[str, DailyReward]:
         """Inicializa las recompensas disponibles."""
         rewards = {
