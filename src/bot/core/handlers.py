@@ -9,7 +9,7 @@ from src.modules.gamification.service import GamificationService
 from ..services.admin import AdminService
 
 from ..handlers.user import register_user_handlers
-from ..handlers.admin import register_admin_handlers
+# from ..handlers.admin import register_admin_handlers  # ELIMINADO - Será reemplazado por menú maestro
 # from ..handlers.vip import register_vip_handlers  # Módulo no existe
 from ..handlers.narrative import register_narrative_handlers
 from ..handlers.gamification import register_gamification_handlers
@@ -31,8 +31,8 @@ def setup_handlers(dp: Dispatcher) -> None:
     logger.info("Manejadores de usuarios registrados")
     
     # Registrar manejadores de administradores
-    register_admin_handlers(dp, admin_service)
-    logger.info("Manejadores de administradores registrados")
+    # register_admin_handlers(dp, admin_service)  # ELIMINADO - Será manejado por menú maestro
+    # logger.info("Manejadores de administradores registrados")
     
     # Registrar manejadores de usuarios VIP
     # register_vip_handlers(dp)  # Módulo no existe
