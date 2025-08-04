@@ -59,10 +59,21 @@ class Handlers:
             return
             
         print(f"✅ ADMIN: Usuario admin autenticado: {user_id}")
+        # Importar el keyboard moderno
+        from src.bot.keyboards.admin.main_kb import get_admin_main_keyboard
+        
+        welcome_text = "🛠️ **Panel de Administración Moderno**\n\n"
+        welcome_text += "• Gestión completa de usuarios y roles\n"
+        welcome_text += "• Administración de canales VIP y gratuitos\n"
+        welcome_text += "• Gestión de tarifas y tokens\n"
+        welcome_text += "• Acceso a estadísticas y analíticas\n"
+        welcome_text += "\n🆕 **SISTEMA MODERNO ACTIVO**\n"
+        welcome_text += "Selecciona una opción del menú:"
+        
         await message.answer(
-            "🛠️ **Panel de Administración**\n\nBienvenido al panel de administrador.\n\nSelecciona una opción del menú:",
+            welcome_text,
             parse_mode="Markdown",
-            reply_markup=get_admin_menu_keyboard()
+            reply_markup=get_admin_main_keyboard()
         )
 
     async def handle_free_channel_menu_callback(self, query: types.CallbackQuery):
@@ -139,7 +150,7 @@ class Handlers:
 
     def register(self, dp: Dispatcher):
         dp.message.register(self.handle_start, CommandStart())
-        # dp.message.register(self.handle_admin_command, Command("admin"))  # Desactivado: sistema moderno activo
+        dp.message.register(self.handle_admin_command, Command("admin"))  # Reactivado con menú moderno
         dp.callback_query.register(self.handle_free_channel_menu_callback, F.data == "admin:free_channel_menu")
         dp.callback_query.register(self.handle_setup_free_channel_callback, F.data == "admin:setup_free_channel")
         dp.callback_query.register(self.handle_set_wait_time_callback, F.data == "admin:set_wait_time")
@@ -233,8 +244,7 @@ class Handlers:
         else:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
-# def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
-#     """Configura todos los handlers de la aplicación.""" 
-#     handler_instance = Handlers(event_bus, gamification_service, admin_service)
-#     handler_instance.register(dp)
-#     # COMENTADO: Sistema legacy reemplazado por src/bot/core/handlers.py
+def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
+    """Configura todos los handlers de la aplicación.""" 
+    handler_instance = Handlers(event_bus, gamification_service, admin_service)
+    handler_instance.register(dp)

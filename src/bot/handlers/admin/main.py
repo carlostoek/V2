@@ -7,14 +7,6 @@ from ...filters.role import IsAdminFilter
 
 admin_main_router = Router()
 
-# TEMPORAL: Handler de debug sin filtros para ver si llega el comando
-@admin_main_router.message(Command("admin"))
-async def admin_debug(message: Message):
-    """Handler temporal para debugging del comando admin."""
-    print(f"🔍 DEBUG: Comando /admin recibido de user_id: {message.from_user.id}")
-    print(f"🔍 DEBUG: Username: {message.from_user.username}")
-    # No procesar aquí, solo loggear
-
 @admin_main_router.message(Command("admin"))
 async def admin_start(message: Message):
     """Handler para el comando /admin."""
