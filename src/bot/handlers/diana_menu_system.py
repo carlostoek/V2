@@ -445,4 +445,171 @@ class DianaMenuSystem:
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
-                I
+                InlineKeyboardButton(text="📺 Canales", callback_data="action:config_channels"),
+                InlineKeyboardButton(text="⏰ Tiempos", callback_data="action:config_times")
+            ],
+            [
+                InlineKeyboardButton(text="🎮 Gamificación", callback_data="action:config_gamification"),
+                InlineKeyboardButton(text="💬 Mensajes", callback_data="action:config_messages")
+            ],
+            [
+                InlineKeyboardButton(text="🔐 Seguridad", callback_data="action:config_security"),
+                InlineKeyboardButton(text="🌐 Sistema", callback_data="action:config_system")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Panel Admin", callback_data="admin_menu")
+            ]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+    async def show_vip_management(self, callback: CallbackQuery):
+        """Gestión completa del sistema VIP"""
+        
+        try:
+            tariffs = await self.admin_service.get_all_tariffs()
+            tariff_count = len(tariffs) if tariffs else 0
+        except Exception as e:
+            logger.error(f"Error obteniendo tarifas: {e}")
+            tariff_count = 0
+        
+        text = "💎 **Gestión VIP Completa**\n\n"
+        text += f"📊 **Tarifas activas:** {tariff_count}\n"
+        text += "🎫 **Tokens generados:** Disponible\n"
+        text += "👥 **Usuarios VIP:** Gestión completa\n\n"
+        text += "🔧 **Herramientas disponibles:**"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="💰 Gestionar Tarifas", callback_data="action:manage_tariffs"),
+                InlineKeyboardButton(text="🎫 Generar Tokens", callback_data="action:generate_tokens")
+            ],
+            [
+                InlineKeyboardButton(text="👥 Usuarios VIP", callback_data="action:vip_users"),
+                InlineKeyboardButton(text="📊 Stats VIP", callback_data="action:vip_stats")
+            ],
+            [
+                InlineKeyboardButton(text="🏆 Subastas Admin", callback_data="action:manage_auctions"),
+                InlineKeyboardButton(text="⚡ Beneficios VIP", callback_data="action:vip_benefits")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Panel Admin", callback_data="admin_menu")
+            ]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+    # ==================== MANEJADOR DE ACCIONES ====================
+    
+    async def handle_actions(self, callback: CallbackQuery):
+        """Maneja todas las acciones específicas del sistema"""
+        
+        action = callback.data.split(":")[1]
+        user_id = callback.from_user.id
+        
+        try:
+            if action == "help":
+                await self.show_help(callback)
+            elif action == "profile":
+                await self.show_user_profile(callback)
+            elif action == "become_vip":
+                await self.show_become_vip(callback)
+            elif action == "claim_daily_reward":
+                await self.claim_daily_reward(callback)
+            elif action == "start_daily_trivia":
+                await self.start_daily_trivia(callback)
+            # ... más acciones específicas
+            else:
+                await callback.answer("🚧 Función en desarrollo", show_alert=True)
+                
+        except Exception as e:
+            logger.error(f"Error en acción {action}: {e}")
+            await callback.answer("❌ Error procesando la acción", show_alert=True)
+
+    async def show_help(self, callback: CallbackQuery):
+        """Muestra la ayuda del sistema"""
+        
+        text = "ℹ️ **Ayuda - Diana Bot V2**\n\n"
+        text += "🎭 **¿Qué puedo hacer?**\n\n"
+        text += "💎 **Como VIP:**\n"
+        text += "• Participar en subastas exclusivas\n"
+        text += "• Acceso a tienda premium\n"
+        text += "• Regalos y trivias especiales\n\n"
+        text += "🎮 **Como Usuario:**\n"
+        text += "• Reclamar regalos diarios\n"
+        text += "• Responder trivias\n"
+        text += "• Comprar en la tienda básica\n"
+        text += "• Completar misiones\n\n"
+        text += "📞 **Soporte:** @admin_diana"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="💎 ¿Cómo ser VIP?", callback_data="action:become_vip"),
+                InlineKeyboardButton(text="🎮 Guía de Usuario", callback_data="action:user_guide")
+            ],
+            [
+                InlineKeyboardButton(text="❓ FAQ", callback_data="action:faq"),
+                InlineKeyboardButton(text="📞 Contactar Soporte", callback_data="action:contact_support")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Menú Principal", callback_data="main_menu")
+            ]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+
+    async def claim_daily_reward(self, callback: CallbackQuery):
+        """Reclama el regalo diario"""
+        
+        user_id = callback.from_user.id
+        
+        try:
+            result = await self.daily_rewards_service.claim_daily_reward(user_id)
+            
+            if result.get('success'):
+                reward = result.get('reward', {})
+                points = reward.get('points', 0)
+                streak = result.get('streak', 1)
+                
+                text = "🎁✨ **¡REGALO RECLAMADO!**\n\n"
+                text += f"💰 **Has ganado:** {points} besitos\n"
+                text += f"🔥 **Racha:** {streak} días consecutivos\n\n"
+                text += "🎯 **¡Vuelve mañana para mantener tu racha!**"
+                
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🔥 Ver Ranking", callback_data="action:daily_leaderboard")
+                    ],
+                    [
+                        InlineKeyboardButton(text="🎮 Menú Usuario", callback_data="user_menu"),
+                        InlineKeyboardButton(text="🏠 Inicio", callback_data="main_menu")
+                    ]
+                ])
+                
+                await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+                await callback.answer("🎁 ¡Regalo reclamado exitosamente!", show_alert=True)
+                
+            else:
+                await callback.answer("❌ No puedes reclamar el regalo ahora", show_alert=True)
+                
+        except Exception as e:
+            logger.error(f"Error reclamando regalo: {e}")
+            await callback.answer("❌ Error al reclamar el regalo", show_alert=True)
+
+    # ==================== UTILIDADES ====================
+    
+    def get_router(self):
+        """Retorna el router configurado"""
+        return self.router
+
+# ==================== FUNCIÓN DE CONFIGURACIÓN ====================
+
+def setup_diana_menu_system(dp):
+    """Configura el sistema de menús en el dispatcher"""
+    
+    menu_system = DianaMenuSystem()
+    dp.include_router(menu_system.get_router())
+    
+    logger.info("🎭 Sistema de menús Diana Bot V2 configurado correctamente")
+    
+    return menu_system
