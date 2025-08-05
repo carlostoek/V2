@@ -602,3 +602,47 @@ class NarrativeService(ICoreService):
             return False
 
 # Importación de datetime ya está al principio del archivo
+
+    # === DIANA MASTER SYSTEM INTEGRATION METHODS ===
+
+    async def get_diana_narrative_context(self, user_id: int) -> Dict:
+        """
+        Obtiene un resumen del contexto narrativo para Diana Master System.
+        """
+        fragment = await self.get_user_fragment(user_id)
+        lore_pieces = await self.get_user_lore_pieces(user_id)
+        
+        # Calcular un score de progreso simple
+        progress = 0
+        if fragment:
+            # Asumimos que los niveles más altos indican más progreso
+            progress += fragment.get('level_required', 0) * 5
+        progress += len(lore_pieces) * 2
+        
+        return {
+            "progress": min(100, progress),  # Normalizado a 100
+            "current_story_arc": fragment.get('title', 'El Despertar') if fragment else 'N/A',
+            "unlocked_lore_pieces": len(lore_pieces)
+        }
+
+    async def get_adaptive_story_options(self, user_id: int, mood: 'UserMoodState') -> List:
+        """
+        Obtiene una lista de opciones de historia adaptadas al mood del usuario.
+        """
+        fragment = await self.get_user_fragment(user_id)
+        if not fragment or not fragment.get('choices'):
+            return []
+
+        choices = fragment.get('choices')
+
+        # Lógica de filtrado simple basada en el mood
+        if mood.value == "storyteller":
+            # El narrador ve todas las opciones
+            return choices
+        elif mood.value == "achiever":
+            # El conquistador ve las opciones que llevan a recompensas (si tuvieran esa data)
+            # Por ahora, solo las dos primeras
+            return choices[:2]
+        else:
+            # Otros moods ven solo la primera opción para no abrumar
+            return choices[:1]

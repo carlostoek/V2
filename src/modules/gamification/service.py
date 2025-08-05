@@ -1233,3 +1233,37 @@ class GamificationService(ICoreService):
                         
         except Exception as e:
             log.error(f"Error verificando logros de validación Diana: {e}")
+
+    # === DIANA MASTER SYSTEM INTEGRATION METHODS ===
+
+    async def get_diana_gamification_summary(self, user_id: int) -> Dict:
+        """
+        Obtiene un resumen de gamificación optimizado para Diana Master System.
+        """
+        stats = await self.get_user_points(user_id)
+        missions = await self.get_user_missions(user_id)
+        
+        return {
+            "level": stats.get('level', 1),
+            "points": stats.get('current_points', 0),
+            "active_missions_count": len(missions.get("in_progress", [])),
+            "streak": 0  # Placeholder, se necesita implementar racha
+        }
+
+    async def get_adaptive_missions(self, user_id: int, mood: 'UserMoodState') -> List:
+        """
+        Obtiene una lista de misiones adaptadas al mood del usuario.
+        """
+        all_missions = await self.get_user_missions(user_id)
+        available_missions = all_missions.get("available", []) + all_missions.get("in_progress", [])
+
+        # Lógica de filtrado simple basada en el mood
+        if mood.value == "achiever":
+            # Priorizar misiones de tipo "completar X"
+            return sorted(available_missions, key=lambda x: x.get('progress_percentage', 0), reverse=True)[:3]
+        elif mood.value == "explorer":
+            # Priorizar misiones no iniciadas
+            return [m for m in available_missions if m.get('progress_percentage', 0) == 0][:3]
+        else:
+            # Devolver las 3 primeras misiones disponibles
+            return available_missions[:3]

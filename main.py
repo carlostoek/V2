@@ -8,6 +8,7 @@ from src.modules.gamification.service import GamificationService
 from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.admin.service import AdminService
+from src.bot.core.diana_master_system import DianaMasterInterface, AdaptiveContextEngine
 from src.bot.database.engine import init_db
 from src.utils.sexy_logger import log
 
@@ -44,6 +45,17 @@ async def main():
         await admin_service.setup()
         log.success("✅ Todos los servicios conectados al Event Bus")
 
+    with log.section("INICIALIZACIÓN DE DIANA MASTER SYSTEM", "🤖"):
+        log.startup("Configurando Diana Master System...")
+        diana_context_engine = AdaptiveContextEngine({
+            'gamification': gamification_service,
+            'narrative': narrative_service,
+            'user': user_service,
+            'admin': admin_service
+        })
+        diana_interface = DianaMasterInterface(diana_context_engine)
+        log.success("✅ Diana Master System configurado")
+
     with log.section("INICIALIZACIÓN DE TELEGRAM", "📱"):
         log.startup("Configurando adaptador de Telegram...")
         adapter = TelegramAdapter(
@@ -51,7 +63,8 @@ async def main():
             event_bus=event_bus, 
             gamification_service=gamification_service,
             admin_service=admin_service,
-            narrative_service=narrative_service
+            narrative_service=narrative_service,
+            diana_interface=diana_interface
         )
         
         log.startup("Iniciando Bot de Telegram...")

@@ -34,6 +34,30 @@ async def safe_edit_message(callback: CallbackQuery, text: str, keyboard: Inline
             await callback.answer(f"Error: {str(e)}")
             raise e
 
+from aiogram.dispatcher.middlewares.base import BaseMiddleware
+from aiogram.types import CallbackQuery
+from typing import Callable, Dict, Any, Awaitable
+
+# === MIDDLEWARE FOR DI INJECTION ===
+
+class PassDianaInterfaceMiddleware(BaseMiddleware):
+    """
+    Middleware to pass DianaMasterInterface to handlers.
+    A simple DI mechanism for aiogram.
+    """
+    def __init__(self, diana_interface: "DianaMasterInterface"):
+        super().__init__()
+        self.diana_interface = diana_interface
+
+    async def __call__(
+        self,
+        handler: Callable[[CallbackQuery, Dict[str, Any]], Awaitable[Any]],
+        event: CallbackQuery,
+        data: Dict[str, Any]
+    ) -> Any:
+        data['diana_interface'] = self.diana_interface
+        return await handler(event, data)
+
 # === REVOLUTIONARY CONTEXT ENGINE ===
 
 class UserMoodState(Enum):
@@ -557,11 +581,7 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     user_id = callback.from_user.id
     
     # Route to specialized handlers based on action
-    if action == "refresh":
-        text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
-        await safe_edit_message(callback, text, keyboard)
-        
-    elif action.startswith("epic_shop"):
+    if action.startswith("epic_shop"):
         await handle_epic_shop(callback, diana_master)
         
     elif action.startswith("missions_hub"):
@@ -570,22 +590,18 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     elif action.startswith("narrative_hub"):
         await handle_narrative_hub(callback, diana_master)
         
-    elif action == "surprise_me":
-        await handle_surprise_feature(callback, diana_master)
-        
     elif action == "daily_gift":
         await handle_daily_gift(callback, diana_master)
         
     elif action.startswith("trivia"):
         await handle_trivia_challenge(callback, diana_master)
         
-    elif action.startswith("smart_help"):
-        await handle_smart_help(callback, diana_master)
-        
     else:
-        # Unknown action - show main menu
-        text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
-        await safe_edit_message(callback, text, keyboard)
+        # Unknown actions are handled by other routers or will be ignored.
+        # This keeps the master router clean.
+        # We let the callback bubble up or be handled by the new core_handlers.
+        logger.info(f"Callback {callback.data} not handled in master router, expecting other handlers.")
+        return  # Explicitly return to not send a default answer.
     
     await callback.answer()
 
@@ -933,18 +949,32 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
     await callback.message.edit_text(help_text, reply_markup=keyboard, parse_mode="Markdown")
 
 
+from src.bot.handlers.diana.core_handlers import register_core_diana_handlers
+from src.bot.handlers.diana.mapping_handlers import register_diana_mapping_handlers
+from src.bot.handlers.diana.gamification_handlers import register_gamification_diana_handlers
+
+
 # === EXPORT FOR REGISTRATION ===
 
-def register_diana_master_system(dp, services: Dict[str, Any]):
+def register_diana_master_system(dp, diana_interface: DianaMasterInterface, services: Dict[str, Any]):
     """🏛️ Register the complete Diana Master System"""
     
-    # Initialize the system
-    initialize_diana_master(services)
+    # Pass the diana_interface to the handlers that need it
+    master_router.callback_query.middleware(PassDianaInterfaceMiddleware(diana_interface))
     
-    # Register the router
+    # Register core handlers
+    register_core_diana_handlers(master_router)
+    
+    # Register mapping handlers and inject services
+    register_diana_mapping_handlers(master_router, services)
+
+    # Register gamification handlers
+    register_gamification_diana_handlers(master_router)
+    
+    # Register the main router
     dp.include_router(master_router)
     
     print("🎭 Diana Master System initialized successfully!")
     print("🚀 Ready to provide next-generation user experiences!")
     
-    return diana_master
+    return diana_interface
