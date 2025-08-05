@@ -2,12 +2,13 @@ import asyncio
 import os
 
 from src.core.event_bus import EventBus
-from src.core.services.config import settings
+from src.bot.config.settings import settings
 from src.infrastructure.telegram.adapter import TelegramAdapter
 from src.modules.gamification.service import GamificationService
 from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.admin.service import AdminService
+from src.bot.core.diana_master_system import DianaMasterInterface, set_diana_master_instance
 from src.bot.database.engine import init_db
 from src.utils.sexy_logger import log
 
@@ -44,6 +45,22 @@ async def main():
         await admin_service.setup()
         log.success("✅ Todos los servicios conectados al Event Bus")
 
+    with log.section("INICIALIZACIÓN DE DIANA MASTER SYSTEM", "🎭"):
+        log.startup("Creando diccionario de servicios para DMS...")
+        services = {
+            'gamification': gamification_service,
+            'narrative': narrative_service,
+            'user': user_service,
+            'admin': admin_service,
+            'event_bus': event_bus
+        }
+        log.success("✅ Diccionario de servicios creado")
+
+        log.startup("Inicializando Diana Master Interface...")
+        diana_interface = DianaMasterInterface(services)
+        set_diana_master_instance(diana_interface)
+        log.success("✅ Diana Master Interface inicializada y configurada globalmente")
+
     with log.section("INICIALIZACIÓN DE TELEGRAM", "📱"):
         log.startup("Configurando adaptador de Telegram...")
         adapter = TelegramAdapter(
@@ -52,7 +69,8 @@ async def main():
             gamification_service=gamification_service,
             admin_service=admin_service,
             narrative_service=narrative_service,
-            user_service=user_service
+            user_service=user_service,
+            diana_interface=diana_interface
         )
         
         log.startup("Iniciando Bot de Telegram...")

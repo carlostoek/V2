@@ -517,14 +517,17 @@ class DianaMasterInterface:
 
 master_router = Router()
 
-# Initialize the system when imported
+# This global instance will be set by main.py at startup
 diana_master: Optional[DianaMasterInterface] = None
 
-def initialize_diana_master(services: Dict[str, Any]):
-    """🚀 Initialize the Diana Master System"""
+def set_diana_master_instance(instance: DianaMasterInterface):
+    """
+    Sets the global Diana Master System instance.
+    This allows handlers defined in this module to access the instance
+    created in main.py, solving the dependency injection problem in a simple way.
+    """
     global diana_master
-    diana_master = DianaMasterInterface(services)
-    return diana_master
+    diana_master = instance
 
 
 # === COMMAND HANDLERS ===
@@ -1540,18 +1543,4 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
     await callback.message.edit_text(help_text, reply_markup=keyboard, parse_mode="Markdown")
 
 
-# === EXPORT FOR REGISTRATION ===
 
-def register_diana_master_system(dp, services: Dict[str, Any]):
-    """🏛️ Register the complete Diana Master System"""
-    
-    # Initialize the system
-    initialize_diana_master(services)
-    
-    # Register the router
-    dp.include_router(master_router)
-    
-    print("🎭 Diana Master System initialized successfully!")
-    print("🚀 Ready to provide next-generation user experiences!")
-    
-    return diana_master

@@ -16,14 +16,7 @@ class Settings(BaseSettings):
 
     bot_token: str = "default-token"  # Provide default for tests
 
-# Only initialize if not in test environment
-settings = None
-if "pytest" not in os.environ.get("_", ""):
-    try:
-        settings = Settings()
-    except Exception:
-        # Fallback for test environments
-        settings = Settings(bot_token="test-token")
+settings = Settings()
 
 class CentralConfig:
     """

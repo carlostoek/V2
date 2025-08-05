@@ -8,10 +8,10 @@ from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.tariff.service import TariffService
 from src.modules.daily_rewards.service import DailyRewardsService
-from src.bot.core.diana_master_system import register_diana_master_system
+from src.bot.core.diana_master_system import DianaMasterInterface, master_router
 
 class TelegramAdapter:
-    def __init__(self, bot_token: str, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, narrative_service: NarrativeService = None, user_service: UserService = None):
+    def __init__(self, bot_token: str, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, narrative_service: NarrativeService = None, user_service: UserService = None, diana_interface: DianaMasterInterface = None):
         self.bot = Bot(token=bot_token, default_parse_mode=ParseMode.HTML)
         self.dp = Dispatcher()
         self._event_bus = event_bus
@@ -19,6 +19,7 @@ class TelegramAdapter:
         self._admin_service = admin_service
         self._narrative_service = narrative_service
         self._user_service = user_service
+        self.diana_interface = diana_interface
         
         # Initialize additional services
         self._tariff_service = TariffService(event_bus)
@@ -43,7 +44,7 @@ class TelegramAdapter:
         asyncio.create_task(self._daily_rewards_service.setup())
         
         # Register the Diana Master System
-        self.diana_master = register_diana_master_system(self.dp, self._services)
+        self.dp.include_router(master_router)
         print("🎭 Diana Master System successfully integrated!")
 
     async def start(self):
