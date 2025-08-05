@@ -12,6 +12,7 @@ from ..services.user import UserService
 from ..services.emotional import EmotionalService
 from ..services.admin import AdminService
 from ..database import get_session
+from .diana_master_system import DianaMasterInterface, AdaptiveContextEngine
 
 T = TypeVar('T')
 
@@ -67,8 +68,25 @@ async def setup_di_container(bot: Bot, dp: Dispatcher) -> Container:
         container.register(UserService, user_service)
         container.register(EmotionalService, emotional_service)
         container.register(AdminService, admin_service)
+        
+        # Configurar Diana Master System
+        diana_services = {
+            'gamification': gamification_service,
+            'narrative': narrative_service,
+            'user': user_service,
+            'admin': admin_service,
+            'event_bus': event_bus
+        }
+        
+        # Crear y registrar Diana Master System
+        diana_context_engine = AdaptiveContextEngine(diana_services)
+        diana_interface = DianaMasterInterface(diana_services)
+        
+        container.register(AdaptiveContextEngine, diana_context_engine)
+        container.register(DianaMasterInterface, diana_interface)
+        
         break # Solo necesitamos una sesión para la inyección
     
-    logger.info("Contenedor de inyección de dependencias configurado")
+    logger.info("Contenedor de inyección de dependencias configurado con Diana Master System")
     
     return container

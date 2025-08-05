@@ -450,7 +450,12 @@ class DianaMasterInterface:
         if context.current_mood == UserMoodState.ACHIEVER:
             buttons.append([
                 InlineKeyboardButton(text="🎯 Centro de Misiones", callback_data="diana:missions_hub"),
-                InlineKeyboardButton(text="📊 Mi Progreso", callback_data="diana:progress_tracker")
+                InlineKeyboardButton(text="🏆 Motor de Logros", callback_data="diana:achievement_engine")
+            ])
+            # Add leaderboard for competitive achievers
+            buttons.append([
+                InlineKeyboardButton(text="📊 Mi Progreso", callback_data="diana:progress_tracker"),
+                InlineKeyboardButton(text="🏆 Rankings", callback_data="diana:leaderboard_system")
             ])
         
         elif context.current_mood == UserMoodState.COLLECTOR:
@@ -474,7 +479,12 @@ class DianaMasterInterface:
         elif context.current_mood == UserMoodState.OPTIMIZER:
             buttons.append([
                 InlineKeyboardButton(text="📊 Dashboard Pro", callback_data="diana:pro_dashboard"),
-                InlineKeyboardButton(text="⚙️ Configuración", callback_data="diana:settings")
+                InlineKeyboardButton(text="⚙️ Config Gamificación", callback_data="diana:gamification_settings")
+            ])
+            # Add advanced gamification row for optimizers
+            buttons.append([
+                InlineKeyboardButton(text="💰 Calculadora Rewards", callback_data="diana:reward_calculator"),
+                InlineKeyboardButton(text="🏆 Rankings", callback_data="diana:leaderboard_system")
             ])
         
         else:  # Newcomer/Socializer/Default
@@ -556,31 +566,136 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     action = callback.data.replace("diana:", "")
     user_id = callback.from_user.id
     
+    # Import existing handlers for integration
+    try:
+        from src.bot.handlers.gamification.misiones import handle_missions_callback
+        from src.bot.handlers.user.shop import shop_main_callback
+        from src.bot.handlers.narrative.navigation import show_current_fragment
+        from src.bot.handlers.user.trivia import trivia_start_callback
+        from src.bot.handlers.user.daily_rewards import daily_main_callback
+    except ImportError as e:
+        diana_master.logger.warning(f"Could not import existing handlers: {e}")
+    
+    # Import FASE 2 core handlers
+    try:
+        from src.bot.handlers.diana.core_handlers import (
+            handle_progress_tracker,
+            handle_pro_dashboard,
+            handle_explore_mode,
+            handle_start_journey,
+            handle_guided_tour,
+            handle_collection,
+            handle_story_choices
+        )
+    except ImportError:
+        diana_master.logger.warning("FASE 2 core handlers not yet implemented")
+    
+    # Import FASE 2.3 advanced gamification handlers
+    try:
+        from src.bot.handlers.diana.advanced_gamification_handlers import (
+            handle_achievement_engine,
+            handle_reward_calculator,
+            handle_leaderboard_system,
+            handle_gamification_settings
+        )
+    except ImportError:
+        diana_master.logger.warning("FASE 2.3 advanced gamification handlers not yet implemented")
+    
     # Route to specialized handlers based on action
     if action == "refresh":
         text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
         await safe_edit_message(callback, text, keyboard)
         
-    elif action.startswith("epic_shop"):
-        await handle_epic_shop(callback, diana_master)
-        
+    # === EXISTING HANDLERS INTEGRATION (FASE 2.2) ===
     elif action.startswith("missions_hub"):
-        await handle_missions_hub(callback, diana_master)
+        await handle_diana_missions_integration(callback, diana_master)
+        
+    elif action.startswith("epic_shop"):
+        await handle_diana_shop_integration(callback, diana_master)
         
     elif action.startswith("narrative_hub"):
-        await handle_narrative_hub(callback, diana_master)
+        await handle_diana_narrative_integration(callback, diana_master)
         
+    elif action.startswith("trivia_challenge"):
+        await handle_diana_trivia_integration(callback, diana_master)
+        
+    elif action == "daily_gift":
+        await handle_diana_daily_rewards_integration(callback, diana_master)
+    
+    # === DIANA MASTER SPECIFIC HANDLERS ===
     elif action == "surprise_me":
         await handle_surprise_feature(callback, diana_master)
         
-    elif action == "daily_gift":
-        await handle_daily_gift(callback, diana_master)
-        
-    elif action.startswith("trivia"):
-        await handle_trivia_challenge(callback, diana_master)
-        
     elif action.startswith("smart_help"):
         await handle_smart_help(callback, diana_master)
+    
+    # === FASE 2 CORE HANDLERS - NEW IMPLEMENTATIONS ===
+    elif action == "progress_tracker":
+        try:
+            await handle_progress_tracker(callback, diana_master)
+        except NameError:
+            await handle_progress_tracker_fallback(callback, diana_master)
+        
+    elif action == "pro_dashboard":  
+        try:
+            await handle_pro_dashboard(callback, diana_master)
+        except NameError:
+            await handle_pro_dashboard_fallback(callback, diana_master)
+        
+    elif action == "explore_mode":
+        try:
+            await handle_explore_mode(callback, diana_master)
+        except NameError:
+            await handle_explore_mode_fallback(callback, diana_master)
+        
+    elif action == "start_journey":
+        try:
+            await handle_start_journey(callback, diana_master)
+        except NameError:
+            await handle_start_journey_fallback(callback, diana_master)
+        
+    elif action == "guided_tour":
+        try:
+            await handle_guided_tour(callback, diana_master)
+        except NameError:
+            await handle_guided_tour_fallback(callback, diana_master)
+        
+    elif action == "collection":
+        try:
+            await handle_collection(callback, diana_master)
+        except NameError:
+            await handle_collection_fallback(callback, diana_master)
+        
+    elif action == "story_choices":
+        try:
+            await handle_story_choices(callback, diana_master)
+        except NameError:
+            await handle_story_choices_fallback(callback, diana_master)
+    
+    # === FASE 2.3 ADVANCED GAMIFICATION HANDLERS ===
+    elif action == "achievement_engine":
+        try:
+            await handle_achievement_engine(callback, diana_master)
+        except NameError:
+            await handle_achievement_engine_fallback(callback, diana_master)
+        
+    elif action == "reward_calculator":
+        try:
+            await handle_reward_calculator(callback, diana_master)
+        except NameError:
+            await handle_reward_calculator_fallback(callback, diana_master)
+        
+    elif action == "leaderboard_system":
+        try:
+            await handle_leaderboard_system(callback, diana_master)
+        except NameError:
+            await handle_leaderboard_system_fallback(callback, diana_master)
+        
+    elif action == "gamification_settings":
+        try:
+            await handle_gamification_settings(callback, diana_master)
+        except NameError:
+            await handle_gamification_settings_fallback(callback, diana_master)
         
     else:
         # Unknown action - show main menu
@@ -635,15 +750,96 @@ async def handle_trivia_callbacks(callback: CallbackQuery):
 
 # === SPECIALIZED HANDLERS ===
 
-async def handle_epic_shop(callback: CallbackQuery, master: DianaMasterInterface):
-    """🛒 Epic Shop Experience"""
+# === FASE 2.2 INTEGRATION HANDLERS ===
+
+async def handle_diana_missions_integration(callback: CallbackQuery, master: DianaMasterInterface):
+    """🎯 Diana Master Missions Hub Integration"""
+    user_id = callback.from_user.id
+    
+    # Get Diana Master context
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    # Get missions data from gamification service
+    try:
+        if master.services.get('gamification'):
+            missions = await master.services['gamification'].get_user_missions(user_id)
+        else:
+            # Fallback mock data
+            missions = {
+                "available": [],
+                "in_progress": [],
+                "completed": []
+            }
+    except Exception as e:
+        master.logger.warning(f"Error getting missions: {e}")
+        missions = {"available": [], "in_progress": [], "completed": []}
+    
+    # Create Diana Master style missions interface
+    missions_text = "🎯 **CENTRO DE MISIONES DIANA**\n\n"
+    
+    if context.current_mood == UserMoodState.ACHIEVER:
+        missions_text += "⚡ *¡Modo conquistador activado! Estas misiones son perfectas para ti*\n\n"
+    else:
+        missions_text += "🌟 *Nuevas aventuras te esperan, valiente explorador*\n\n"
+    
+    # Mission statistics
+    available_count = len(missions["available"])
+    in_progress_count = len(missions["in_progress"])
+    completed_count = len(missions["completed"])
+    total_count = available_count + in_progress_count + completed_count
+    
+    if total_count > 0:
+        missions_text += f"📊 **ESTADO DE MISIONES:**\n"
+        missions_text += f"• {available_count} misiones disponibles\n"
+        missions_text += f"• {in_progress_count} misiones en progreso\n"
+        missions_text += f"• {completed_count} misiones completadas\n\n"
+        
+        # Show some missions preview
+        if missions["in_progress"]:
+            missions_text += "**🔥 MISIONES EN PROGRESO:**\n"
+            for mission in missions["in_progress"][:2]:  # Show max 2
+                progress = mission.get('progress_percentage', 0)
+                missions_text += f"• {mission['title']} ({progress:.0f}%)\n"
+            missions_text += "\n"
+        
+        if missions["available"]:
+            missions_text += "**✨ NUEVAS MISIONES:**\n"
+            for mission in missions["available"][:2]:  # Show max 2
+                missions_text += f"• {mission['title']}\n"
+            missions_text += "\n"
+    else:
+        missions_text += "🌟 **PREPARÁNDOTE NUEVAS AVENTURAS**\n\n"
+        missions_text += "Interactúa con Diana y explora la narrativa para desbloquear misiones épicas.\n\n"
+    
+    # Get user stats for display
+    try:
+        if hasattr(master.services['gamification'], 'get_user_points'):
+            user_stats = await master.services['gamification'].get_user_points(user_id)
+        else:
+            user_stats = {'level': 1, 'points': 0, 'streak': 0}
+    except:
+        user_stats = {'level': 1, 'points': 0, 'streak': 0}
+    
+    missions_text += f"📊 **TU PROGRESO:**\n"
+    missions_text += f"⭐ Nivel: {user_stats.get('level', 1)} | 💰 Besitos: {user_stats.get('points', 0)}\n"
+    missions_text += f"🔥 Racha actual: {user_stats.get('streak', 0)} días"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📋 Ver Todas las Misiones", callback_data="missions:active")],
+        [InlineKeyboardButton(text="🏆 Misiones Completadas", callback_data="missions:completed")],
+        [InlineKeyboardButton(text="🔍 Buscar Nuevas Misiones", callback_data="missions:find")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, missions_text, keyboard)
+
+
+async def handle_diana_shop_integration(callback: CallbackQuery, master: DianaMasterInterface):
+    """🛒 Diana Master Shop Integration"""
     user_id = callback.from_user.id
     
     # Get user context for personalized shop experience
     context = await master.context_engine.analyze_user_context(user_id)
-    
-    # Get available tariffs
-    tariffs = await master.services['tariff'].get_all_tariffs()
     
     shop_text = "🛒 **TIENDA ÉPICA DE DIANA**\n\n"
     
@@ -654,81 +850,55 @@ async def handle_epic_shop(callback: CallbackQuery, master: DianaMasterInterface
     else:
         shop_text += "✨ *Descubre tesoros únicos en nuestro catálogo*\n\n"
     
-    # Build tariff list
-    if tariffs:
-        shop_text += "**🎭 SUSCRIPCIONES VIP DISPONIBLES:**\n"
-        for tariff in tariffs:
-            shop_text += f"• **{tariff.name}** - ${tariff.price}\n"
-            shop_text += f"  ⏰ {tariff.duration_days} días | {tariff.description}\n\n"
-    else:
-        shop_text += "🔧 *Próximamente nuevos productos exclusivos...*\n"
-    
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💎 Ver Tarifas VIP", callback_data="diana:tariff_list")],
-        [InlineKeyboardButton(text="🎁 Canjear Token", callback_data="diana:redeem_token")],
-        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
-    ])
-    
-    await callback.message.edit_text(shop_text, reply_markup=keyboard, parse_mode="Markdown")
-
-
-async def handle_missions_hub(callback: CallbackQuery, master: DianaMasterInterface):  
-    """🎯 Missions Hub Experience"""
-    user_id = callback.from_user.id
-    
-    # Get user stats and context
-    context = await master.context_engine.analyze_user_context(user_id)
+    # Get user stats
     try:
-        if hasattr(master.services['gamification'], 'get_user_points'):
-            user_stats = await master.services['gamification'].get_user_points(user_id)
+        if master.services.get('shop'):
+            user_stats = await master.services['shop'].gamification_service.get_user_stats(user_id)
+            user_points = user_stats.get('total_points', 0)
+            user_level = user_stats.get('level', 0)
         else:
-            user_stats = {'level': 1, 'points': 0, 'streak': 0}
+            user_points = 0
+            user_level = 1
     except:
-        user_stats = {'level': 1, 'points': 0, 'streak': 0}
+        user_points = 0
+        user_level = 1
     
-    missions_text = "🎯 **CENTRO DE MISIONES DIANA**\n\n"
+    shop_text += f"💋 **Tus besitos:** {user_points}\n"
+    shop_text += f"⭐ **Nivel:** {user_level}\n\n"
     
-    if context.current_mood == UserMoodState.ACHIEVER:
-        missions_text += "⚡ *¡Modo conquistador activado! Estas misiones son perfectas para ti*\n\n"
-    else:
-        missions_text += "🌟 *Nuevas aventuras te esperan, valiente explorador*\n\n"
+    # Get available categories
+    try:
+        if master.services.get('shop'):
+            categories = await master.services['shop'].get_categories()
+        else:
+            categories = ["narrativa", "gamificacion", "especiales"]
+    except:
+        categories = ["narrativa", "gamificacion", "especiales"]
     
-    # Mock missions based on user level/progress
-    level = user_stats.get('level', 1)
+    shop_text += "**📦 CATEGORÍAS DISPONIBLES:**\n"
+    category_icons = {
+        "narrativa": "📖",
+        "gamificacion": "🎮", 
+        "vip": "👑",
+        "especiales": "✨"
+    }
     
-    missions_text += "**🎭 MISIONES DISPONIBLES:**\n\n"
-    
-    if level >= 1:
-        missions_text += "🔰 **Novato Valiente**\n"
-        missions_text += "• Completa 3 trivias consecutivas\n"
-        missions_text += "• Recompensa: 100 Besitos + Badge\n\n"
-    
-    if level >= 3:
-        missions_text += "🎲 **Maestro del Conocimiento**\n"
-        missions_text += "• Responde 10 preguntas perfectas\n"
-        missions_text += "• Recompensa: 250 Besitos + Título especial\n\n"
-    
-    if level >= 5:
-        missions_text += "👑 **Leyenda Épica**\n"
-        missions_text += "• Mantén una racha de 7 días\n"
-        missions_text += "• Recompensa: Acceso VIP temporal\n\n"
-    
-    missions_text += "📊 **TU PROGRESO:**\n"
-    missions_text += f"⭐ Nivel: {level} | 💰 Besitos: {user_stats.get('points', 0)}\n"
-    missions_text += f"🔥 Racha actual: {user_stats.get('streak', 0)} días"
+    for category in categories[:3]:  # Show first 3 categories
+        icon = category_icons.get(category, "📦")
+        shop_text += f"• {icon} {category.title()}\n"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎲 Iniciar Trivia", callback_data="diana:trivia_challenge")],
-        [InlineKeyboardButton(text="📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
-        [InlineKeyboardButton(text="🏆 Logros Desbloqueados", callback_data="diana:achievements")],
+        [InlineKeyboardButton(text="🛍️ Explorar Tienda", callback_data="shop:main")],
+        [InlineKeyboardButton(text="👑 Artículos VIP", callback_data="shop:vip_only")],
+        [InlineKeyboardButton(text="📊 Mis Compras", callback_data="shop:history")],
         [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
     ])
     
-    await callback.message.edit_text(missions_text, reply_markup=keyboard, parse_mode="Markdown")
+    await safe_edit_message(callback, shop_text, keyboard)
 
 
-async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInterface):
-    """📖 Narrative Hub Experience"""
+async def handle_diana_narrative_integration(callback: CallbackQuery, master: DianaMasterInterface):
+    """📖 Diana Master Narrative Hub Integration"""
     user_id = callback.from_user.id
     
     # Get user context and narrative progress
@@ -742,60 +912,566 @@ async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInter
     else:
         story_text += "✨ *Cada decisión que tomas reescribe el destino de esta historia*\n\n"
     
-    # Dynamic story content based on progress
-    if narrative_progress < 25:
-        story_text += "🌅 **CAPÍTULO I: EL DESPERTAR**\n"
-        story_text += "Diana acaba de descubrir su verdadero poder. Las primeras pistas sobre el misterio del Reino Perdido han aparecido, pero las fuerzas oscuras ya se han dado cuenta...\n\n"
-        story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Principiante\n"
-        
-        next_actions = [
-            InlineKeyboardButton(text="🔍 Buscar Pistas", callback_data="diana:story_search_clues"),
-            InlineKeyboardButton(text="⚔️ Enfrentar el Desafío", callback_data="diana:story_challenge")
-        ]
-        
-    elif narrative_progress < 50:
-        story_text += "🌙 **CAPÍTULO II: LAS SOMBRAS**\n"
-        story_text += "Los fragmentos del pasado empiezan a cobrar sentido. Diana ha descubierto que no está sola en esta aventura, pero ¿puede confiar en sus nuevos aliados?\n\n"
-        story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Explorador\n"
-        
-        next_actions = [
-            InlineKeyboardButton(text="🤝 Confiar en Aliados", callback_data="diana:story_trust"),
-            InlineKeyboardButton(text="🛡️ Ir Solo", callback_data="diana:story_solo")
-        ]
-        
-    elif narrative_progress < 75:
-        story_text += "🔥 **CAPÍTULO III: LA REVELACIÓN**\n"
-        story_text += "La verdad sobre el Reino Perdido es más impactante de lo esperado. Diana debe tomar la decisión más importante de su vida, y las consecuencias afectarán a todos...\n\n"
-        story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Héroe\n"
-        
-        next_actions = [
-            InlineKeyboardButton(text="👑 Aceptar el Destino", callback_data="diana:story_accept"),
-            InlineKeyboardButton(text="🔄 Cambiar las Reglas", callback_data="diana:story_rebel")
-        ]
-        
-    else:
-        story_text += "⭐ **ÉPÍLOGO: EL NUEVO AMANECER**\n"
-        story_text += "Diana ha completado su transformación. El Reino Perdido ha sido restaurado, pero nuevas aventuras aguardan en el horizonte infinito...\n\n"
-        story_text += f"📊 Progreso: {narrative_progress:.1f}% | Estado: Leyenda\n"
-        
-        next_actions = [
-            InlineKeyboardButton(text="🌟 Nueva Aventura", callback_data="diana:story_new_chapter"),
-            InlineKeyboardButton(text="📜 Releer Historia", callback_data="diana:story_review")
-        ]
+    # Get current narrative state
+    try:
+        if master.services.get('narrative'):
+            fragment = await master.services['narrative'].get_user_fragment(user_id)
+        else:
+            fragment = None
+    except:
+        fragment = None
     
-    # Add narrative stats
-    story_text += "\n**📚 TUS DECISIONES:**\n"
-    story_text += f"🔍 Pistas encontradas: {narrative_progress * 10 // 10}\n"
-    story_text += f"⚔️ Desafíos superados: {narrative_progress * 15 // 10}\n"
-    story_text += f"🎭 Fragmentos de historia: {narrative_progress * 8 // 10}"
+    if fragment:
+        story_text += f"📜 **CAPÍTULO ACTUAL:**\n{fragment.get('title', 'Historia Continua')}\n\n"
+        story_text += f"📊 Progreso: {narrative_progress:.1f}%\n\n"
+        story_text += "🎯 **OPCIONES DISPONIBLES:**\n"
+        if fragment.get('choices'):
+            for i, choice in enumerate(fragment['choices'][:2], 1):
+                story_text += f"{i}. {choice['text'][:50]}...\n"
+        else:
+            story_text += "Continuará en el próximo fragmento...\n"
+    else:
+        story_text += "🌟 **NUEVA AVENTURA TE ESPERA**\n\n"
+        story_text += "La historia de Diana está llena de misterios por descubrir. "
+        story_text += "Interactúa con el bot y completa misiones para desbloquear contenido narrativo.\n\n"
+        story_text += f"📊 Progreso general: {narrative_progress:.1f}%"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        next_actions,
-        [InlineKeyboardButton(text="📊 Mi Historia Completa", callback_data="diana:story_progress")],
+        [InlineKeyboardButton(text="📖 Continuar Historia", callback_data="narrative:continue")],
+        [InlineKeyboardButton(text="🌿 Explorar Ramas", callback_data="narrative:explore")],
+        [InlineKeyboardButton(text="📜 Fragmentos Desbloqueados", callback_data="narrative:fragments")],
         [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
     ])
     
-    await callback.message.edit_text(story_text, reply_markup=keyboard, parse_mode="Markdown")
+    await safe_edit_message(callback, story_text, keyboard)
+
+
+async def handle_diana_trivia_integration(callback: CallbackQuery, master: DianaMasterInterface):
+    """🧠 Diana Master Trivia Integration"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    trivia_text = "🧠 **DESAFÍO TRIVIA DIANA**\n\n"
+    
+    if context.current_mood == UserMoodState.ACHIEVER:
+        trivia_text += "⚡ *¡Perfecto! Tu mente conquistadora está lista para el desafío*\n\n"
+    else:
+        trivia_text += "🌟 *Prepárate para poner a prueba tu conocimiento*\n\n"
+    
+    # Check if can answer daily trivia
+    try:
+        if master.services.get('trivia'):
+            can_answer = await master.services['trivia'].can_answer_daily(user_id)
+            stats = await master.services['trivia'].get_user_trivia_stats(user_id)
+        else:
+            can_answer = True
+            stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
+    except:
+        can_answer = True
+        stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
+    
+    if can_answer:
+        trivia_text += "🎯 **TRIVIA DIARIA DISPONIBLE**\n\n"
+        trivia_text += "**💡 Consejos Diana Master:**\n"
+        trivia_text += "• Responde rápido para obtener bonificación\n"
+        trivia_text += "• Preguntas más difíciles dan más puntos\n"
+        trivia_text += "• Los usuarios VIP tienen preguntas exclusivas\n\n"
+        trivia_text += "¿Estás listo para el desafío de hoy?"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎯 Empezar Trivia", callback_data="trivia:start")],
+            [InlineKeyboardButton(text="📊 Ver Ranking", callback_data="trivia:leaderboard")],
+            [InlineKeyboardButton(text="📈 Mis Estadísticas", callback_data="trivia:my_stats")],
+            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+        ])
+    else:
+        trivia_text += "✅ **TRIVIA DIARIA COMPLETADA**\n\n"
+        trivia_text += "Ya has completado la trivia de hoy. ¡Vuelve mañana para una nueva pregunta!\n\n"
+        trivia_text += f"📊 **Tus estadísticas:**\n"
+        trivia_text += f"• Respondidas: {stats['total_answered']}\n"
+        trivia_text += f"• Precisión: {stats['accuracy_rate']:.1f}%\n"
+        trivia_text += f"• Puntos ganados: {stats['total_points_earned']}\n"
+        trivia_text += f"• Racha actual: {stats['daily_streak']} días"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 Ver Ranking", callback_data="trivia:leaderboard")],
+            [InlineKeyboardButton(text="📈 Mis Estadísticas", callback_data="trivia:my_stats")],
+            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+        ])
+    
+    await safe_edit_message(callback, trivia_text, keyboard)
+
+
+async def handle_diana_daily_rewards_integration(callback: CallbackQuery, master: DianaMasterInterface):
+    """🎁 Diana Master Daily Rewards Integration"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    gift_text = "🎁 **REGALO DIARIO DIANA**\n\n"
+    
+    if context.current_mood == UserMoodState.COLLECTOR:
+        gift_text += "💎 *Un tesoro especial te espera cada día, coleccionista épico*\n\n"
+    else:
+        gift_text += "✨ *Diana tiene una sorpresa especial preparada para ti*\n\n"
+    
+    # Check daily reward availability
+    try:
+        if master.services.get('daily_rewards'):
+            stats = await master.services['daily_rewards'].get_user_daily_stats(user_id)
+            can_claim = stats["can_claim_today"]
+        else:
+            can_claim = True
+            stats = {"consecutive_days": 0, "total_claimed": 0, "best_streak": 0}
+    except:
+        can_claim = True
+        stats = {"consecutive_days": 0, "total_claimed": 0, "best_streak": 0}
+    
+    if can_claim:
+        # Can claim reward
+        try:
+            if master.services.get('daily_rewards'):
+                reward = await master.services['daily_rewards'].get_available_reward(user_id)
+            else:
+                reward = None
+        except:
+            reward = None
+        
+        if reward:
+            rarity_icons = {
+                "common": "⚪",
+                "rare": "🔵", 
+                "epic": "🟣",
+                "legendary": "🟡"
+            }
+            
+            rarity_icon = rarity_icons.get(getattr(reward, 'rarity', 'common'), "⚪")
+            
+            gift_text += "🎯 **REGALO DISPONIBLE**\n\n"
+            gift_text += f"{getattr(reward, 'icon', '🎁')} **{getattr(reward, 'name', 'Regalo Diario')}**\n"
+            gift_text += f"{rarity_icon} *{getattr(reward, 'rarity', 'common').title()}*\n\n"
+            gift_text += f"{getattr(reward, 'description', 'Un regalo especial para ti')}\n\n"
+        else:
+            gift_text += "🎁 **REGALO DIARIO DISPONIBLE**\n\n"
+            gift_text += "Diana ha preparado una sorpresa especial para ti.\n\n"
+        
+        gift_text += f"🔥 **Racha consecutiva:** {stats['consecutive_days']} días\n\n"
+        gift_text += "¡Reclama tu regalo para mantener tu racha!"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎁 Reclamar Regalo", callback_data="daily:claim")],
+            [InlineKeyboardButton(text="📊 Ver Estadísticas", callback_data="daily:stats")],
+            [InlineKeyboardButton(text="🏆 Ranking Rachas", callback_data="daily:leaderboard")],
+            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+        ])
+    else:
+        # Already claimed today
+        gift_text += "✅ **REGALO YA RECLAMADO**\n\n"
+        gift_text += "Ya has reclamado tu regalo diario de hoy. ¡Vuelve mañana para continuar tu racha!\n\n"
+        gift_text += f"🔥 **Racha actual:** {stats['consecutive_days']} días\n"
+        gift_text += f"📦 **Total reclamados:** {stats['total_claimed']} regalos\n"
+        gift_text += f"🏆 **Mejor racha:** {stats['best_streak']} días"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 Ver Estadísticas", callback_data="daily:stats")],
+            [InlineKeyboardButton(text="🏆 Ranking Rachas", callback_data="daily:leaderboard")],
+            [InlineKeyboardButton(text="🎁 Ver Recompensas", callback_data="daily:rewards_info")],
+            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+        ])
+    
+    await safe_edit_message(callback, gift_text, keyboard)
+
+
+# === FALLBACK HANDLERS FOR FASE 2 CORE FEATURES ===
+
+async def handle_progress_tracker_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """📊 Progress Tracker Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "📊 **SEGUIMIENTO DE PROGRESO**\n\n"
+    text += "🎯 **Tu Evolución Diana Master:**\n\n"
+    text += f"⭐ Personalización: {context.personalization_score * 100:.0f}%\n"
+    text += f"📖 Progreso Narrativo: {context.narrative_progress:.1f}%\n"
+    text += f"🎮 Compromiso Gamificación: {context.gamification_engagement * 100:.0f}%\n\n"
+    text += f"🎭 **Modo Actual:** {context.current_mood.value.title()}\n"
+    text += f"⏱️ **Sesión:** {context.session_duration} minutos\n"
+    text += f"🔥 **Patrón:** {context.engagement_pattern.replace('_', ' ').title()}"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎯 Ir a Misiones", callback_data="diana:missions_hub")],
+        [InlineKeyboardButton(text="📈 Estadísticas Detalladas", callback_data="diana:detailed_stats")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_pro_dashboard_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """📊 Pro Dashboard Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "📊 **DASHBOARD PROFESIONAL**\n\n"
+    text += "⚙️ **Análisis Avanzado de Usuario**\n\n"
+    text += f"🧠 **Patrón de Uso:** {context.engagement_pattern.replace('_', ' ').title()}\n"
+    text += f"🎯 **Acciones Recientes:** {len(context.last_actions)} registradas\n"
+    text += f"⭐ **Funciones Preferidas:** {', '.join(context.preferred_features[:3])}\n\n"
+    text += f"📊 **Métricas Clave:**\n"
+    text += f"• Tiempo de sesión: {context.session_duration}min\n"
+    text += f"• Score personalización: {context.personalization_score:.2f}\n"
+    text += f"• Mood detectado: {context.current_mood.value}\n\n"
+    text += "🚀 **Estado del Sistema:** Operativo"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⚙️ Configuración Avanzada", callback_data="diana:advanced_settings")],
+        [InlineKeyboardButton(text="📈 Exportar Datos", callback_data="diana:export_data")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_explore_mode_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """🗺️ Explore Mode Fallback Implementation"""
+    text = "🗺️ **MODO EXPLORACIÓN**\n\n"
+    text += "🌟 Descubre todo lo que Diana tiene para ofrecerte:\n\n"
+    text += "🎯 **Misiones Épicas** - Completa desafíos únicos\n"
+    text += "🛒 **Tienda Mágica** - Intercambia besitos por tesoros\n"
+    text += "📖 **Historia Viva** - Vive aventuras interactivas\n"
+    text += "🧠 **Desafíos Trivia** - Pon a prueba tu conocimiento\n"
+    text += "🎁 **Regalos Diarios** - Sorpresas cada día\n\n"
+    text += "✨ **¿Por dónde quieres empezar tu exploración?**"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎯 Explorar Misiones", callback_data="diana:missions_hub")],
+        [InlineKeyboardButton(text="🛒 Explorar Tienda", callback_data="diana:epic_shop")],
+        [InlineKeyboardButton(text="📖 Explorar Historia", callback_data="diana:narrative_hub")],
+        [InlineKeyboardButton(text="🔄 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_start_journey_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """🌟 Start Journey Fallback Implementation"""
+    text = "🌟 **¡COMIENZA TU AVENTURA!**\n\n"
+    text += "Bienvenido al mundo de Diana, donde cada decisión cuenta y cada acción te acerca a descubrir secretos increíbles.\n\n"
+    text += "🎯 **Para empezar te recomendamos:**\n\n"
+    text += "1️⃣ **Reclama tu regalo diario** para obtener besitos\n"
+    text += "2️⃣ **Responde una trivia** para ganar más puntos\n"
+    text += "3️⃣ **Explora la historia** para desbloquear misterios\n"
+    text += "4️⃣ **Completa misiones** para obtener recompensas épicas\n\n"
+    text += "✨ **¿Estás listo para comenzar?**"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎁 Mi Primer Regalo", callback_data="diana:daily_gift")],
+        [InlineKeyboardButton(text="🧠 Mi Primera Trivia", callback_data="diana:trivia_challenge")],
+        [InlineKeyboardButton(text="📖 Mi Primera Historia", callback_data="diana:narrative_hub")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_guided_tour_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """💫 Guided Tour Fallback Implementation"""
+    text = "💫 **TOUR GUIADO DIANA**\n\n"
+    text += "Te voy a mostrar todas las funciones increíbles que tengo para ti:\n\n"
+    text += "🎭 **Diana Master System**\n"
+    text += "Una interfaz inteligente que se adapta a tu estilo de juego\n\n"
+    text += "🎯 **Sistema de Misiones**\n"
+    text += "Completa desafíos únicos y obtén recompensas épicas\n\n"
+    text += "🛒 **Tienda de Besitos**\n"
+    text += "Intercambia puntos por objetos especiales y mejoras VIP\n\n"
+    text += "📖 **Historia Interactiva**\n"
+    text += "Vive una aventura donde tus decisiones importan\n\n"
+    text += "**¿Qué te gustaría explorar primero?**"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Ver Dashboard", callback_data="diana:pro_dashboard")],
+        [InlineKeyboardButton(text="🗺️ Modo Exploración", callback_data="diana:explore_mode")],
+        [InlineKeyboardButton(text="🎯 Comenzar Aventura", callback_data="diana:start_journey")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_collection_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """🎒 Collection Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "🎒 **MI COLECCIÓN**\n\n"
+    text += "Aquí están todos los tesoros que has conseguido en tu aventura:\n\n"
+    text += "📊 **Estadísticas de Colección:**\n"
+    text += f"⭐ Nivel de coleccionista: {int(context.personalization_score * 10)}\n"
+    text += f"🎯 Progreso narrativo: {context.narrative_progress:.1f}%\n"
+    text += f"🏆 Logros desbloqueados: {len(context.preferred_features)}\n\n"
+    text += "🔮 **Elementos Únicos:**\n"
+    text += "• 🎭 Fragmentos de historia coleccionados\n"
+    text += "• 🏆 Logros y medallas obtenidas\n"
+    text += "• 💎 Objetos especiales de la tienda\n"
+    text += "• 🎁 Recompensas diarias acumuladas\n\n"
+    text += "✨ *Continúa jugando para expandir tu colección*"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏆 Ver Logros", callback_data="diana:achievements")],
+        [InlineKeyboardButton(text="🛒 Ir a Tienda", callback_data="diana:epic_shop")],
+        [InlineKeyboardButton(text="📊 Mi Progreso", callback_data="diana:progress_tracker")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_story_choices_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """🎭 Story Choices Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "🎭 **DECISIONES NARRATIVAS**\n\n"
+    text += "Tus elecciones han moldeado la historia de Diana. Cada decisión cuenta.\n\n"
+    text += f"📊 **Progreso Actual:** {context.narrative_progress:.1f}%\n\n"
+    text += "🎯 **Decisiones Importantes Tomadas:**\n"
+    text += "• Camino elegido en el Reino Perdido\n"
+    text += "• Alianzas forjadas o rechazadas\n"
+    text += "• Secretos descubiertos o ignorados\n\n"
+    text += "🌟 **Próximas Decisiones:**\n"
+    if context.narrative_progress < 50:
+        text += "• Encontrar a los aliados perdidos\n"
+        text += "• Descubrir el origen del poder de Diana\n"
+    else:
+        text += "• Confrontar el destino final\n"
+        text += "• Determinar el futuro del reino\n"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📖 Continuar Historia", callback_data="diana:narrative_hub")],
+        [InlineKeyboardButton(text="🔍 Revisar Decisiones", callback_data="diana:story_review")],
+        [InlineKeyboardButton(text="🎭 Nueva Aventura", callback_data="diana:story_new_chapter")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+# === FASE 2.3 ADVANCED GAMIFICATION FALLBACK HANDLERS ===
+
+async def handle_achievement_engine_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """🏆 Achievement Engine Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "🏆 **MOTOR DE LOGROS**\n\n"
+    text += "🎯 *Tu sistema personalizado de logros y reconocimientos*\n\n"
+    
+    # Mock achievement data
+    text += "**📊 RESUMEN DE LOGROS**\n"
+    text += f"🏅 Logros desbloqueados: 8/25\n"
+    text += f"⭐ Puntos de logros: 1,250\n"
+    text += f"🎯 Próximo objetivo: 🧠 Maestro del Conocimiento\n"
+    text += f"📈 Progreso: 23/50 trivias correctas\n\n"
+    
+    text += "**🔥 LOGROS RECIENTES**\n"
+    text += "• 🔰 Primera Trivia - Completado\n"
+    text += "• 🎯 Racha de 7 días - Completado\n"
+    text += "• 📖 Explorador de Historia - En progreso\n\n"
+    
+    text += "**🎲 PRÓXIMOS DESAFÍOS**\n"
+    text += "• 🧠 Responde 50 trivias correctamente\n"
+    text += "• 💎 Colecciona 10 objetos únicos\n"
+    text += "• 🏆 Alcanza el nivel 5"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏅 Ver Todos los Logros", callback_data="diana:all_achievements")],
+        [InlineKeyboardButton(text="🎯 Logros en Progreso", callback_data="diana:progress_achievements")],
+        [InlineKeyboardButton(text="🎲 Nuevos Desafíos", callback_data="diana:new_challenges")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_reward_calculator_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """💰 Reward Calculator Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "💰 **CALCULADORA DE RECOMPENSAS**\n\n"
+    text += "🔬 *Análisis avanzado de tus recompensas y bonificaciones*\n\n"
+    
+    # Mock calculation
+    base_points = 100
+    streak_bonus = 1.4 if hasattr(context, 'streak_days') else 1.0
+    mood_bonus = 1.2 if context.current_mood == UserMoodState.ACHIEVER else 1.0
+    total_multiplier = streak_bonus * mood_bonus
+    final_points = int(base_points * total_multiplier)
+    
+    text += f"**⚡ CÁLCULO ACTUAL**\n"
+    text += f"💎 Puntos base: {base_points}\n"
+    text += f"🔥 Bonus por racha: {streak_bonus:.1f}x\n"
+    text += f"🎭 Bonus por mood: {mood_bonus:.1f}x\n"
+    text += f"📈 Multiplicador total: {total_multiplier:.2f}x\n"
+    text += f"💰 **TOTAL: {final_points} besitos**\n\n"
+    
+    text += f"**📊 ANÁLISIS DE EFICIENCIA**\n"
+    efficiency = (total_multiplier - 1.0) * 50 + 50
+    text += f"⚙️ Eficiencia actual: {efficiency:.1f}%\n"
+    text += f"📈 Estado: {'Excelente' if efficiency > 80 else 'Bueno' if efficiency > 60 else 'Mejorable'}\n\n"
+    
+    text += f"**💡 RECOMENDACIONES**\n"
+    text += f"• 🔥 Mantén tu racha diaria para +40% bonus\n"
+    text += f"• 🎯 Responde trivias en modo conquista\n"
+    text += f"• ⏰ Juega en horas pico para bonus extra"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎲 Simular Trivia", callback_data="diana:simulate_reward")],
+        [InlineKeyboardButton(text="📊 Análisis Detallado", callback_data="diana:detailed_calculation")],
+        [InlineKeyboardButton(text="💡 Optimizar Recompensas", callback_data="diana:optimize_rewards")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_leaderboard_system_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """🏆 Leaderboard System Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "🏆 **SISTEMA DE CLASIFICACIONES**\n\n"
+    text += "🌟 *Compite con otros aventureros en múltiples categorías*\n\n"
+    
+    # Mock user ranking
+    user_rank = 15
+    user_score = 1250
+    
+    text += f"**👤 TU POSICIÓN**\n"
+    text += f"🏅 Ranking general: #{user_rank}\n"
+    text += f"⭐ Puntuación: {user_score:,} puntos\n"
+    text += f"🎖️ Tier: 🥈 Plata\n"
+    text += f"🔥 Racha: 7 días\n\n"
+    
+    text += f"**👑 TOP 5 LÍDERES**\n"
+    text += f"🥇 Diana_Master: 5,000 pts\n"
+    text += f"🥈 Trivia_King: 4,200 pts\n"
+    text += f"🥉 Story_Teller: 3,800 pts\n"
+    text += f"4️⃣ Quest_Hunter: 3,400 pts\n"
+    text += f"5️⃣ Collector_Pro: 3,000 pts\n\n"
+    
+    text += f"**🏆 COMPETENCIA SEMANAL**\n"
+    text += f"👥 Participantes: 156\n"
+    text += f"⏰ Tiempo restante: 3 días\n"
+    text += f"🎁 Premio: 5,000 besitos\n\n"
+    
+    text += f"**🎯 TU PROGRESO**\n"
+    points_to_top10 = max(0, 2500 - user_score)
+    if points_to_top10 > 0:
+        text += f"📈 Para top 10: {points_to_top10} puntos más\n"
+        text += f"⚡ Con tu racha actual, puedes lograrlo"
+    else:
+        text += f"🎉 ¡Ya estás en el top 10!\n"
+        text += f"🚀 Sigue así para mantener tu posición"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏆 Ranking Completo", callback_data="diana:full_leaderboard")],
+        [InlineKeyboardButton(text="📊 Mi Análisis", callback_data="diana:my_stats")],
+        [InlineKeyboardButton(text="🎯 Competencias", callback_data="diana:competitions")],
+        [InlineKeyboardButton(text="⚡ Ganar Puntos", callback_data="diana:earn_points")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+async def handle_gamification_settings_fallback(callback: CallbackQuery, master: DianaMasterInterface):
+    """⚙️ Gamification Settings Fallback Implementation"""
+    user_id = callback.from_user.id
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    text = "⚙️ **CONFIGURACIÓN DE GAMIFICACIÓN**\n\n"
+    text += "🎛️ *Personaliza tu experiencia de juego*\n\n"
+    
+    text += f"**🎯 CONFIGURACIÓN ACTUAL**\n"
+    text += f"🎮 Dificultad: Adaptativa\n"
+    text += f"🔔 Notificaciones: Inteligentes\n"
+    text += f"💰 Recompensas: Equilibradas\n"
+    text += f"🏆 Logros: Habilitados\n\n"
+    
+    text += f"**🤖 PERFIL DETECTADO**\n"
+    if context.current_mood == UserMoodState.OPTIMIZER:
+        text += f"⚙️ *Optimizador Avanzado*\n"
+        text += f"• Métricas detalladas recomendadas\n"
+        text += f"• Enfoque en eficiencia\n"
+        text += f"• Dashboard profesional ideal\n\n"
+    elif context.current_mood == UserMoodState.ACHIEVER:
+        text += f"🏆 *Conquistador Épico*\n"
+        text += f"• Desafíos más difíciles\n"
+        text += f"• Notificaciones de logros prominentes\n"
+        text += f"• Sistema competitivo ideal\n\n"
+    else:
+        text += f"🌟 *Aventurero Equilibrado*\n"
+        text += f"• Configuración balanceada\n"
+        text += f"• Experiencia adaptativa\n"
+        text += f"• Ajustes automáticos\n\n"
+    
+    text += f"**🎛️ OPCIONES DISPONIBLES**\n"
+    text += f"• 🎯 Ajustar dificultad de desafíos\n"
+    text += f"• 🔔 Personalizar notificaciones\n"
+    text += f"• 💎 Configurar tipos de recompensas\n"
+    text += f"• 🎨 Personalizar interfaz\n"
+    text += f"• 👥 Configuración social\n\n"
+    
+    text += f"**💡 RECOMENDACIÓN IA**\n"
+    personalization = context.personalization_score * 100
+    text += f"📊 Tu nivel de personalización: {personalization:.0f}%\n"
+    if personalization < 50:
+        text += f"🚀 Sugerencia: Activar más funciones automáticas"
+    else:
+        text += f"✅ Tu configuración está bien optimizada"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎯 Ajustar Dificultad", callback_data="diana:adjust_difficulty")],
+        [InlineKeyboardButton(text="🔔 Notificaciones", callback_data="diana:notification_settings")],
+        [InlineKeyboardButton(text="💎 Recompensas", callback_data="diana:reward_settings")],
+        [InlineKeyboardButton(text="🎨 Interfaz", callback_data="diana:ui_settings")],
+        [InlineKeyboardButton(text="🔄 Valores por Defecto", callback_data="diana:reset_settings")],
+        [InlineKeyboardButton(text="💾 Guardar Cambios", callback_data="diana:save_settings")],
+        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, text, keyboard)
+
+
+# === LEGACY HANDLERS (PRESERVED) ===
+
+async def handle_epic_shop(callback: CallbackQuery, master: DianaMasterInterface):
+    """🛒 Epic Shop Experience (Legacy - now calls integration)"""
+    await handle_diana_shop_integration(callback, master)
+
+
+async def handle_missions_hub(callback: CallbackQuery, master: DianaMasterInterface):  
+    """🎯 Missions Hub Experience (Legacy - now calls integration)"""
+    await handle_diana_missions_integration(callback, master)
+
+
+async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInterface):
+    """📖 Narrative Hub Experience (Legacy - now calls integration)"""
+    await handle_diana_narrative_integration(callback, master)
+
+
+async def handle_trivia_challenge(callback: CallbackQuery, master: DianaMasterInterface):
+    """🧠 Trivia Challenge Handler (Legacy - now calls integration)"""
+    await handle_diana_trivia_integration(callback, master)
+
+
+async def handle_daily_gift(callback: CallbackQuery, master: DianaMasterInterface):
+    """🎁 Daily Gift Handler (Legacy - now calls integration)"""
+    await handle_diana_daily_rewards_integration(callback, master)
+
+
+
+
 
 
 async def handle_surprise_feature(callback: CallbackQuery, master: DianaMasterInterface):
@@ -819,77 +1495,8 @@ async def handle_surprise_feature(callback: CallbackQuery, master: DianaMasterIn
     await callback.message.edit_text(surprise, reply_markup=keyboard, parse_mode="Markdown")
 
 
-async def handle_daily_gift(callback: CallbackQuery, master: DianaMasterInterface):
-    """🎁 Daily Gift Handler"""
-    user_id = callback.from_user.id
-    
-    # Check if daily reward is available
-    try:
-        if hasattr(master.services['daily_rewards'], 'can_claim_daily_reward'):
-            can_claim = await master.services['daily_rewards'].can_claim_daily_reward(user_id)
-        else:
-            can_claim = True  # Mock availability for now
-    except:
-        can_claim = True
-    
-    if can_claim:
-        # Mock reward claiming
-        gift_text = "🎁 **¡REGALO DIARIO RECLAMADO!**\n\n"
-        gift_text += "✨ Has recibido:\n"
-        gift_text += "• 💰 50 Besitos\n"
-        gift_text += "• 🔥 +1 Día de racha\n"
-        gift_text += "• 🎲 Pregunta bonus desbloqueada\n\n"
-        gift_text += "🌟 ¡Vuelve mañana por más sorpresas!"
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎲 Usar Pregunta Bonus", callback_data="diana:trivia_bonus")],
-            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
-        ])
-    else:
-        gift_text = "🎁 **REGALO DIARIO**\n\n"
-        gift_text += "⏰ Ya reclamaste tu regalo de hoy\n"
-        gift_text += "🌅 Vuelve mañana para obtener:\n"
-        gift_text += "• 💰 Besitos gratis\n"
-        gift_text += "• 🔥 Mantener tu racha\n"
-        gift_text += "• 🎁 Sorpresas especiales\n\n"
-        gift_text += "💡 *Mantén tu racha diaria para mejores recompensas*"
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📊 Ver Mi Progreso", callback_data="diana:progress_tracker")],
-            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
-        ])
-    
-    await callback.message.edit_text(gift_text, reply_markup=keyboard, parse_mode="Markdown")
 
 
-async def handle_trivia_challenge(callback: CallbackQuery, master: DianaMasterInterface):
-    """🧠 Trivia Challenge Handler"""
-    user_id = callback.from_user.id
-    context = await master.context_engine.analyze_user_context(user_id)
-    
-    trivia_text = "🧠 **DESAFÍO TRIVIA DIANA**\n\n"
-    
-    if context.current_mood == UserMoodState.ACHIEVER:
-        trivia_text += "⚡ *¡Perfecto! Tu mente conquistadora está lista para el desafío*\n\n"
-    else:
-        trivia_text += "🌟 *Prepárate para poner a prueba tu conocimiento*\n\n"
-    
-    # Mock trivia question
-    trivia_text += "**📚 PREGUNTA:**\n"
-    trivia_text += "¿Cuál es el planeta más grande del sistema solar?\n\n"
-    trivia_text += "🏆 **Recompensas:**\n"
-    trivia_text += "• Respuesta correcta: 20 Besitos\n"
-    trivia_text += "• Racha perfecta: Bonus x2"
-    
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🪐 Júpiter", callback_data="trivia:correct:jupiter")],
-        [InlineKeyboardButton(text="🌍 Tierra", callback_data="trivia:wrong:earth")],
-        [InlineKeyboardButton(text="♄ Saturno", callback_data="trivia:wrong:saturn")],
-        [InlineKeyboardButton(text="♆ Neptuno", callback_data="trivia:wrong:neptune")],
-        [InlineKeyboardButton(text="🏠 Volver", callback_data="diana:refresh")]
-    ])
-    
-    await callback.message.edit_text(trivia_text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterface):
