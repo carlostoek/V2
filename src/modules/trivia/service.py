@@ -62,6 +62,10 @@ class TriviaService(ICoreService):
         self._active_sessions = {}  # user_id -> TriviaSession
         self._daily_completions = {}  # user_id -> date
         self._user_stats = {}  # user_id -> stats dict
+
+    async def setup(self) -> None:
+        """Configura el servicio."""
+        logger.info("TriviaService setup complete.")
         
     def _initialize_questions(self) -> Dict[str, TriviaQuestion]:
         """Inicializa el banco de preguntas de trivia."""
