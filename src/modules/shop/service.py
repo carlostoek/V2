@@ -32,6 +32,10 @@ class ShopService(ICoreService):
         self.gamification_service = gamification_service
         self._items = self._initialize_shop_items()
         self._user_purchases = {}  # Tracking de compras por usuario
+
+    async def setup(self) -> None:
+        """Configura el servicio."""
+        logger.info("ShopService setup complete.")
         
     def _initialize_shop_items(self) -> Dict[str, ShopItem]:
         """Inicializa los artículos de la tienda."""
