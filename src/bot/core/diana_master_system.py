@@ -220,7 +220,7 @@ class DianaMasterInterface:
         self.contextual_shortcuts: Dict[int, Dict[str, Any]] = {}
         self.dynamic_layouts: Dict[int, str] = {}
         
-    async def create_adaptive_interface(self, user_id: int, trigger: str = "main") -> Tuple[str, InlineKeyboardMarkup]:
+    async def create_adaptive_interface(self, user_id: int, trigger: str = "main") -> Dict[str, Any]:
         """
         🎨 ADAPTIVE INTERFACE GENERATION
         
@@ -241,7 +241,7 @@ class DianaMasterInterface:
         # Generate personalized content
         interface_data = await self._generate_interface(context, system_state, trigger)
         
-        return interface_data['text'], interface_data['keyboard']
+        return interface_data
     
     async def _get_system_state(self) -> Dict:
         """Get current system state for contextual decisions"""
@@ -1645,11 +1645,8 @@ def initialize_diana_master(services: Dict[str, Any]):
     """Initialize Diana Master System with services"""
     global diana_master
     
-    # Initialize the Adaptive Context Engine
-    context_engine = AdaptiveContextEngine(services)
-    
-    # Initialize the Diana Master Interface
-    diana_master = DianaMasterInterface(context_engine, services)
+    # Initialize the Diana Master Interface (it creates its own context engine internally)
+    diana_master = DianaMasterInterface(services)
     
     print("🎭 Diana Master System components initialized!")
 
