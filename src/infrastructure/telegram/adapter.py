@@ -10,8 +10,7 @@ from src.modules.tariff.service import TariffService
 from src.modules.daily_rewards.service import DailyRewardsService
 from src.bot.core.diana_master_system import register_diana_master_system
 
-class TelegramAdapter:
-    from typing import Dict, Any
+from typing import Dict, Any
 
 class TelegramAdapter:
     def __init__(self, bot_token: str, event_bus: IEventBus, diana_interface: Any, services: Dict[str, Any]):
