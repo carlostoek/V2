@@ -20,8 +20,25 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.filters import Command
 
 import structlog
+from src.utils.sexy_logger import log
 
 # === HELPER FUNCTIONS ===
+
+async def ensure_user_exists(user_id: int, services: Dict[str, Any]) -> bool:
+    """Ensure user exists in database, create if not exists"""
+    try:
+        # Check if user service is available
+        if services.get('user'):
+            # Try to get user, if not exists it will create automatically
+            user = await services['user'].ensure_user_exists(user_id)
+            log.user_action(f"Usuario asegurado en DB", user_id=user_id, action="ensure_exists")
+            return True
+        else:
+            log.warning("UserService no disponible - no se puede crear usuario automáticamente")
+            return False
+    except Exception as e:
+        log.error(f"Error asegurando usuario {user_id}", error=e)
+        return False
 
 async def safe_edit_message(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
     """Safely edit message handling Telegram's 'message not modified' error"""
@@ -213,12 +230,14 @@ class DianaMasterInterface:
     def __init__(self, services: Dict[str, Any]):
         self.services = services
         self.context_engine = AdaptiveContextEngine(services)
-        self.logger = structlog.get_logger()
+        self.logger = log  # Use sexy logger instead of structlog
         
         # Revolutionary features
         self.smart_predictions: Dict[int, List[str]] = {}
         self.contextual_shortcuts: Dict[int, Dict[str, Any]] = {}
         self.dynamic_layouts: Dict[int, str] = {}
+        
+        log.startup("🎭 Diana Master Interface inicializada con éxito")
         
     async def create_adaptive_interface(self, user_id: int, trigger: str = "main") -> Dict[str, Any]:
         """
@@ -343,6 +362,7 @@ class DianaMasterInterface:
         # Get real-time user stats (with fallback)
         try:
             if self.services.get('gamification'):
+                log.gamification(f"Obteniendo datos de gamificación", user_id=context.user_id)
                 stats = await self.services['gamification'].get_user_points(context.user_id)
                 # Get additional gamification data
                 missions = await self.services['gamification'].get_user_missions(context.user_id)
@@ -359,7 +379,10 @@ class DianaMasterInterface:
                 
                 # Calculate streak (simplified - would need daily tracking)
                 stats['streak'] = 1  # TODO: Implement proper streak calculation
+                
+                log.success(f"Datos de gamificación obtenidos exitosamente", user_id=context.user_id)
             else:
+                log.warning("GamificationService no disponible - usando datos mock")
                 # Fallback to mock stats if service unavailable
                 stats = {
                     'level': 1,
@@ -375,7 +398,7 @@ class DianaMasterInterface:
                     'engagement_level': 0.5
                 }
         except Exception as e:
-            self.logger.warning("Error getting user stats", error=str(e))
+            log.error(f"Error obteniendo estadísticas de usuario", user_id=context.user_id, error=e)
             stats = {'level': 1, 'current_points': 0, 'streak': 0}
         
         # Check daily reward status
@@ -1581,7 +1604,13 @@ async def handle_start_command(message: Message):
     """🎭 Main /start command - Entry point to Diana Master System"""
     user_id = message.from_user.id
     
+    log.user_action("🎭 Usuario accediendo a Diana Master System", user_id=user_id, action="start_command")
+    
+    # Ensure user exists in database
+    await ensure_user_exists(user_id, diana_master.services)
+    
     # Generate adaptive interface
+    log.info(f"🎨 Generando interfaz adaptativa para usuario {user_id}")
     interface_response = await diana_master.create_adaptive_interface(user_id, "main")
     
     await message.answer(
