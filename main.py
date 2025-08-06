@@ -75,7 +75,7 @@ async def main():
     with log.section("INICIALIZACIÓN DE TELEGRAM", "📱"):
         log.startup("Configurando adaptador de Telegram...")
         adapter = TelegramAdapter(
-            bot_token=settings.bot_token,
+            bot_token=settings.BOT_TOKEN,
             event_bus=event_bus,
             diana_interface=diana_interface,
             services=services # Pass the entire services dictionary
