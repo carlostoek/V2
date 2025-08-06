@@ -80,11 +80,16 @@ class AdaptiveContextEngine:
         
         # Gather multi-dimensional user data
         try:
-            if hasattr(self.services['gamification'], 'get_user_points'):
+            if self.services.get('gamification'):
                 user_stats = await self.services['gamification'].get_user_points(user_id)
+                # Enhance with engagement level calculation
+                total_points = user_stats.get('total_earned', 0)
+                engagement_level = min(1.0, total_points / 1000.0)  # Scale based on total points
+                user_stats['engagement_level'] = engagement_level
             else:
                 user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
-        except:
+        except Exception as e:
+            self.logger.warning("Error getting user stats", error=str(e))
             user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
         narrative_state = await self._get_narrative_context(user_id)
         recent_interactions = self.interaction_patterns.get(user_id, [])
@@ -139,11 +144,16 @@ class AdaptiveContextEngine:
         """Get narrative context from narrative service"""
         try:
             if self.services.get('narrative'):
-                # This would call actual narrative service methods
-                return {'progress': 25.0}  # Mock for now
-            return {'progress': 0.0}
-        except:
-            return {'progress': 0.0}
+                progress = await self.services['narrative'].get_narrative_progress(user_id)
+                current_chapter = await self.services['narrative'].get_current_chapter(user_id)
+                return {
+                    'progress': progress,
+                    'current_chapter': current_chapter
+                }
+            return {'progress': 0.0, 'current_chapter': 'Prólogo'}
+        except Exception as e:
+            self.logger.warning("Error getting narrative context", error=str(e))
+            return {'progress': 0.0, 'current_chapter': 'Prólogo'}
     
     def _calculate_session_duration(self, user_id: int) -> int:
         """Calculate current session duration in minutes"""
@@ -332,13 +342,28 @@ class DianaMasterInterface:
         
         # Get real-time user stats (with fallback)
         try:
-            if hasattr(self.services['gamification'], 'get_user_points'):
+            if self.services.get('gamification'):
                 stats = await self.services['gamification'].get_user_points(context.user_id)
+                # Get additional gamification data
+                missions = await self.services['gamification'].get_user_missions(context.user_id)
+                achievements = await self.services['gamification'].get_user_achievements(context.user_id)
+                
+                # Enhance stats with additional data
+                stats['inventory'] = []  # TODO: Implement inventory system
+                stats['clues'] = len(context.last_actions)  # Approximate based on activity
+                stats['fragments'] = int(context.narrative_progress / 10)  # Approximate
+                stats['efficiency_score'] = min(100, int(context.personalization_score * 100))
+                stats['active_goals'] = len(missions.get('in_progress', []))
+                stats['active_missions'] = missions.get('in_progress', [])
+                stats['achievements'] = achievements.get('completed', [])
+                
+                # Calculate streak (simplified - would need daily tracking)
+                stats['streak'] = 1  # TODO: Implement proper streak calculation
             else:
-                # Fallback to mock stats for now
+                # Fallback to mock stats if service unavailable
                 stats = {
                     'level': 1,
-                    'points': 0,
+                    'current_points': 0,
                     'streak': 0,
                     'inventory': [],
                     'achievements': [],
@@ -351,25 +376,26 @@ class DianaMasterInterface:
                 }
         except Exception as e:
             self.logger.warning("Error getting user stats", error=str(e))
-            stats = {'level': 1, 'points': 0, 'streak': 0}
+            stats = {'level': 1, 'current_points': 0, 'streak': 0}
         
-        # Check daily reward status (fallback to mock if method doesn't exist)
+        # Check daily reward status
         try:
-            if hasattr(self.services['daily_rewards'], 'can_claim_daily_reward'):
+            if self.services.get('daily_rewards'):
                 daily_status = await self.services['daily_rewards'].can_claim_daily_reward(context.user_id)
             else:
-                # Mock daily status based on user activity
-                daily_status = True  # Assume available for now
-        except:
-            daily_status = True
+                # Service unavailable - assume no rewards available
+                daily_status = False
+        except Exception as e:
+            self.logger.warning("Error getting daily reward status", error=str(e))
+            daily_status = False
         
         # Smart stat selection based on user mood
         if context.current_mood == UserMoodState.ACHIEVER:
-            return f"🎯 **MODO CONQUISTA ACTIVADO**\n⚡ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🔥 Racha: {stats.get('streak', 0)} días | 🎁 Regalo: {'✅ Disponible' if daily_status else '⏰ Próximamente'}"
+            return f"🎯 **MODO CONQUISTA ACTIVADO**\n⚡ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('current_points', 0)}\n🔥 Racha: {stats.get('streak', 0)} días | 🎁 Regalo: {'✅ Disponible' if daily_status else '⏰ Próximamente'}"
         
         elif context.current_mood == UserMoodState.COLLECTOR:
             items_count = len(stats.get('inventory', []))
-            return f"💎 **COLECCIÓN ACTIVA**\n🎒 Objetos: {items_count} | 💰 Besitos: {stats.get('points', 0)}\n🏆 Logros: {len(stats.get('achievements', []))} | ⭐ Progreso: {context.narrative_progress:.1f}%"
+            return f"💎 **COLECCIÓN ACTIVA**\n🎒 Objetos: {items_count} | 💰 Besitos: {stats.get('current_points', 0)}\n🏆 Logros: {len(stats.get('achievements', []))} | ⭐ Progreso: {context.narrative_progress:.1f}%"
         
         elif context.current_mood == UserMoodState.STORYTELLER:
             return f"📖 **NARRATIVA EN PROGRESO**\n📜 Historia: {context.narrative_progress:.1f}% completa\n🔍 Pistas: {stats.get('clues', 0)} | 🎭 Fragmentos: {stats.get('fragments', 0)}"
@@ -379,7 +405,7 @@ class DianaMasterInterface:
             return f"📊 **PANEL DE CONTROL**\n⚙️ Eficiencia: {efficiency}% | 📈 Tendencia: {'📈 Subiendo' if efficiency > 80 else '📊 Estable'}\n🎯 Objetivos: {stats.get('active_goals', 3)} activos"
             
         else:  # Default/Explorer/Newcomer/Socializer
-            return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {len(stats.get('active_missions', []))} activas"
+            return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('current_points', 0)}\n🎯 Misiones: {len(stats.get('active_missions', []))} activas"
     
     async def _generate_predictive_actions(self, context: UserContext) -> str:
         """🔮 AI-powered action predictions"""
@@ -389,12 +415,13 @@ class DianaMasterInterface:
         # Analyze user patterns and predict next likely actions
         if context.current_mood == UserMoodState.COLLECTOR:
             try:
-                if hasattr(self.services['daily_rewards'], 'can_claim_daily_reward'):
+                if self.services.get('daily_rewards'):
                     daily_available = await self.services['daily_rewards'].can_claim_daily_reward(context.user_id)
                 else:
-                    daily_available = True  # Mock availability
-            except:
-                daily_available = True
+                    daily_available = False  # No service means no rewards
+            except Exception as e:
+                self.logger.warning("Error checking daily reward availability", error=str(e))
+                daily_available = False
                 
             if daily_available:
                 predictions.append("💡 *Predicción: Probablemente quieras reclamar tu regalo diario*")
@@ -813,15 +840,16 @@ async def handle_diana_missions_integration(callback: CallbackQuery, master: Dia
     
     # Get user stats for display
     try:
-        if hasattr(master.services['gamification'], 'get_user_points'):
+        if master.services.get('gamification'):
             user_stats = await master.services['gamification'].get_user_points(user_id)
         else:
-            user_stats = {'level': 1, 'points': 0, 'streak': 0}
-    except:
-        user_stats = {'level': 1, 'points': 0, 'streak': 0}
+            user_stats = {'level': 1, 'current_points': 0, 'streak': 0}
+    except Exception as e:
+        master.logger.warning(f"Error getting user stats: {e}")
+        user_stats = {'level': 1, 'current_points': 0, 'streak': 0}
     
     missions_text += f"📊 **TU PROGRESO:**\n"
-    missions_text += f"⭐ Nivel: {user_stats.get('level', 1)} | 💰 Besitos: {user_stats.get('points', 0)}\n"
+    missions_text += f"⭐ Nivel: {user_stats.get('level', 1)} | 💰 Besitos: {user_stats.get('current_points', 0)}\n"
     missions_text += f"🔥 Racha actual: {user_stats.get('streak', 0)} días"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[

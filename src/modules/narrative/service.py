@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Set, Union
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update, and_, func
 from sqlalchemy.orm import selectinload
 
 from src.core.interfaces.IEventBus import IEventBus
@@ -600,5 +600,95 @@ class NarrativeService(ICoreService):
         except Exception as e:
             logger.error(f"Error al procesar elección narrativa: {e}")
             return False
+
+    async def get_current_chapter(self, user_id: int) -> str:
+        """
+        Obtiene el capítulo actual del usuario.
+        
+        Args:
+            user_id: ID del usuario.
+            
+        Returns:
+            Nombre del capítulo actual o capítulo por defecto.
+        """
+        try:
+            fragment = await self.get_user_fragment(user_id)
+            if fragment:
+                # Extraer capítulo del título o key del fragmento
+                fragment_key = fragment.get('key', '')
+                
+                # Mapear fragmentos a capítulos
+                if fragment_key.startswith('welcome_'):
+                    return "Bienvenida"
+                elif fragment_key.startswith('chapter1_'):
+                    return "Capítulo 1: El Despertar"
+                elif fragment_key.startswith('chapter2_'):
+                    return "Capítulo 2: Los Secretos"
+                elif fragment_key.startswith('chapter3_'):
+                    return "Capítulo 3: La Revelación"
+                elif fragment_key.startswith('vip_'):
+                    return "Historia VIP"
+                else:
+                    return "Historia Continua"
+            
+            return "Prólogo"
+            
+        except Exception as e:
+            logger.error(f"Error al obtener capítulo actual: {e}")
+            return "Historia de Diana"
+
+    async def get_narrative_progress(self, user_id: int) -> float:
+        """
+        Obtiene el progreso narrativo del usuario como porcentaje.
+        
+        Args:
+            user_id: ID del usuario.
+            
+        Returns:
+            Progreso como porcentaje (0.0 - 100.0).
+        """
+        try:
+            async for session in get_session():
+                # Obtener estado narrativo del usuario
+                query = select(UserNarrativeState).where(UserNarrativeState.user_id == user_id)
+                result = await session.execute(query)
+                state = result.scalars().first()
+                
+                if not state:
+                    logger.debug(f"Usuario {user_id} no tiene estado narrativo")
+                    return 0.0
+                
+                # Contar total de fragmentos disponibles para el usuario
+                user_query = select(User).where(User.id == user_id)
+                user_result = await session.execute(user_query)
+                user = user_result.scalars().first()
+                
+                if not user:
+                    return 0.0
+                
+                # Obtener fragmentos totales disponibles para el nivel del usuario
+                total_query = select(func.count(StoryFragment.id)).where(
+                    and_(
+                        StoryFragment.level_required <= user.level,
+                        StoryFragment.is_vip_only == False if not user.is_vip else True
+                    )
+                )
+                total_result = await session.execute(total_query)
+                total_fragments = total_result.scalar() or 1  # Evitar división por cero
+                
+                # Contar fragmentos visitados
+                visited_count = len(state.visited_fragments)
+                
+                # Calcular progreso como porcentaje
+                progress = (visited_count / total_fragments) * 100
+                progress = min(100.0, max(0.0, progress))  # Clamp entre 0-100
+                
+                logger.debug(f"Progreso narrativo usuario {user_id}: {visited_count}/{total_fragments} = {progress:.1f}%")
+                
+                return progress
+                
+        except Exception as e:
+            logger.error(f"Error al obtener progreso narrativo: {e}")
+            return 0.0
 
 # Importación de datetime ya está al principio del archivo
