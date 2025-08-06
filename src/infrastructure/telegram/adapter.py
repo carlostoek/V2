@@ -11,39 +11,21 @@ from src.modules.daily_rewards.service import DailyRewardsService
 from src.bot.core.diana_master_system import register_diana_master_system
 
 class TelegramAdapter:
-    def __init__(self, bot_token: str, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, narrative_service: NarrativeService = None, user_service: UserService = None):
+    from typing import Dict, Any
+
+class TelegramAdapter:
+    def __init__(self, bot_token: str, event_bus: IEventBus, diana_interface: Any, services: Dict[str, Any]):
         self.bot = Bot(token=bot_token, default_parse_mode=ParseMode.HTML)
         self.dp = Dispatcher()
         self._event_bus = event_bus
-        self._gamification_service = gamification_service
-        self._admin_service = admin_service
-        self._narrative_service = narrative_service
-        self._user_service = user_service
-        
-        # Initialize additional services
-        self._tariff_service = TariffService(event_bus)
-        self._daily_rewards_service = DailyRewardsService(gamification_service)
-        
-        # Prepare services dictionary for Diana Master System
-        self._services = {
-            'gamification': gamification_service,
-            'admin': admin_service,
-            'narrative': narrative_service,
-            'user': user_service,
-            'tariff': self._tariff_service,
-            'event_bus': event_bus,
-            'daily_rewards': self._daily_rewards_service
-        }
+        self._services = services
+        self.diana_master = diana_interface # Store the initialized DianaMasterInterface
 
     def _register_handlers(self):
         """🚀 Registra el sistema maestro Diana."""
-        # Setup services
-        import asyncio
-        asyncio.create_task(self._tariff_service.setup())
-        asyncio.create_task(self._daily_rewards_service.setup())
-        
         # Register the Diana Master System
-        self.diana_master = register_diana_master_system(self.dp, self._services)
+        # The diana_master is already initialized and passed in __init__
+        register_diana_master_system(self.dp, self._services)
         print("🎭 Diana Master System successfully integrated!")
 
     async def start(self):

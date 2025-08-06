@@ -49,6 +49,16 @@ class CoreContainer(containers.DeclarativeContainer):
     dispatcher = providers.Singleton(Dispatcher)
 
 
+from src.modules.tariff.service import TariffService
+from src.modules.daily_rewards.service import DailyRewardsService
+from ..services.emotional import (
+    CharacterProfileService,
+    RelationshipService,
+    EmotionalStateService,
+    EmotionalMemoryService,
+    PersonalityAdaptationService
+)
+
 class ServicesContainer(containers.DeclarativeContainer):
     """Application services container."""
     
@@ -57,6 +67,30 @@ class ServicesContainer(containers.DeclarativeContainer):
     db_session = providers.Dependency()
     central_config = providers.Dependency()
     
+    # Emotional sub-services
+    character_profile_service = providers.Factory(
+        CharacterProfileService
+    )
+    
+    emotional_state_service = providers.Factory(
+        EmotionalStateService,
+        character_profile_service=character_profile_service
+    )
+    
+    personality_adaptation_service = providers.Factory(
+        PersonalityAdaptationService
+    )
+    
+    relationship_service = providers.Factory(
+        RelationshipService,
+        emotional_state_service=emotional_state_service,
+        personality_service=personality_adaptation_service
+    )
+    
+    emotional_memory_service = providers.Factory(
+        EmotionalMemoryService
+    )
+
     # Module services
     narrative_service = providers.Factory(
         NarrativeService,
@@ -73,7 +107,12 @@ class ServicesContainer(containers.DeclarativeContainer):
     )
     
     emotional_service = providers.Factory(
-        EmotionalService
+        EmotionalService,
+        profile_service=character_profile_service,
+        relationship_service=relationship_service,
+        emotional_state_service=emotional_state_service,
+        memory_service=emotional_memory_service,
+        personality_service=personality_adaptation_service
     )
     
     admin_service = providers.Factory(
@@ -83,6 +122,16 @@ class ServicesContainer(containers.DeclarativeContainer):
     
     role_service = providers.Factory(
         RoleService
+    )
+
+    tariff_service = providers.Factory(
+        TariffService,
+        event_bus=event_bus
+    )
+
+    daily_rewards_service = providers.Factory(
+        DailyRewardsService,
+        gamification_service=gamification_service
     )
 
 

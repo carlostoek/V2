@@ -27,29 +27,44 @@ async def main():
         log.success("✅ Base de datos inicializada correctamente")
     
     with log.section("CONFIGURACIÓN DE SERVICIOS", "⚙️"):
-        log.startup("Configurando Event Bus...")
-        event_bus = EventBus()
-
-        # Instanciar servicios
-        log.startup("Inicializando servicios principales...")
-        user_service = UserService(event_bus)
-        gamification_service = GamificationService(event_bus)
-        narrative_service = NarrativeService(event_bus)
-        admin_service = AdminService(event_bus)
+        log.startup("Configurando contenedor de dependencias...")
+        from src.bot.core.containers import ApplicationContainer
+        
+        container = ApplicationContainer()
+        container.config.from_env() # Cargar configuración desde variables de entorno
+        
+        event_bus = container.core.event_bus()
+        
+        # Obtener servicios del contenedor
+        log.startup("Obteniendo servicios del contenedor de dependencias...")
+        user_service = container.services.user_service()
+        gamification_service = container.services.gamification_service()
+        narrative_service = container.services.narrative_service()
+        admin_service = container.services.admin_service()
         
         services = {
             "user": user_service,
             "gamification": gamification_service,
             "narrative": narrative_service,
             "admin": admin_service,
+            "emotional": container.services.emotional_service(),
+            "role": container.services.role_service(),
+            "tariff": container.services.tariff_service(),
+            "daily_rewards": container.services.daily_rewards_service(),
         }
 
-        # Conectar servicios al bus
-        log.startup("Conectando servicios al Event Bus...")
-        await user_service.setup()
-        await gamification_service.setup()
-        await narrative_service.setup()
-        await admin_service.setup()
+        # Conectar servicios al bus (si tienen método setup)
+        log.startup("Conectando servicios al Event Bus (si aplica)...")
+        # Check if service has a setup method before calling it
+        if hasattr(user_service, 'setup'): await user_service.setup()
+        if hasattr(gamification_service, 'setup'): await gamification_service.setup()
+        if hasattr(narrative_service, 'setup'): await narrative_service.setup()
+        if hasattr(admin_service, 'setup'): await admin_service.setup()
+        if hasattr(services["emotional"], 'setup'): await services["emotional"].setup()
+        if hasattr(services["role"], 'setup'): await services["role"].setup()
+        if hasattr(services["tariff"], 'setup'): await services["tariff"].setup()
+        if hasattr(services["daily_rewards"], 'setup'): await services["daily_rewards"].setup()
+        log.success("✅ Servicios configurados y conectados al Event Bus")
         log.success("✅ Todos los servicios conectados al Event Bus")
 
     with log.section("INICIALIZACIÓN DE DIANA MASTER SYSTEM", "🤖"):
@@ -62,11 +77,8 @@ async def main():
         adapter = TelegramAdapter(
             bot_token=settings.bot_token,
             event_bus=event_bus,
-            gamification_service=gamification_service,
-            admin_service=admin_service,
-            narrative_service=narrative_service,
-            user_service=user_service,
-            diana_interface=diana_interface
+            diana_interface=diana_interface,
+            services=services # Pass the entire services dictionary
         )
         
         log.startup("Iniciando Bot de Telegram...")

@@ -22,13 +22,20 @@ logger = structlog.get_logger()
 class EmotionalService:
     """Servicio para gestionar el sistema emocional."""
     
-    def __init__(self):
+    def __init__(
+        self,
+        profile_service: "CharacterProfileService",
+        relationship_service: "RelationshipService",
+        emotional_state_service: "EmotionalStateService",
+        memory_service: "EmotionalMemoryService",
+        personality_service: "PersonalityAdaptationService"
+    ):
         self.logger = structlog.get_logger(service="EmotionalService")
-        self.profile_service = CharacterProfileService()
-        self.relationship_service = RelationshipService()
-        self.emotional_state_service = EmotionalStateService()
-        self.memory_service = EmotionalMemoryService()
-        self.personality_service = PersonalityAdaptationService()
+        self.profile_service = profile_service
+        self.relationship_service = relationship_service
+        self.emotional_state_service = emotional_state_service
+        self.memory_service = memory_service
+        self.personality_service = personality_service
     
     async def process_message(
         self,
@@ -351,8 +358,10 @@ class CharacterProfileService(BaseService[CharacterEmotionalProfile]):
 class RelationshipService(BaseService[UserCharacterRelationship]):
     """Servicio para gestionar relaciones entre usuarios y personajes."""
     
-    def __init__(self):
+    def __init__(self, emotional_state_service: "EmotionalStateService", personality_service: "PersonalityAdaptationService"):
         super().__init__(UserCharacterRelationship)
+        self.emotional_state_service = emotional_state_service
+        self.personality_service = personality_service
     
     async def get_relationship(
         self, session: AsyncSession, user_id: int, character_id: int
@@ -394,14 +403,12 @@ class RelationshipService(BaseService[UserCharacterRelationship]):
             relationship = await self.create(session, relationship_data)
             
             # Crear estado emocional inicial
-            emotional_state_service = EmotionalStateService()
-            await emotional_state_service.create_initial_state(
+            await self.emotional_state_service.create_initial_state(
                 session, user_id, character_id, relationship.id
             )
             
             # Crear adaptación de personalidad inicial
-            personality_service = PersonalityAdaptationService()
-            await personality_service.create_initial_adaptation(
+            await self.personality_service.create_initial_adaptation(
                 session, user_id, character_id, relationship.id
             )
         
@@ -447,8 +454,9 @@ class RelationshipService(BaseService[UserCharacterRelationship]):
 class EmotionalStateService(BaseService[UserCharacterEmotionalState]):
     """Servicio para gestionar estados emocionales."""
     
-    def __init__(self):
+    def __init__(self, character_profile_service: "CharacterProfileService"):
         super().__init__(UserCharacterEmotionalState)
+        self.character_profile_service = character_profile_service
     
     async def get_by_relationship(
         self, session: AsyncSession, relationship_id: int
@@ -474,8 +482,7 @@ class EmotionalStateService(BaseService[UserCharacterEmotionalState]):
         )
         
         # Obtener valores base del personaje
-        character_service = CharacterProfileService()
-        character = await character_service.get_by_id(session, character_id)
+        character = await self.character_profile_service.get_by_id(session, character_id)
         
         # Crear estado emocional inicial
         state_data = {
