@@ -163,9 +163,6 @@ class GamificationService(ICoreService):
         Wrapper method to add points to a user (for Daily Rewards Service integration).
         """
         try:
-            # Update points in memory cache
-            self.points[user_id] = self.points.get(user_id, 0) + points
-            
             # Update points in database
             async for session in get_session():
                 # Get or create user points record
