@@ -159,4 +159,4 @@ async def test_diana_master_integration():
         return False
 
 if __name__ == "__main__":
-    asyncio.run(test_diana_integration())
+    asyncio.run(test_diana_master_integration())
