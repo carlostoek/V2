@@ -21,6 +21,16 @@ from aiogram.filters import Command
 
 import structlog
 
+# Import services for real data integration
+from src.modules.gamification.service import GamificationService
+from src.modules.narrative.service import NarrativeService
+from src.modules.admin.service import AdminService
+from src.modules.user.service import UserService
+from src.modules.shop.service import ShopService
+from src.modules.daily_rewards.service import DailyRewardsService
+from src.modules.trivia.service import TriviaService
+from src.modules.tariff.service import TariffService
+
 # === HELPER FUNCTIONS ===
 
 async def safe_edit_message(callback: CallbackQuery, text: str, keyboard: InlineKeyboardMarkup = None, parse_mode: str = "Markdown"):
@@ -72,6 +82,16 @@ class AdaptiveContextEngine:
     def __init__(self, services: Dict[str, Any]):
         self.services = services
         self.logger = structlog.get_logger()
+        
+        # Initialize service instances for real data access
+        self._gamification_service = services.get('gamification')
+        self._narrative_service = services.get('narrative')
+        self._admin_service = services.get('admin')
+        self._user_service = services.get('user')
+        self._shop_service = services.get('shop')
+        self._daily_rewards_service = services.get('daily_rewards')
+        self._trivia_service = services.get('trivia')
+        self._tariff_service = services.get('tariff')
         self.user_contexts: Dict[int, UserContext] = {}
         self.interaction_patterns: Dict[int, List[Tuple[str, datetime]]] = {}
         
@@ -83,17 +103,59 @@ class AdaptiveContextEngine:
             if hasattr(self.services['gamification'], 'get_user_points'):
                 user_stats = await self.services['gamification'].get_user_points(user_id)
             else:
+            # Get real user data from services
+            user_points = 0
+            user_level = 1
+            narrative_progress = 0.0
+            gamification_engagement = 0.0
+            
+            # Get gamification data
+            if self._gamification_service:
+                try:
+                    points_data = await self._gamification_service.get_user_points(user_id)
+                    user_points = points_data.get('current_points', 0)
+                    user_level = self._calculate_level_from_points(user_points)
+                    
+                    # Calculate engagement based on missions and achievements
+                    missions = await self._gamification_service.get_user_missions(user_id)
+                    achievements = await self._gamification_service.get_user_achievements(user_id)
+                    
+                    total_missions = len(missions.get('available', [])) + len(missions.get('in_progress', [])) + len(missions.get('completed', []))
+                    completed_missions = len(missions.get('completed', []))
+                    completed_achievements = len([a for a in achievements if a.get('is_completed', False)])
+                    
+                    gamification_engagement = min(1.0, (completed_missions + completed_achievements) / max(1, total_missions + 10))
+                except Exception as e:
+                    self.logger.warning(f"Error getting gamification data: {e}")
+            
+            # Get narrative progress
+            if self._narrative_service:
+                try:
+                    lore_pieces = await self._narrative_service.get_user_lore_pieces(user_id)
+                    narrative_progress = min(1.0, len(lore_pieces) / 10.0)  # Assume 10 total pieces
+                except Exception as e:
+                    self.logger.warning(f"Error getting narrative data: {e}")
+            
+            # Detect user mood based on real data
+            current_mood = await self._detect_user_mood(user_id, [])
+            
+            # Calculate engagement pattern
+            engagement_pattern = self._analyze_engagement_pattern([])
+            
+            # Calculate personalization score
+            personalization_score = min(1.0, (gamification_engagement + narrative_progress) / 2.0)
+            
                 user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
         except:
-            user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
-        narrative_state = await self._get_narrative_context(user_id)
+                current_mood=current_mood,
+                engagement_pattern=engagement_pattern,
         recent_interactions = self.interaction_patterns.get(user_id, [])
         
         # AI mood detection based on behavior patterns
         detected_mood = await self._detect_user_mood(user_id, recent_interactions)
-        
-        # Calculate engagement metrics
-        engagement_pattern = self._analyze_engagement_pattern(recent_interactions)
+                personalization_score=personalization_score,
+                narrative_progress=narrative_progress,
+                gamification_engagement=gamification_engagement
         
         context = UserContext(
             user_id=user_id,
@@ -111,8 +173,49 @@ class AdaptiveContextEngine:
         self.user_contexts[user_id] = context
         return context
     
+    def _calculate_level_from_points(self, points: int) -> int:
+        """Calculate user level from points using standard progression."""
+        if points < 100:
+            return 1
+        elif points < 400:
+            return 2
+        elif points < 900:
+            return 3
+        elif points < 1600:
+            return 4
+        elif points < 2500:
+            return 5
+        else:
+            return min(10, 5 + (points - 2500) // 1000)
+    
     async def _detect_user_mood(self, user_id: int, interactions: List) -> UserMoodState:
         """🎭 Advanced mood detection algorithm"""
+        try:
+            # Get real user data to determine mood
+            if self._gamification_service:
+                points_data = await self._gamification_service.get_user_points(user_id)
+                missions = await self._gamification_service.get_user_missions(user_id)
+                achievements = await self._gamification_service.get_user_achievements(user_id)
+                
+                # Analyze patterns
+                total_points = points_data.get('current_points', 0)
+                completed_missions = len(missions.get('completed', []))
+                completed_achievements = len([a for a in achievements if a.get('is_completed', False)])
+                
+                # Determine mood based on activity patterns
+                if total_points > 1000 and completed_achievements > 5:
+                    return UserMoodState.ACHIEVER
+                elif len(achievements) > completed_achievements * 2:  # Many incomplete achievements
+                    return UserMoodState.COLLECTOR
+                elif completed_missions > 10:
+                    return UserMoodState.OPTIMIZER
+                elif total_points > 500:
+                    return UserMoodState.EXPLORER
+                else:
+                    return UserMoodState.NEWCOMER
+        except Exception as e:
+            self.logger.warning(f"Error detecting mood from real data: {e}")
+        
         
         if not interactions:
             return UserMoodState.NEWCOMER
@@ -329,6 +432,55 @@ class DianaMasterInterface:
     
     async def _generate_contextual_dashboard(self, context: UserContext) -> str:
         """📊 Dynamic dashboard based on user state"""
+        try:
+            # Get real user statistics
+            dashboard_text = ""
+            
+            if self._gamification_service:
+                points_data = await self._gamification_service.get_user_points(context.user_id)
+                missions = await self._gamification_service.get_user_missions(context.user_id)
+                
+                current_points = points_data.get('current_points', 0)
+                active_missions = len(missions.get('in_progress', []))
+                completed_today = len([m for m in missions.get('completed', []) 
+                                     if m.get('completed_at') and 
+                                     (datetime.now() - datetime.fromisoformat(m['completed_at'])).days < 1])
+                
+                if context.current_mood == UserMoodState.ACHIEVER:
+                    dashboard_text = f"🎯 **MODO CONQUISTA ACTIVADO**\n"
+                    dashboard_text += f"⭐ Nivel: {self._calculate_level_from_points(current_points)}\n"
+                    dashboard_text += f"🔥 Misiones completadas hoy: {completed_today}\n"
+                    dashboard_text += f"🎯 Misiones activas: {active_missions}\n"
+                elif context.current_mood == UserMoodState.COLLECTOR:
+                    achievements = await self._gamification_service.get_user_achievements(context.user_id)
+                    completed_achievements = len([a for a in achievements if a.get('is_completed', False)])
+                    dashboard_text = f"💎 **COLECCIÓN ACTIVA**\n"
+                    dashboard_text += f"💰 Besitos: {current_points:,}\n"
+                    dashboard_text += f"🏆 Logros: {completed_achievements}\n"
+                    dashboard_text += f"📦 Inventario: {len(achievements)} items\n"
+                elif context.current_mood == UserMoodState.STORYTELLER:
+                    if self._narrative_service:
+                        lore_pieces = await self._narrative_service.get_user_lore_pieces(context.user_id)
+                        dashboard_text = f"📖 **NARRATIVA EN PROGRESO**\n"
+                        dashboard_text += f"📚 Historia: {context.narrative_progress * 100:.1f}% completada\n"
+                        dashboard_text += f"🔍 Pistas: {len(lore_pieces)}\n"
+                        dashboard_text += f"💫 Progreso narrativo: Activo\n"
+                elif context.current_mood == UserMoodState.OPTIMIZER:
+                    dashboard_text = f"📊 **PANEL DE CONTROL**\n"
+                    dashboard_text += f"⚙️ Eficiencia: {context.gamification_engagement * 100:.1f}%\n"
+                    dashboard_text += f"📈 Rendimiento: Óptimo\n"
+                    dashboard_text += f"🎯 Objetivos: {active_missions} activos\n"
+                else:  # NEWCOMER or EXPLORER
+                    dashboard_text = f"🌟 **BIENVENIDO AL UNIVERSO DIANA**\n"
+                    dashboard_text += f"💰 Besitos: {current_points}\n"
+                    dashboard_text += f"⭐ Nivel: {self._calculate_level_from_points(current_points)}\n"
+                    dashboard_text += f"🎯 Misiones disponibles: {len(missions.get('available', []))}\n"
+            
+            return dashboard_text
+            
+        except Exception as e:
+            self.logger.error(f"Error generating contextual dashboard: {e}")
+            # Fallback to mock data
         
         # Get real-time user stats (with fallback)
         try:
@@ -383,6 +535,46 @@ class DianaMasterInterface:
     
     async def _generate_predictive_actions(self, context: UserContext) -> str:
         """🔮 AI-powered action predictions"""
+        try:
+            predictions = []
+            
+            # Check daily rewards
+            if self._daily_rewards_service:
+                can_claim = await self._daily_rewards_service.can_claim_daily_reward(context.user_id)
+                if can_claim:
+                    predictions.append("💡 *Predicción: Tu regalo diario está esperándote*")
+            
+            # Check trivia availability
+            if self._trivia_service:
+                can_answer = await self._trivia_service.can_answer_daily(context.user_id)
+                if can_answer:
+                    predictions.append("🧠 *Sugerencia: Nueva trivia disponible para ti*")
+            
+            # Check missions
+            if self._gamification_service:
+                missions = await self._gamification_service.get_user_missions(context.user_id)
+                active_missions = len(missions.get('in_progress', []))
+                if active_missions > 0:
+                    predictions.append(f"🎯 *Recordatorio: {active_missions} misiones en progreso*")
+                
+                available_missions = len(missions.get('available', []))
+                if available_missions > 0:
+                    predictions.append(f"🚀 *Oportunidad: {available_missions} nuevas misiones disponibles*")
+            
+            # Check narrative progress
+            if self._narrative_service and context.narrative_progress < 0.8:
+                predictions.append("📖 *Recomendación: Tu historia está esperando continuar...*")
+            
+            # Return random prediction or default
+            if predictions:
+                return random.choice(predictions)
+            else:
+                return "✨ *Todo está en orden - ¡explora nuevas aventuras!*"
+                
+        except Exception as e:
+            self.logger.error(f"Error generating predictions: {e}")
+        
+        # Fallback predictions
         
         predictions = []
         
@@ -813,39 +1005,9 @@ async def handle_diana_missions_integration(callback: CallbackQuery, master: Dia
     
     # Get user stats for display
     try:
-        if hasattr(master.services['gamification'], 'get_user_points'):
-            user_stats = await master.services['gamification'].get_user_points(user_id)
-        else:
-            user_stats = {'level': 1, 'points': 0, 'streak': 0}
-    except:
-        user_stats = {'level': 1, 'points': 0, 'streak': 0}
-    
-    missions_text += f"📊 **TU PROGRESO:**\n"
-    missions_text += f"⭐ Nivel: {user_stats.get('level', 1)} | 💰 Besitos: {user_stats.get('points', 0)}\n"
-    missions_text += f"🔥 Racha actual: {user_stats.get('streak', 0)} días"
-    
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Ver Todas las Misiones", callback_data="missions:active")],
-        [InlineKeyboardButton(text="🏆 Misiones Completadas", callback_data="missions:completed")],
-        [InlineKeyboardButton(text="🔍 Buscar Nuevas Misiones", callback_data="missions:find")],
-        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
-    ])
-    
-    await safe_edit_message(callback, missions_text, keyboard)
-
-
-async def handle_diana_shop_integration(callback: CallbackQuery, master: DianaMasterInterface):
-    """🛒 Diana Master Shop Integration"""
     user_id = callback.from_user.id
-    
-    # Get user context for personalized shop experience
-    context = await master.context_engine.analyze_user_context(user_id)
-    
-    shop_text = "🛒 **TIENDA ÉPICA DE DIANA**\n\n"
-    
-    if context.current_mood == UserMoodState.COLLECTOR:
-        shop_text += "💎 *Objetos exclusivos para coleccionistas como tú*\n\n"
-    elif context.current_mood == UserMoodState.ACHIEVER:
+        narrative_text += f"📊 **Progreso narrativo:** {context.narrative_progress * 100:.1f}%\n"
+        narrative_text += "🎭 Cada decisión cambia tu destino"
         shop_text += "🏆 *Herramientas para conquistar todos los logros*\n\n"
     else:
         shop_text += "✨ *Descubre tesoros únicos en nuestro catálogo*\n\n"
@@ -906,33 +1068,74 @@ async def handle_diana_narrative_integration(callback: CallbackQuery, master: Di
     narrative_progress = context.narrative_progress
     
     story_text = "📖 **HISTORIA VIVA DE DIANA**\n\n"
+    # Get real daily rewards data
+    gift_text = "🎁 **REGALO DIARIO ÉPICO**\n\n"
     
-    if context.current_mood == UserMoodState.STORYTELLER:
-        story_text += "🎭 *Los secretos del universo se revelan ante ti, narrador épico*\n\n"
-    else:
-        story_text += "✨ *Cada decisión que tomas reescribe el destino de esta historia*\n\n"
-    
-    # Get current narrative state
     try:
-        if master.services.get('narrative'):
-            fragment = await master.services['narrative'].get_user_fragment(user_id)
-        else:
-            fragment = None
-    except:
-        fragment = None
+        if master.context_engine._daily_rewards_service:
+            can_claim = await master.context_engine._daily_rewards_service.can_claim_daily_reward(user_id)
+            stats = await master.context_engine._daily_rewards_service.get_user_daily_stats(user_id)
+            
+            consecutive_days = stats.get('consecutive_days', 0)
+            total_claimed = stats.get('total_claimed', 0)
+            
+            if can_claim:
+                reward = await master.context_engine._daily_rewards_service.get_available_reward(user_id)
+                if reward:
+                    gift_text += f"{reward.icon} **{reward.name}**\n"
+                    gift_text += f"✨ *{reward.rarity.title()}*\n\n"
+                    gift_text += f"{reward.description}\n\n"
+                    gift_text += f"🔥 **Racha actual:** {consecutive_days} días\n"
+                    gift_text += f"📦 **Total reclamados:** {total_claimed}\n\n"
+                    
+                    # Streak bonuses
+                    if consecutive_days >= 7:
+                        gift_text += "🎊 **¡Bonus por racha semanal!**\n"
+                    if consecutive_days >= 30:
+                        gift_text += "👑 **¡Bonus legendario por mes completo!**\n"
+                    
+                    gift_text += "¡Reclama tu regalo para mantener tu racha!"
+                else:
+                    gift_text += "⏰ **No hay regalos disponibles en este momento**\n"
+                    gift_text += "Intenta más tarde o contacta soporte."
+            else:
+                next_claim = stats.get('next_claim_time')
+                if next_claim:
+                    hours_remaining = (next_claim - datetime.now()).total_seconds() / 3600
+                    gift_text += f"⏰ **Próximo regalo en:** {hours_remaining:.1f} horas\n\n"
+                
+                gift_text += f"🔥 **Racha actual:** {consecutive_days} días\n"
+                gift_text += f"📦 **Total reclamados:** {total_claimed}\n\n"
+                gift_text += "¡Ya reclamaste tu regalo de hoy! Vuelve mañana."
+        
+    except Exception as e:
+        master.logger.error(f"Error getting daily gift data: {e}")
+        gift_text += "✨ *Sistema de recompensas diarias*\n\n"
     
-    if fragment:
-        story_text += f"📜 **CAPÍTULO ACTUAL:**\n{fragment.get('title', 'Historia Continua')}\n\n"
-        story_text += f"📊 Progreso: {narrative_progress:.1f}%\n\n"
-        story_text += "🎯 **OPCIONES DISPONIBLES:**\n"
+    
+        gift_text += "💎 *Especialmente seleccionado para coleccionistas*\n"
+        fragment = None
+        gift_text += "🌟 *Tu recompensa diaria te está esperando*\n"
         if fragment.get('choices'):
             for i, choice in enumerate(fragment['choices'][:2], 1):
                 story_text += f"{i}. {choice['text'][:50]}...\n"
         else:
-            story_text += "Continuará en el próximo fragmento...\n"
-    else:
-        story_text += "🌟 **NUEVA AVENTURA TE ESPERA**\n\n"
-        story_text += "La historia de Diana está llena de misterios por descubrir. "
+    # Check if can claim
+    try:
+        if master.context_engine._daily_rewards_service:
+            can_claim = await master.context_engine._daily_rewards_service.can_claim_daily_reward(user_id)
+            if can_claim:
+                keyboard_buttons.append([
+                    InlineKeyboardButton(text="🎁 Reclamar Regalo", callback_data="daily:claim")
+                ])
+            else:
+                keyboard_buttons.append([
+                    InlineKeyboardButton(text="⏰ Ya Reclamado Hoy", callback_data="daily:stats")
+                ])
+    except:
+        keyboard_buttons.append([
+            InlineKeyboardButton(text="🎁 Reclamar Regalo", callback_data="daily:claim")
+        ])
         story_text += "Interactúa con el bot y completa misiones para desbloquear contenido narrativo.\n\n"
         story_text += f"📊 Progreso general: {narrative_progress:.1f}%"
     
@@ -956,33 +1159,68 @@ async def handle_diana_trivia_integration(callback: CallbackQuery, master: Diana
     if context.current_mood == UserMoodState.ACHIEVER:
         trivia_text += "⚡ *¡Perfecto! Tu mente conquistadora está lista para el desafío*\n\n"
     else:
+    # Get real trivia data
         trivia_text += "🌟 *Prepárate para poner a prueba tu conocimiento*\n\n"
+    
+    try:
+        if master.context_engine._trivia_service:
+            can_answer = await master.context_engine._trivia_service.can_answer_daily(user_id)
+            stats = await master.context_engine._trivia_service.get_user_trivia_stats(user_id)
+            
+            total_answered = stats.get('total_answered', 0)
+            accuracy_rate = stats.get('accuracy_rate', 0)
+            daily_streak = stats.get('daily_streak', 0)
+            total_points = stats.get('total_points_earned', 0)
+            
+            trivia_text += f"📊 **Tus estadísticas:**\n"
+            trivia_text += f"🎯 Respondidas: {total_answered}\n"
+            trivia_text += f"✅ Precisión: {accuracy_rate:.1f}%\n"
+            trivia_text += f"🔥 Racha: {daily_streak} días\n"
+            trivia_text += f"💰 Puntos ganados: {total_points}\n\n"
+            
+            if can_answer:
+                question = await master.context_engine._trivia_service.get_daily_question(user_id)
+                if question:
+                    trivia_text += f"**🎯 PREGUNTA DEL DÍA:**\n"
+                    trivia_text += f"📂 Categoría: {question.category}\n"
+                    trivia_text += f"⚡ Dificultad: {question.difficulty.value.title()}\n"
+                    trivia_text += f"💰 Recompensa: {question.points_reward} besitos\n\n"
+                    trivia_text += "¿Estás listo para el desafío?"
+                else:
+                    trivia_text += "⏰ **No hay preguntas disponibles**\n"
+                    trivia_text += "Intenta más tarde."
+            else:
+                trivia_text += "✅ **¡Trivia completada hoy!**\n"
+                trivia_text += "Vuelve mañana para una nueva pregunta."
+        
+    except Exception as e:
+        master.logger.error(f"Error getting trivia data: {e}")
+        trivia_text += "🎯 *Desafía tu conocimiento*\n\n"
     
     # Check if can answer daily trivia
     try:
-        if master.services.get('trivia'):
-            can_answer = await master.services['trivia'].can_answer_daily(user_id)
-            stats = await master.services['trivia'].get_user_trivia_stats(user_id)
-        else:
-            can_answer = True
-            stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
-    except:
-        can_answer = True
-        stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
+        trivia_text += "💡 *Optimiza tu rendimiento*\n"
     
-    if can_answer:
-        trivia_text += "🎯 **TRIVIA DIARIA DISPONIBLE**\n\n"
-        trivia_text += "**💡 Consejos Diana Master:**\n"
-        trivia_text += "• Responde rápido para obtener bonificación\n"
-        trivia_text += "• Preguntas más difíciles dan más puntos\n"
-        trivia_text += "• Los usuarios VIP tienen preguntas exclusivas\n\n"
+        trivia_text += "🎯 ¿Estás listo para el desafío?"
         trivia_text += "¿Estás listo para el desafío de hoy?"
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🎯 Empezar Trivia", callback_data="trivia:start")],
-            [InlineKeyboardButton(text="📊 Ver Ranking", callback_data="trivia:leaderboard")],
-            [InlineKeyboardButton(text="📈 Mis Estadísticas", callback_data="trivia:my_stats")],
-            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    # Check if can start trivia
+    try:
+        if master.context_engine._trivia_service:
+            can_answer = await master.context_engine._trivia_service.can_answer_daily(user_id)
+            if can_answer:
+                keyboard_buttons.append([
+                    InlineKeyboardButton(text="🎯 Empezar Trivia", callback_data="trivia:start")
+                ])
+            else:
+                keyboard_buttons.append([
+                    InlineKeyboardButton(text="✅ Completada Hoy", callback_data="trivia:my_stats")
+                ])
+    except:
+        keyboard_buttons.append([
+            InlineKeyboardButton(text="🎯 Empezar Trivia", callback_data="trivia:start")
         ])
     else:
         trivia_text += "✅ **TRIVIA DIARIA COMPLETADA**\n\n"
@@ -1450,24 +1688,42 @@ async def handle_epic_shop(callback: CallbackQuery, master: DianaMasterInterface
     await handle_diana_shop_integration(callback, master)
 
 
+    # Get real shop data
+    shop_text = "🛒 **TIENDA ÉPICA DE DIANA**\n\n"
+    
+    try:
+        # Get user points
+        if master.context_engine._gamification_service:
+            points_data = await master.context_engine._gamification_service.get_user_points(user_id)
+            user_points = points_data.get('current_points', 0)
+            shop_text += f"💰 **Tus besitos:** {user_points:,}\n\n"
+        
+        # Get available shop items
+        if master.context_engine._shop_service:
+            categories = await master.context_engine._shop_service.get_categories()
+            shop_text += "**🏪 CATEGORÍAS DISPONIBLES:**\n"
+            for category in categories:
+                items = await master.context_engine._shop_service.get_shop_items(user_id, category=category)
+                shop_text += f"• {category.title()}: {len(items)} artículos\n"
+            shop_text += "\n"
+        
+        # Get VIP tariffs if available
+        if master.context_engine._tariff_service:
+            tariffs = await master.context_engine._tariff_service.get_all_tariffs()
+            if tariffs:
+                shop_text += "**👑 SUSCRIPCIONES VIP:**\n"
+                for tariff in tariffs[:3]:  # Show top 3
+                    shop_text += f"• {tariff.name}: ${tariff.price} ({tariff.duration_days} días)\n"
+                shop_text += "\n"
+        
+    except Exception as e:
+    
 async def handle_missions_hub(callback: CallbackQuery, master: DianaMasterInterface):  
     """🎯 Missions Hub Experience (Legacy - now calls integration)"""
     await handle_diana_missions_integration(callback, master)
 
 
 async def handle_narrative_hub(callback: CallbackQuery, master: DianaMasterInterface):
-    """📖 Narrative Hub Experience (Legacy - now calls integration)"""
-    await handle_diana_narrative_integration(callback, master)
-
-
-async def handle_trivia_challenge(callback: CallbackQuery, master: DianaMasterInterface):
-    """🧠 Trivia Challenge Handler (Legacy - now calls integration)"""
-    await handle_diana_trivia_integration(callback, master)
-
-
-async def handle_daily_gift(callback: CallbackQuery, master: DianaMasterInterface):
-    """🎁 Daily Gift Handler (Legacy - now calls integration)"""
-    await handle_diana_daily_rewards_integration(callback, master)
 
 
 
@@ -1504,29 +1760,53 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
     user_id = callback.from_user.id
     context = await master.context_engine.analyze_user_context(user_id)
     
+    # Get real missions data
     help_text = "❓ **AYUDA INTELIGENTE DIANA**\n\n"
     
     # Personalized help based on user context
     if context.current_mood == UserMoodState.NEWCOMER:
         help_text += "🌟 **GUÍA PARA NUEVOS AVENTUREROS:**\n\n"
         help_text += "1. 🎁 **Reclama tu regalo diario** para obtener Besitos gratis\n"
+    try:
+        if master.context_engine._gamification_service:
+            missions = await master.context_engine._gamification_service.get_user_missions(user_id)
+            points_data = await master.context_engine._gamification_service.get_user_points(user_id)
+            
+            available_count = len(missions.get('available', []))
+            in_progress_count = len(missions.get('in_progress', []))
+            completed_count = len(missions.get('completed', []))
+            current_points = points_data.get('current_points', 0)
+            user_level = master.context_engine._calculate_level_from_points(current_points)
+            
+            missions_text += f"⭐ **Tu nivel:** {user_level}\n"
+            missions_text += f"💰 **Besitos:** {current_points:,}\n\n"
+            missions_text += f"**📋 ESTADO DE MISIONES:**\n"
+            missions_text += f"🎯 Disponibles: {available_count}\n"
+            missions_text += f"⏳ En progreso: {in_progress_count}\n"
+            missions_text += f"✅ Completadas: {completed_count}\n\n"
+            
+            # Show active missions
+            if in_progress_count > 0:
+                missions_text += "**🔥 MISIONES ACTIVAS:**\n"
+                for mission in missions.get('in_progress', [])[:3]:  # Show top 3
+                    progress = mission.get('progress_percentage', 0)
+                    missions_text += f"• {mission.get('title', 'Misión')}: {progress:.0f}%\n"
+                missions_text += "\n"
+            
+            # Show available missions
+            if available_count > 0:
+                missions_text += "**⭐ NUEVAS OPORTUNIDADES:**\n"
+                for mission in missions.get('available', [])[:2]:  # Show top 2
+                    reward = mission.get('rewards', {}).get('points', 0)
+                    missions_text += f"• {mission.get('title', 'Misión')}: +{reward} besitos\n"
+                missions_text += "\n"
+        
+    except Exception as e:
+        master.logger.error(f"Error getting missions data: {e}")
+        missions_text += "✨ *Centro de misiones dinámico*\n\n"
+    
         help_text += "2. 🧠 **Responde trivias** para ganar puntos y subir de nivel\n"
-        help_text += "3. 📖 **Explora la historia** para desbloquear contenido épico\n"
-        help_text += "4. 🛒 **Visita la tienda** para descubrir mejoras VIP\n\n"
-        
-    elif context.current_mood == UserMoodState.ACHIEVER:
-        help_text += "🏆 **CONSEJOS PRO PARA CONQUISTADORES:**\n\n"
-        help_text += "• 🔥 **Mantén rachas diarias** para multiplicadores de recompensa\n"
-        help_text += "• 🎯 **Completa misiones consecutivas** para desbloquear logros épicos\n"
-        help_text += "• 📊 **Optimiza tu progreso** revisando estadísticas regularmente\n\n"
-        
-    else:
-        help_text += "🌟 **FUNCIONES PRINCIPALES:**\n\n"
-        help_text += "• 🏠 **Inicio**: Tu dashboard personalizado\n"
-        help_text += "• 🎁 **Regalo Diario**: Recompensas gratuitas cada 24h\n"
-        help_text += "• 🧠 **Trivia**: Desafíos de conocimiento con premios\n"
-        help_text += "• 🛒 **Tienda**: Mejoras y suscripciones VIP\n"
-        help_text += "• 📖 **Historia**: Aventura narrativa interactiva\n\n"
+        missions_text += "🎮 ¡Aventuras esperándote!"
     
     help_text += "💡 **¿Necesitas ayuda específica?**\n"
     help_text += "El sistema se adapta a tu estilo de juego automáticamente."
@@ -1545,13 +1825,41 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
 def register_diana_master_system(dp, services: Dict[str, Any]):
     """🏛️ Register the complete Diana Master System"""
     
+    # Get real narrative data
     # Initialize the system
     initialize_diana_master(services)
+    try:
+        if master.context_engine._narrative_service:
+            lore_pieces = await master.context_engine._narrative_service.get_user_lore_pieces(user_id)
+            current_fragment = await master.context_engine._narrative_service.get_user_fragment(user_id)
+            
+            narrative_text += f"🔍 **Pistas recolectadas:** {len(lore_pieces)}\n"
+            
+            if current_fragment:
+                narrative_text += f"📍 **Ubicación actual:** {current_fragment.get('title', 'Fragmento Actual')}\n"
+                narrative_text += f"🎭 **Personaje:** {current_fragment.get('character', 'Diana')}\n\n"
+                
+                # Show current fragment text (truncated)
+                fragment_text = current_fragment.get('text', '')
+                if len(fragment_text) > 100:
+                    fragment_text = fragment_text[:100] + "..."
+                narrative_text += f"*\"{fragment_text}\"*\n\n"
+                
+                # Show available choices
+                choices = current_fragment.get('choices', [])
+                if choices:
+                    narrative_text += f"**🎭 DECISIONES DISPONIBLES:** {len(choices)}\n"
+                    for i, choice in enumerate(choices[:2], 1):  # Show first 2
+                        narrative_text += f"{i}. {choice.get('text', 'Opción')}\n"
+                    if len(choices) > 2:
+                        narrative_text += f"... y {len(choices) - 2} más\n"
+                    narrative_text += "\n"
+            else:
+                narrative_text += "🌟 **Estado:** Listo para comenzar tu aventura\n\n"
+        
+    except Exception as e:
+        master.logger.error(f"Error getting narrative data: {e}")
+        narrative_text += "✨ *Tu historia personal se desarrolla aquí*\n\n"
+    
     
     # Register the router
-    dp.include_router(master_router)
-    
-    print("🎭 Diana Master System initialized successfully!")
-    print("🚀 Ready to provide next-generation user experiences!")
-    
-    return diana_master

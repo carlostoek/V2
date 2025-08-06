@@ -523,6 +523,35 @@ class NarrativeService(ICoreService):
             logger.error(f"Error al obtener pistas del usuario: {e}")
             return []
     
+    async def get_user_progress(self, user_id: int) -> Dict[str, Any]:
+        """
+        Get user's narrative progress summary.
+        
+        Args:
+            user_id: ID del usuario
+            
+        Returns:
+            Progress summary
+        """
+        try:
+            lore_pieces = await self.get_user_lore_pieces(user_id)
+            current_fragment = await self.get_user_fragment(user_id)
+            
+            return {
+                "progress_percentage": min(100, len(lore_pieces) * 10),  # 10% per piece
+                "lore_pieces_count": len(lore_pieces),
+                "current_fragment": current_fragment.get('title', 'Inicio') if current_fragment else 'Inicio',
+                "has_new_content": len(lore_pieces) > 0
+            }
+        except Exception as e:
+            logger.error(f"Error getting user progress: {e}")
+            return {
+                "progress_percentage": 0,
+                "lore_pieces_count": 0,
+                "current_fragment": "Inicio",
+                "has_new_content": False
+            }
+    
     async def make_narrative_choice(self, user_id: int, choice_id: int) -> bool:
         """
         Registra una elección narrativa del usuario y actualiza su estado.

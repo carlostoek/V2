@@ -457,23 +457,67 @@ async def handle_achievement_engine(callback: CallbackQuery, diana_master):
     achievement_text = "🏆 **MOTOR DE LOGROS AVANZADO**\n\n"
     achievement_text += "🎯 *Sistema de logros con inteligencia artificial predictiva*\n\n"
     
-    # Get user achievement data (mock)
-    user_achievements = {
-        "unlocked": [
-            Achievement("first_trivia", "🔰 Primera Trivia", "Responde tu primera pregunta", "🔰", 
-                       AchievementType.MILESTONE, RewardTier.BRONZE, {}, 50, ["🎁 Bonus Pack"], [], 
-                       1, 1, True, datetime.now() - timedelta(days=5)),
-            Achievement("week_streak", "🔥 Racha Semanal", "7 días consecutivos", "🔥", 
-                       AchievementType.STREAK, RewardTier.SILVER, {"consecutive_days": 7}, 200, ["🏅 Medalla Persistencia"], [], 
-                       7, 7, True, datetime.now() - timedelta(days=2))
-        ],
-        "in_progress": await progression_state.predict_achievements(),
-        "locked": [
-            Achievement("legend_status", "👑 Estado Legendario", "Alcanza el nivel 20", "👑",
-                       AchievementType.PROGRESSION, RewardTier.LEGENDARY, {"min_level": 20}, 2000, ["👑 Corona Real"], ["level_15"],
-                       3, 20, False)
-        ]
-    }
+    # Get real user achievement data
+    try:
+        if diana_master.context_engine._gamification_service:
+            achievements = await diana_master.context_engine._gamification_service.get_user_achievements(user_id)
+            
+            user_achievements = {
+                "unlocked": [],
+                "in_progress": [],
+                "locked": []
+            }
+            
+            for ach in achievements:
+                achievement_obj = Achievement(
+                    id=ach.get('key', str(ach.get('id', ''))),
+                    title=ach.get('name', 'Logro'),
+                    description=ach.get('description', 'Descripción del logro'),
+                    icon="🏆",
+                    type=AchievementType.MILESTONE,
+                    tier=RewardTier.BRONZE,
+                    requirements={},
+                    reward_points=ach.get('points_reward', 0),
+                    reward_items=[],
+                    unlock_conditions=[],
+                    progress_current=int(ach.get('progress', 0) * 100),
+                    progress_required=100,
+                    unlocked=ach.get('is_completed', False),
+                    date_unlocked=ach.get('completed_at')
+                )
+                
+                if ach.get('is_completed', False):
+                    user_achievements["unlocked"].append(achievement_obj)
+                elif ach.get('progress', 0) > 0:
+                    user_achievements["in_progress"].append(achievement_obj)
+                else:
+                    user_achievements["locked"].append(achievement_obj)
+            
+            # Add predicted achievements
+            predicted = await progression_state.predict_achievements()
+            user_achievements["in_progress"].extend(predicted)
+        else:
+            # Fallback to mock data
+            user_achievements = {
+                "unlocked": [
+                    Achievement("first_trivia", "🔰 Primera Trivia", "Responde tu primera pregunta", "🔰", 
+                               AchievementType.MILESTONE, RewardTier.BRONZE, {}, 50, ["🎁 Bonus Pack"], [], 
+                               1, 1, True, datetime.now() - timedelta(days=5))
+                ],
+                "in_progress": await progression_state.predict_achievements(),
+                "locked": [
+                    Achievement("legend_status", "👑 Estado Legendario", "Alcanza el nivel 20", "👑",
+                               AchievementType.PROGRESSION, RewardTier.LEGENDARY, {"min_level": 20}, 2000, ["👑 Corona Real"], ["level_15"],
+                               3, 20, False)
+                ]
+            }
+    except Exception as e:
+        logger.error(f"Error getting achievements: {e}")
+        user_achievements = {
+            "unlocked": [],
+            "in_progress": await progression_state.predict_achievements(),
+            "locked": []
+        }
     
     # Achievement statistics
     total_unlocked = len(user_achievements["unlocked"])

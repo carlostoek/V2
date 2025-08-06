@@ -817,6 +817,51 @@ class GamificationService(ICoreService):
                     log.error(f"Usuario no existe - no se pueden obtener misiones")
                     return result
                 
+    
+    async def get_user_achievements(self, user_id: int) -> List[Dict[str, Any]]:
+        """
+        Obtiene los logros del usuario.
+        
+        Args:
+            user_id: ID del usuario.
+            
+        Returns:
+            Lista de logros con su estado.
+        """
+        await self._ensure_user_exists(user_id)
+        
+        # Mock achievements data - in real implementation would fetch from database
+        achievements = [
+            {
+                "id": 1,
+                "key": "first_trivia",
+                "name": "Primera Trivia",
+                "description": "Completaste tu primera trivia",
+                "is_completed": True,
+                "progress": 1.0,
+                "completed_at": datetime.now() - timedelta(days=5)
+            },
+            {
+                "id": 2,
+                "key": "week_streak",
+                "name": "Racha Semanal",
+                "description": "7 días consecutivos de actividad",
+                "is_completed": self.get_points(user_id) > 100,
+                "progress": min(1.0, self.get_points(user_id) / 100),
+                "completed_at": datetime.now() if self.get_points(user_id) > 100 else None
+            },
+            {
+                "id": 3,
+                "key": "point_collector",
+                "name": "Coleccionista de Puntos",
+                "description": "Acumula 500 besitos",
+                "is_completed": self.get_points(user_id) >= 500,
+                "progress": min(1.0, self.get_points(user_id) / 500),
+                "completed_at": datetime.now() if self.get_points(user_id) >= 500 else None
+            }
+        ]
+        
+        return achievements
                 # Obtener misiones del usuario
                 query = select(UserMission).options(
                     selectinload(UserMission.mission)

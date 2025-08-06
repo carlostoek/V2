@@ -8,6 +8,8 @@ from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.tariff.service import TariffService
 from src.modules.daily_rewards.service import DailyRewardsService
+from src.modules.shop.service import ShopService
+from src.modules.trivia.service import TriviaService
 from src.bot.core.diana_master_system import register_diana_master_system
 
 class TelegramAdapter:
@@ -23,6 +25,8 @@ class TelegramAdapter:
         # Initialize additional services
         self._tariff_service = TariffService(event_bus)
         self._daily_rewards_service = DailyRewardsService(gamification_service)
+        self._shop_service = ShopService(gamification_service)
+        self._trivia_service = TriviaService(gamification_service)
         
         # Prepare services dictionary for Diana Master System
         self._services = {
@@ -32,7 +36,9 @@ class TelegramAdapter:
             'user': user_service,
             'tariff': self._tariff_service,
             'event_bus': event_bus,
-            'daily_rewards': self._daily_rewards_service
+            'daily_rewards': self._daily_rewards_service,
+            'shop': self._shop_service,
+            'trivia': self._trivia_service
         }
 
     def _register_handlers(self):
@@ -41,6 +47,8 @@ class TelegramAdapter:
         import asyncio
         asyncio.create_task(self._tariff_service.setup())
         asyncio.create_task(self._daily_rewards_service.setup())
+        asyncio.create_task(self._shop_service.setup())
+        asyncio.create_task(self._trivia_service.setup())
         
         # Register the Diana Master System
         self.diana_master = register_diana_master_system(self.dp, self._services)

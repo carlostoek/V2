@@ -8,6 +8,9 @@ from src.modules.gamification.service import GamificationService
 from src.modules.narrative.service import NarrativeService
 from src.modules.user.service import UserService
 from src.modules.admin.service import AdminService
+from src.modules.shop.service import ShopService
+from src.modules.daily_rewards.service import DailyRewardsService
+from src.modules.trivia.service import TriviaService
 from src.bot.database.engine import init_db
 from src.utils.sexy_logger import log
 
@@ -35,6 +38,12 @@ async def main():
         gamification_service = GamificationService(event_bus)
         narrative_service = NarrativeService(event_bus)
         admin_service = AdminService(event_bus)
+        
+        # Initialize additional services for Diana Master System
+        log.startup("Inicializando servicios adicionales...")
+        shop_service = ShopService(gamification_service)
+        daily_rewards_service = DailyRewardsService(gamification_service)
+        trivia_service = TriviaService(gamification_service)
 
         # Conectar servicios al bus
         log.startup("Conectando servicios al Event Bus...")
@@ -42,6 +51,9 @@ async def main():
         await gamification_service.setup()
         await narrative_service.setup()
         await admin_service.setup()
+        await shop_service.setup()
+        await daily_rewards_service.setup()
+        await trivia_service.setup()
         log.success("✅ Todos los servicios conectados al Event Bus")
 
     with log.section("INICIALIZACIÓN DE TELEGRAM", "📱"):

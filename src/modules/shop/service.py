@@ -37,6 +37,36 @@ class ShopService(ICoreService):
         """Inicializa los artículos de la tienda."""
         items = {
             # === CATEGORÍA: NARRATIVA ===
+    
+    async def get_user_stats(self, user_id: int) -> Dict[str, Any]:
+        """Get user stats for shop validation."""
+        try:
+            if hasattr(self.gamification_service, 'get_user_points'):
+                points_data = await self.gamification_service.get_user_points(user_id)
+                return {
+                    'total_points': points_data.get('current_points', 0),
+                    'level': self._calculate_level_from_points(points_data.get('current_points', 0)),
+                    'is_vip': False  # TODO: Get from user service
+                }
+            else:
+                return {'total_points': 0, 'level': 1, 'is_vip': False}
+        except:
+            return {'total_points': 0, 'level': 1, 'is_vip': False}
+    
+    def _calculate_level_from_points(self, points: int) -> int:
+        """Calculate user level from points."""
+        if points < 100:
+            return 1
+        elif points < 400:
+            return 2
+        elif points < 900:
+            return 3
+        elif points < 1600:
+            return 4
+        elif points < 2500:
+            return 5
+        else:
+            return min(10, 5 + (points - 2500) // 1000)
             "hint_basic": ShopItem(
                 id="hint_basic",
                 name="🔍 Pista Básica",
