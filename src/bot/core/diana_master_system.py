@@ -409,7 +409,9 @@ class DianaMasterInterface:
             return f"📊 **PANEL DE CONTROL**\n⚙️ Eficiencia: {efficiency}% | 📈 Tendencia: {'📈 Subiendo' if efficiency > 80 else '📊 Estable'}\n🎯 Objetivos: {stats.get('active_goals', 3)} activos"
             
         else:  # Default/Explorer/Newcomer/Socializer
-            return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {len(stats.get('active_missions', []))} activas"
+            active_missions = stats.get('active_missions', 0)
+            missions_count = active_missions if isinstance(active_missions, int) else len(active_missions) if isinstance(active_missions, (list, tuple)) else 0
+            return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {missions_count} activas"
     
     async def _generate_predictive_actions(self, context: UserContext) -> str:
         """🔮 AI-powered action predictions"""

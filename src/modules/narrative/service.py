@@ -62,7 +62,7 @@ class NarrativeService(ICoreService):
             from src.bot.database.models.narrative import UserNarrativeState, StoryFragment
             from sqlalchemy import select, func
             
-            async with get_session() as session:
+            async for session in get_session():
                 # Get user narrative state
                 state_query = select(UserNarrativeState).where(UserNarrativeState.user_id == user_id)
                 state_result = await session.execute(state_query)
@@ -107,7 +107,7 @@ class NarrativeService(ICoreService):
                 }
                 
         except Exception as e:
-            log.error(f"Error getting user narrative progress for Diana Master System: {e}")
+            logging.error(f"Error getting user narrative progress for Diana Master System: {e}")
             return {
                 'progress': 0.0,
                 'fragments_visited': 0,

@@ -75,7 +75,7 @@ class GamificationService(ICoreService):
         Specifically designed for Diana Master System integration.
         """
         try:
-            async with get_session() as session:
+            async for session in get_session():
                 # Get user points
                 points_query = select(UserPoints).where(UserPoints.user_id == user_id)
                 points_result = await session.execute(points_query)
@@ -125,7 +125,8 @@ class GamificationService(ICoreService):
                 }
                 
         except Exception as e:
-            log.error(f"Error getting user stats for Diana Master System: {e}")
+            # Use print for error logging since sexy_logger might not be available
+            print(f"ERROR getting user stats for Diana Master System: {e}")
             return {
                 'level': 1,
                 'points': 0,
@@ -166,7 +167,7 @@ class GamificationService(ICoreService):
             self.points[user_id] = self.points.get(user_id, 0) + points
             
             # Update points in database
-            async with get_session() as session:
+            async for session in get_session():
                 # Get or create user points record
                 points_query = select(UserPoints).where(UserPoints.user_id == user_id)
                 points_result = await session.execute(points_query)
@@ -196,11 +197,11 @@ class GamificationService(ICoreService):
                         user_points.points_from_dailygift += points
                 
                 await session.commit()
-                log.info(f"Points added successfully: {points} points to user {user_id}")
+                print(f"Points added successfully: {points} points to user {user_id}")
                 return True
                 
         except Exception as e:
-            log.error(f"Error adding points to user {user_id}: {e}")
+            print(f"ERROR adding points to user {user_id}: {e}")
             return False
     
     async def set_point_multiplier(self, user_id: int, multiplier: float, hours: int) -> bool:
@@ -210,10 +211,10 @@ class GamificationService(ICoreService):
         try:
             # This is a simplified implementation - in a real system you'd store this in database
             # For now, we'll just log it as the multiplier system is not fully implemented
-            log.info(f"Point multiplier set for user {user_id}: x{multiplier} for {hours} hours")
+            print(f"Point multiplier set for user {user_id}: x{multiplier} for {hours} hours")
             return True
         except Exception as e:
-            log.error(f"Error setting point multiplier for user {user_id}: {e}")
+            print(f"ERROR setting point multiplier for user {user_id}: {e}")
             return False
     
     async def _load_initial_data(self) -> None:
