@@ -49,6 +49,85 @@ class NarrativeService(ICoreService):
         # Este es el fragmento que se mostrará a los usuarios nuevos
         await self._init_starting_fragment()
     
+    # === WRAPPER METHODS FOR DIANA MASTER SYSTEM ===
+    # These methods handle database sessions internally for Diana Master System
+    
+    async def get_user_narrative_progress(self, user_id: int) -> Dict[str, Any]:
+        """
+        Wrapper method to get narrative progress without requiring external session management.
+        Specifically designed for Diana Master System integration.
+        """
+        try:
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.narrative import UserNarrativeState, StoryFragment
+            from sqlalchemy import select, func
+            
+            async with get_session() as session:
+                # Get user narrative state
+                state_query = select(UserNarrativeState).where(UserNarrativeState.user_id == user_id)
+                state_result = await session.execute(state_query)
+                user_state = state_result.scalars().first()
+                
+                if not user_state:
+                    # User hasn't started narrative yet
+                    return {
+                        'progress': 0.0,
+                        'fragments_visited': 0,
+                        'total_fragments': await self._count_total_fragments(session),
+                        'current_fragment': None,
+                        'narrative_items': {}
+                    }
+                
+                # Get total fragments count
+                total_fragments = await self._count_total_fragments(session)
+                
+                # Calculate progress
+                fragments_visited = len(user_state.visited_fragments or [])
+                progress = (fragments_visited / total_fragments) * 100 if total_fragments > 0 else 0
+                
+                # Get current fragment info
+                current_fragment = None
+                if user_state.current_fragment_key:
+                    fragment_query = select(StoryFragment).where(StoryFragment.key == user_state.current_fragment_key)
+                    fragment_result = await session.execute(fragment_query)
+                    fragment = fragment_result.scalars().first()
+                    if fragment:
+                        current_fragment = {
+                            'key': fragment.key,
+                            'title': fragment.title,
+                            'character': fragment.character
+                        }
+                
+                return {
+                    'progress': progress,
+                    'fragments_visited': fragments_visited,
+                    'total_fragments': total_fragments,
+                    'current_fragment': current_fragment,
+                    'narrative_items': user_state.narrative_items or {}
+                }
+                
+        except Exception as e:
+            log.error(f"Error getting user narrative progress for Diana Master System: {e}")
+            return {
+                'progress': 0.0,
+                'fragments_visited': 0,
+                'total_fragments': 0,
+                'current_fragment': None,
+                'narrative_items': {}
+            }
+    
+    async def _count_total_fragments(self, session) -> int:
+        """Count total story fragments in the database."""
+        try:
+            from src.bot.database.models.narrative import StoryFragment
+            from sqlalchemy import select, func
+            
+            count_query = select(func.count()).select_from(StoryFragment)
+            result = await session.execute(count_query)
+            return result.scalar() or 0
+        except:
+            return 0
+    
     async def _init_starting_fragment(self) -> None:
         """Identifica y almacena el fragmento inicial de la narrativa."""
         try:

@@ -66,6 +66,156 @@ class GamificationService(ICoreService):
         # Cargar datos iniciales
         await self._load_initial_data()
     
+    # === WRAPPER METHODS FOR DIANA MASTER SYSTEM ===
+    # These methods handle database sessions internally for Diana Master System
+    
+    async def get_user_stats(self, user_id: int) -> Dict[str, Any]:
+        """
+        Wrapper method to get user statistics without requiring external session management.
+        Specifically designed for Diana Master System integration.
+        """
+        try:
+            async with get_session() as session:
+                # Get user points
+                points_query = select(UserPoints).where(UserPoints.user_id == user_id)
+                points_result = await session.execute(points_query)
+                user_points = points_result.scalars().first()
+                
+                if not user_points:
+                    # Create default points record
+                    return {
+                        'level': 1,
+                        'points': 0,
+                        'total_earned': 0,
+                        'is_vip': False,
+                        'streak': 0,
+                        'achievements_count': 0,
+                        'active_missions': 0
+                    }
+                
+                # Calculate level
+                level = self._calculate_level_from_points(user_points.current_points)
+                
+                # Get achievements count
+                achievements_query = select(func.count()).select_from(
+                    select(UserAchievement).where(
+                        and_(UserAchievement.user_id == user_id, UserAchievement.is_completed == True)
+                    ).subquery()
+                )
+                achievements_result = await session.execute(achievements_query)
+                achievements_count = achievements_result.scalar() or 0
+                
+                # Get active missions count
+                active_missions_query = select(func.count()).select_from(
+                    select(UserMission).where(
+                        and_(UserMission.user_id == user_id, UserMission.status == 'IN_PROGRESS')
+                    ).subquery()
+                )
+                missions_result = await session.execute(active_missions_query)
+                active_missions = missions_result.scalar() or 0
+                
+                return {
+                    'level': level,
+                    'points': user_points.current_points,
+                    'total_earned': user_points.total_earned,
+                    'is_vip': False,  # TODO: Implement VIP check
+                    'streak': 0,  # Will be handled by DailyRewardsService
+                    'achievements_count': achievements_count,
+                    'active_missions': active_missions
+                }
+                
+        except Exception as e:
+            log.error(f"Error getting user stats for Diana Master System: {e}")
+            return {
+                'level': 1,
+                'points': 0,
+                'total_earned': 0,
+                'is_vip': False,
+                'streak': 0,
+                'achievements_count': 0,
+                'active_missions': 0
+            }
+    
+    def _calculate_level_from_points(self, points: float) -> int:
+        """Calculate user level from points (simplified version)."""
+        if points < 100:
+            return 1
+        elif points < 500:
+            return 2
+        elif points < 1000:
+            return 3
+        elif points < 2500:
+            return 4
+        elif points < 5000:
+            return 5
+        elif points < 10000:
+            return 10
+        elif points < 25000:
+            return 15
+        elif points < 50000:
+            return 20
+        else:
+            return 25  # Max level
+    
+    async def add_points(self, user_id: int, points: float, source: str = "daily_reward") -> bool:
+        """
+        Wrapper method to add points to a user (for Daily Rewards Service integration).
+        """
+        try:
+            # Update points in memory cache
+            self.points[user_id] = self.points.get(user_id, 0) + points
+            
+            # Update points in database
+            async with get_session() as session:
+                # Get or create user points record
+                points_query = select(UserPoints).where(UserPoints.user_id == user_id)
+                points_result = await session.execute(points_query)
+                user_points = points_result.scalars().first()
+                
+                if not user_points:
+                    # Create new record
+                    user_points = UserPoints(
+                        user_id=user_id,
+                        current_points=points,
+                        total_earned=points,
+                        total_spent=0,
+                        points_from_messages=0,
+                        points_from_reactions=0,
+                        points_from_missions=0,
+                        points_from_dailygift=points if source == "daily_reward" else 0,
+                        points_from_minigames=0,
+                        points_from_narrative=0,
+                        active_multipliers={}
+                    )
+                    session.add(user_points)
+                else:
+                    # Update existing record
+                    user_points.current_points += points
+                    user_points.total_earned += points
+                    if source == "daily_reward":
+                        user_points.points_from_dailygift += points
+                
+                await session.commit()
+                log.info(f"Points added successfully: {points} points to user {user_id}")
+                return True
+                
+        except Exception as e:
+            log.error(f"Error adding points to user {user_id}: {e}")
+            return False
+    
+    async def set_point_multiplier(self, user_id: int, multiplier: float, hours: int) -> bool:
+        """
+        Set a point multiplier for a user (for Daily Rewards Service integration).
+        """
+        try:
+            # This is a simplified implementation - in a real system you'd store this in database
+            # For now, we'll just log it as the multiplier system is not fully implemented
+            log.info(f"Point multiplier set for user {user_id}: x{multiplier} for {hours} hours")
+            return True
+        except Exception as e:
+            log.error(f"Error setting point multiplier for user {user_id}: {e}")
+            return False
+    
     async def _load_initial_data(self) -> None:
         """Carga datos iniciales del sistema de gamificación."""
         try:
