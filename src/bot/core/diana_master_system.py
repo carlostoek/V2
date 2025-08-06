@@ -565,6 +565,18 @@ async def cmd_start(message: Message):
         return
     
     user_id = message.from_user.id
+    username = message.from_user.username
+    
+    # Publish UserStartedBotEvent (inherited from old handler functionality)
+    try:
+        from src.modules.events import UserStartedBotEvent
+        event = UserStartedBotEvent(user_id=user_id, username=username)
+        if diana_master.services.get('event_bus'):
+            await diana_master.services['event_bus'].publish(event)
+    except Exception as e:
+        print(f"Warning: Could not publish UserStartedBotEvent: {e}")
+    
+    # Generate the revolutionary adaptive interface
     text, keyboard = await diana_master.create_adaptive_interface(user_id, "start")
     
     await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
