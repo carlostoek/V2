@@ -1568,6 +1568,91 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
     await callback.message.edit_text(help_text, reply_markup=keyboard, parse_mode="Markdown")
 
 
+# === ROUTER AND HANDLERS SETUP ===
+
+# Global router for Diana Master System
+master_router = Router()
+
+# Global Diana Master System instance
+diana_master = None
+
+@master_router.message(Command("start"))
+async def handle_start_command(message: Message):
+    """🎭 Main /start command - Entry point to Diana Master System"""
+    user_id = message.from_user.id
+    
+    # Generate adaptive interface
+    interface_response = await diana_master.create_adaptive_interface(user_id, "main")
+    
+    await message.answer(
+        interface_response["text"],
+        reply_markup=interface_response["keyboard"],
+        parse_mode="Markdown"
+    )
+
+@master_router.callback_query(F.data.startswith("diana:"))
+async def handle_diana_callbacks(callback: CallbackQuery):
+    """🎭 Diana Master System callback router"""
+    action = callback.data.split(":", 1)[1]
+    
+    # Map callbacks to handlers
+    handlers = {
+        "refresh": lambda: diana_master.create_adaptive_interface(callback.from_user.id, "refresh"),
+        "epic_shop": lambda: handle_epic_shop(callback, diana_master),
+        "missions_hub": lambda: handle_missions_hub(callback, diana_master),
+        "narrative_hub": lambda: handle_narrative_hub(callback, diana_master),
+        "daily_gift": lambda: handle_daily_gift(callback, diana_master),
+        "trivia_challenge": lambda: handle_trivia_challenge(callback, diana_master),
+        "surprise_me": lambda: handle_surprise_feature(callback, diana_master),
+        "smart_help": lambda: handle_smart_help(callback, diana_master),
+        
+        # Advanced gamification handlers
+        "progress_tracker": lambda: handle_progress_tracker_fallback(callback, diana_master),
+        "pro_dashboard": lambda: handle_pro_dashboard_fallback(callback, diana_master),
+        "explore_mode": lambda: handle_explore_mode_fallback(callback, diana_master),
+        "achievement_engine": lambda: handle_achievement_engine_fallback(callback, diana_master),
+        "reward_calculator": lambda: handle_reward_calculator_fallback(callback, diana_master),
+        "leaderboard_system": lambda: handle_leaderboard_system_fallback(callback, diana_master),
+        "gamification_settings": lambda: handle_gamification_settings_fallback(callback, diana_master),
+        
+        # Additional handlers
+        "guided_tour": lambda: handle_guided_tour_fallback(callback, diana_master),
+        "collection": lambda: handle_collection_fallback(callback, diana_master),
+        "story_choices": lambda: handle_story_choices_fallback(callback, diana_master),
+    }
+    
+    if action in handlers:
+        try:
+            if action == "refresh":
+                # Special handling for refresh
+                interface_response = await handlers[action]()
+                await callback.message.edit_text(
+                    interface_response["text"],
+                    reply_markup=interface_response["keyboard"],
+                    parse_mode="Markdown"
+                )
+            else:
+                # Regular handler execution
+                await handlers[action]()
+            await callback.answer()
+        except Exception as e:
+            structlog.get_logger().error("Diana callback error", action=action, error=str(e))
+            await callback.answer("❌ Error procesando comando")
+    else:
+        await callback.answer("🔧 Función en desarrollo")
+
+def initialize_diana_master(services: Dict[str, Any]):
+    """Initialize Diana Master System with services"""
+    global diana_master
+    
+    # Initialize the Adaptive Context Engine
+    context_engine = AdaptiveContextEngine(services)
+    
+    # Initialize the Diana Master Interface
+    diana_master = DianaMasterInterface(context_engine, services)
+    
+    print("🎭 Diana Master System components initialized!")
+
 # === EXPORT FOR REGISTRATION ===
 
 def register_diana_master_system(dp, services: Dict[str, Any]):
