@@ -14,12 +14,12 @@ class Settings(BaseSettings):
     USE_WEBHOOK: bool = False
     
     # Database settings
-    DATABASE_URL: Union[PostgresDsn, str]
+    DATABASE_URL: str = "sqlite:///file::memory:?cache=shared"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_ECHO: bool = False
     CREATE_TABLES: bool = True  # Crear tablas automáticamente al iniciar en desarrollo
-    USE_SQLITE: bool = False  # Usar SQLite en lugar de PostgreSQL
+    USE_SQLITE: bool = True  # Usar SQLite en lugar de PostgreSQL
     
     # Admin settings
     ADMIN_USER_IDS: str = ""
