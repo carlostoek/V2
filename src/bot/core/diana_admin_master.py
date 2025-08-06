@@ -14,7 +14,7 @@ Based on Diana Master System architecture with admin-specific enhancements.
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Union
 from dataclasses import dataclass
 from enum import Enum
 
@@ -26,6 +26,7 @@ import structlog
 
 from .diana_admin_services_integration import DianaAdminServicesIntegration
 from .diana_admin_security import DianaAdminSecurity, AdminPermission
+from .diana_core_system import DianaCoreSystem  # Nuevo import añadido
 
 # === ADMIN SYSTEM CONFIGURATION ===
 
