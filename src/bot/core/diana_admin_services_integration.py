@@ -48,6 +48,8 @@ class DianaAdminServicesIntegration:
     def __init__(self, services: Dict[str, Any]):
         self.services = services
         self.logger = structlog.get_logger()
+        self.master_callbacks = []
+        self.admin_callbacks = []
         
         # Service health tracking
         self.service_health: Dict[str, ServiceHealth] = {}
@@ -511,7 +513,7 @@ class DianaAdminServicesIntegration:
     
     # === ADMIN ACTIONS ===
     
-    async def execute_admin_action(self, action: str, user_id: int, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def execute_admin_action(self, action: str, user_id: int, params: Dict[str, Any] = None, source: str = "admin") -> Dict[str, Any]:
         """Execute admin action with proper logging and error handling"""
         
         try:

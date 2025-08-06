@@ -151,12 +151,10 @@ class DianaAdminMaster:
     real service integration, and professional admin controls.
     """
     
-    def __init__(self, services: Dict[str, Any]):
+    def __init__(self, services: Dict[str, Any], services_integration: DianaAdminServicesIntegration = None):
         self.services = services
         self.logger = structlog.get_logger()
-        
-        # Services integration layer
-        self.services_integration = DianaAdminServicesIntegration(services)
+        self.services_integration = services_integration or DianaAdminServicesIntegration(services)
         
         # Security system
         self.security = DianaAdminSecurity()

@@ -213,9 +213,10 @@ class DianaMasterInterface:
     Every button, every text, every flow is intelligently crafted.
     """
     
-    def __init__(self, services: Dict[str, Any]):
+    def __init__(self, services: Dict[str, Any], services_integration: DianaAdminServicesIntegration = None):
         self.services = services
-        self.context_engine = AdaptiveContextEngine(services)
+        self.services_integration = services_integration or DianaAdminServicesIntegration(services)
+        self.context_engine = AdaptiveContextEngine(services, self.services_integration)
         self.logger = structlog.get_logger()
         
         # Revolutionary features
