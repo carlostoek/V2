@@ -522,6 +522,43 @@ class NarrativeService(ICoreService):
         except Exception as e:
             logger.error(f"Error al obtener pistas del usuario: {e}")
             return []
+
+    async def get_user_narrative_progress(self, user_id: int) -> float:
+        """
+        Calcula el progreso narrativo del usuario como un porcentaje.
+        
+        Args:
+            user_id: ID del usuario.
+            
+        Returns:
+            Porcentaje de progreso narrativo (0.0 a 100.0).
+        """
+        try:
+            async for session in get_session():
+                # Obtener estado narrativo del usuario
+                query = select(UserNarrativeState).where(UserNarrativeState.user_id == user_id)
+                result = await session.execute(query)
+                state = result.scalars().first()
+                
+                if not state:
+                    return 0.0
+                
+                visited_fragments_count = len(state.visited_fragments)
+                
+                # Obtener el número total de fragmentos de historia
+                total_fragments_query = select(StoryFragment)
+                total_fragments_result = await session.execute(total_fragments_query)
+                total_fragments_count = len(total_fragments_result.scalars().all())
+                
+                if total_fragments_count == 0:
+                    return 0.0
+                
+                progress = (visited_fragments_count / total_fragments_count) * 100.0
+                return round(progress, 2)
+        
+        except Exception as e:
+            logger.error(f"Error al calcular progreso narrativo: {e}")
+            return 0.0
     
     async def make_narrative_choice(self, user_id: int, choice_id: int) -> bool:
         """

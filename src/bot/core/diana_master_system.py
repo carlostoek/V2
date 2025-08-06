@@ -79,13 +79,10 @@ class AdaptiveContextEngine:
         """🔍 AI-powered user context analysis"""
         
         # Gather multi-dimensional user data
-        try:
-            if hasattr(self.services['gamification'], 'get_user_points'):
-                user_stats = await self.services['gamification'].get_user_points(user_id)
-            else:
-                user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
-        except:
-            user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
+        gamification_service = self.services.get('gamification')
+        user_stats = {'level': 1, 'points': 0, 'engagement_level': 0.5}
+        if gamification_service:
+            user_stats = await gamification_service.get_user_points(user_id)
         narrative_state = await self._get_narrative_context(user_id)
         recent_interactions = self.interaction_patterns.get(user_id, [])
         
@@ -137,13 +134,12 @@ class AdaptiveContextEngine:
     
     async def _get_narrative_context(self, user_id: int) -> Dict:
         """Get narrative context from narrative service"""
-        try:
-            if self.services.get('narrative'):
-                # This would call actual narrative service methods
-                return {'progress': 25.0}  # Mock for now
-            return {'progress': 0.0}
-        except:
-            return {'progress': 0.0}
+        narrative_service = self.services.get('narrative')
+        if narrative_service:
+            # Assuming narrative service has a method to get user's narrative progress
+            progress = await narrative_service.get_user_narrative_progress(user_id)
+            return {'progress': progress}
+        return {'progress': 0.0}
     
     def _calculate_session_duration(self, user_id: int) -> int:
         """Calculate current session duration in minutes"""
@@ -235,26 +231,23 @@ class DianaMasterInterface:
     
     async def _get_system_state(self) -> Dict:
         """Get current system state for contextual decisions"""
-        try:
-            # Get real-time system information
-            tariff_stats = await self.services['tariff'].get_tariff_stats()
-            
-            return {
-                'active_tariffs': tariff_stats.get('active_tariffs', 0),
-                'system_load': 'normal',  # Mock
-                'maintenance_mode': False,
-                'special_events': [],  # Mock - would contain active events
-                'timestamp': datetime.now()
-            }
-        except Exception as e:
-            self.logger.error("Error getting system state", error=str(e))
-            return {
-                'active_tariffs': 0,
-                'system_load': 'unknown',
-                'maintenance_mode': False,
-                'special_events': [],
-                'timestamp': datetime.now()
-            }
+        tariff_service = self.services.get('tariff')
+        tariff_stats = {} 
+        if tariff_service:
+            tariff_stats = await tariff_service.get_tariff_stats()
+
+        # Placeholder for actual system load and special events
+        system_load = 'normal'
+        maintenance_mode = False
+        special_events = []
+
+        return {
+            'active_tariffs': tariff_stats.get('active_tariffs', 0),
+            'system_load': system_load,
+            'maintenance_mode': maintenance_mode,
+            'special_events': special_events,
+            'timestamp': datetime.now()
+        }
     
     async def _generate_interface(self, context: UserContext, system_state: Dict, trigger: str) -> Dict:
         """🚀 The magic happens here - dynamic interface generation"""
@@ -331,37 +324,28 @@ class DianaMasterInterface:
         """📊 Dynamic dashboard based on user state"""
         
         # Get real-time user stats (with fallback)
-        try:
-            if hasattr(self.services['gamification'], 'get_user_points'):
-                stats = await self.services['gamification'].get_user_points(context.user_id)
-            else:
-                # Fallback to mock stats for now
-                stats = {
-                    'level': 1,
-                    'points': 0,
-                    'streak': 0,
-                    'inventory': [],
-                    'achievements': [],
-                    'clues': 0,
-                    'fragments': 0,
-                    'efficiency_score': 85,
-                    'active_goals': 3,
-                    'active_missions': [],
-                    'engagement_level': 0.5
-                }
-        except Exception as e:
-            self.logger.warning("Error getting user stats", error=str(e))
-            stats = {'level': 1, 'points': 0, 'streak': 0}
+        gamification_service = self.services.get('gamification')
+        stats = {
+            'level': 1,
+            'points': 0,
+            'streak': 0,
+            'inventory': [],
+            'achievements': [],
+            'clues': 0,
+            'fragments': 0,
+            'efficiency_score': 85,
+            'active_goals': 3,
+            'active_missions': [],
+            'engagement_level': 0.5
+        }
+        if gamification_service:
+            stats = await gamification_service.get_user_points(context.user_id)
         
-        # Check daily reward status (fallback to mock if method doesn't exist)
-        try:
-            if hasattr(self.services['daily_rewards'], 'can_claim_daily_reward'):
-                daily_status = await self.services['daily_rewards'].can_claim_daily_reward(context.user_id)
-            else:
-                # Mock daily status based on user activity
-                daily_status = True  # Assume available for now
-        except:
-            daily_status = True
+        daily_rewards_service = self.services.get('daily_rewards')
+        daily_status = True
+        if daily_rewards_service:
+            daily_stats = await daily_rewards_service.get_user_daily_stats(context.user_id)
+            daily_status = daily_stats.get('can_claim_today', True)
         
         # Smart stat selection based on user mood
         if context.current_mood == UserMoodState.ACHIEVER:
@@ -388,13 +372,11 @@ class DianaMasterInterface:
         
         # Analyze user patterns and predict next likely actions
         if context.current_mood == UserMoodState.COLLECTOR:
-            try:
-                if hasattr(self.services['daily_rewards'], 'can_claim_daily_reward'):
-                    daily_available = await self.services['daily_rewards'].can_claim_daily_reward(context.user_id)
-                else:
-                    daily_available = True  # Mock availability
-            except:
-                daily_available = True
+            daily_rewards_service = self.services.get('daily_rewards')
+            daily_available = True
+            if daily_rewards_service:
+                daily_stats = await daily_rewards_service.get_user_daily_stats(context.user_id)
+                daily_available = daily_stats.get('can_claim_today', True)
                 
             if daily_available:
                 predictions.append("💡 *Predicción: Probablemente quieras reclamar tu regalo diario*")
@@ -760,19 +742,14 @@ async def handle_diana_missions_integration(callback: CallbackQuery, master: Dia
     context = await master.context_engine.analyze_user_context(user_id)
     
     # Get missions data from gamification service
-    try:
-        if master.services.get('gamification'):
-            missions = await master.services['gamification'].get_user_missions(user_id)
-        else:
-            # Fallback mock data
-            missions = {
-                "available": [],
-                "in_progress": [],
-                "completed": []
-            }
-    except Exception as e:
-        master.logger.warning(f"Error getting missions: {e}")
-        missions = {"available": [], "in_progress": [], "completed": []}
+    gamification_service = master.services.get('gamification')
+    missions = {
+        "available": [],
+        "in_progress": [],
+        "completed": []
+    }
+    if gamification_service:
+        missions = await gamification_service.get_user_missions(user_id)
     
     # Create Diana Master style missions interface
     missions_text = "🎯 **CENTRO DE MISIONES DIANA**\n\n"
@@ -812,13 +789,10 @@ async def handle_diana_missions_integration(callback: CallbackQuery, master: Dia
         missions_text += "Interactúa con Diana y explora la narrativa para desbloquear misiones épicas.\n\n"
     
     # Get user stats for display
-    try:
-        if hasattr(master.services['gamification'], 'get_user_points'):
-            user_stats = await master.services['gamification'].get_user_points(user_id)
-        else:
-            user_stats = {'level': 1, 'points': 0, 'streak': 0}
-    except:
-        user_stats = {'level': 1, 'points': 0, 'streak': 0}
+    gamification_service = master.services.get('gamification')
+    user_stats = {'level': 1, 'points': 0, 'streak': 0}
+    if gamification_service:
+        user_stats = await gamification_service.get_user_points(user_id)
     
     missions_text += f"📊 **TU PROGRESO:**\n"
     missions_text += f"⭐ Nivel: {user_stats.get('level', 1)} | 💰 Besitos: {user_stats.get('points', 0)}\n"
@@ -851,29 +825,22 @@ async def handle_diana_shop_integration(callback: CallbackQuery, master: DianaMa
         shop_text += "✨ *Descubre tesoros únicos en nuestro catálogo*\n\n"
     
     # Get user stats
-    try:
-        if master.services.get('shop'):
-            user_stats = await master.services['shop'].gamification_service.get_user_stats(user_id)
-            user_points = user_stats.get('total_points', 0)
-            user_level = user_stats.get('level', 0)
-        else:
-            user_points = 0
-            user_level = 1
-    except:
-        user_points = 0
-        user_level = 1
+    gamification_service = master.services.get('gamification')
+    user_points = 0
+    user_level = 1
+    if gamification_service:
+        user_stats = await gamification_service.get_user_points(user_id)
+        user_points = user_stats.get('current_points', 0)
+        user_level = user_stats.get('level', 1)
     
     shop_text += f"💋 **Tus besitos:** {user_points}\n"
     shop_text += f"⭐ **Nivel:** {user_level}\n\n"
     
     # Get available categories
-    try:
-        if master.services.get('shop'):
-            categories = await master.services['shop'].get_categories()
-        else:
-            categories = ["narrativa", "gamificacion", "especiales"]
-    except:
-        categories = ["narrativa", "gamificacion", "especiales"]
+    shop_service = master.services.get('shop')
+    categories = ["narrativa", "gamificacion", "especiales"]
+    if shop_service:
+        categories = await shop_service.get_categories()
     
     shop_text += "**📦 CATEGORÍAS DISPONIBLES:**\n"
     category_icons = {
@@ -913,13 +880,10 @@ async def handle_diana_narrative_integration(callback: CallbackQuery, master: Di
         story_text += "✨ *Cada decisión que tomas reescribe el destino de esta historia*\n\n"
     
     # Get current narrative state
-    try:
-        if master.services.get('narrative'):
-            fragment = await master.services['narrative'].get_user_fragment(user_id)
-        else:
-            fragment = None
-    except:
-        fragment = None
+    narrative_service = master.services.get('narrative')
+    fragment = None
+    if narrative_service:
+        fragment = await narrative_service.get_user_fragment(user_id)
     
     if fragment:
         story_text += f"📜 **CAPÍTULO ACTUAL:**\n{fragment.get('title', 'Historia Continua')}\n\n"
@@ -959,16 +923,12 @@ async def handle_diana_trivia_integration(callback: CallbackQuery, master: Diana
         trivia_text += "🌟 *Prepárate para poner a prueba tu conocimiento*\n\n"
     
     # Check if can answer daily trivia
-    try:
-        if master.services.get('trivia'):
-            can_answer = await master.services['trivia'].can_answer_daily(user_id)
-            stats = await master.services['trivia'].get_user_trivia_stats(user_id)
-        else:
-            can_answer = True
-            stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
-    except:
-        can_answer = True
-        stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
+    trivia_service = master.services.get('trivia')
+    can_answer = True
+    stats = {'total_answered': 0, 'accuracy_rate': 0.0, 'total_points_earned': 0, 'daily_streak': 0}
+    if trivia_service:
+        can_answer = await trivia_service.can_answer_daily(user_id)
+        stats = await trivia_service.get_user_trivia_stats(user_id)
     
     if can_answer:
         trivia_text += "🎯 **TRIVIA DIARIA DISPONIBLE**\n\n"
@@ -1015,26 +975,18 @@ async def handle_diana_daily_rewards_integration(callback: CallbackQuery, master
         gift_text += "✨ *Diana tiene una sorpresa especial preparada para ti*\n\n"
     
     # Check daily reward availability
-    try:
-        if master.services.get('daily_rewards'):
-            stats = await master.services['daily_rewards'].get_user_daily_stats(user_id)
-            can_claim = stats["can_claim_today"]
-        else:
-            can_claim = True
-            stats = {"consecutive_days": 0, "total_claimed": 0, "best_streak": 0}
-    except:
-        can_claim = True
-        stats = {"consecutive_days": 0, "total_claimed": 0, "best_streak": 0}
+    daily_rewards_service = master.services.get('daily_rewards')
+    stats = {"consecutive_days": 0, "total_claimed": 0, "best_streak": 0}
+    can_claim = True
+    if daily_rewards_service:
+        stats = await daily_rewards_service.get_user_daily_stats(user_id)
+        can_claim = stats["can_claim_today"]
     
     if can_claim:
         # Can claim reward
-        try:
-            if master.services.get('daily_rewards'):
-                reward = await master.services['daily_rewards'].get_available_reward(user_id)
-            else:
-                reward = None
-        except:
-            reward = None
+        reward = None
+        if daily_rewards_service:
+            reward = await daily_rewards_service.get_available_reward(user_id)
         
         if reward:
             rarity_icons = {
