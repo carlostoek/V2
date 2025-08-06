@@ -54,6 +54,18 @@ async def init_db() -> None:
             logger.info("Creating database tables from models...")
             await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created successfully")
+            
+            # Inyectar datos de prueba si está habilitado
+            if hasattr(settings, 'INJECT_TEST_DATA') and settings.INJECT_TEST_DATA:
+                logger.info("Injecting test data...")
+                from .data_injection import inject_all_test_data
+                await inject_all_test_data()
+            elif settings.USE_SQLITE:
+                # Por defecto inyectar datos en SQLite para desarrollo
+                logger.info("Injecting test data for SQLite development...")
+                from .data_injection import inject_all_test_data
+                await inject_all_test_data()
+                
         logger.info("Database initialized successfully")
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

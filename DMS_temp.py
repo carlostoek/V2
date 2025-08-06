@@ -64,7 +64,7 @@ class DianaSmartEngine:
         try:
             if 'gamification' in self.services:
                 gamif_service = self.services['gamification']
-                user_stats = await gamif_service.get_user_points(user_id)
+                user_stats = await gamif_service.get_user_stats(user_id)
                 current_points = user_stats.get('points', 0)
                 # TODO: Implementar get_user_activity_pattern en gamification
             else:
@@ -293,7 +293,7 @@ async def handle_shop_real(callback: CallbackQuery, diana_interface: DianaSmartI
         # Obtener puntos del usuario
         if 'gamification' in diana_interface.services:
             gamif_service = diana_interface.services['gamification']
-            user_stats = await gamif_service.get_user_points(user_id)
+            user_stats = await gamif_service.get_user_stats(user_id)
             current_points = user_stats.get('points', 0)
         else:
             current_points = 0

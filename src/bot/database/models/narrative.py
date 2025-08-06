@@ -19,15 +19,15 @@ class StoryFragment(Base, TimestampMixin):
     character = Column(String(50), nullable=False)
     text = Column(Text, nullable=False)
     
-    # Metadatos del fragmento
-    tags = Column(ARRAY(String), default=[])
+    # Metadatos del fragmento (Fixed: Changed ARRAY to JSON for database compatibility)
+    tags = Column(JSON, default=[])
     level_required = Column(Integer, default=1)
     is_vip_only = Column(Boolean, default=False)
     
     # Recompensas
     reward_besitos = Column(Float, default=0.0)
     reward_items = Column(JSON, default={})
-    unlock_achievements = Column(ARRAY(String), default=[])
+    unlock_achievements = Column(JSON, default=[])
     
     # Relaciones
     choices = relationship(
@@ -88,8 +88,8 @@ class UserNarrativeState(Base, TimestampMixin):
     user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     current_fragment_key = Column(String(50), ForeignKey("story_fragments.key", ondelete="SET NULL"), nullable=True)
     
-    # Progreso narrativo
-    visited_fragments = Column(ARRAY(String), default=[])
+    # Progreso narrativo (Fixed: Changed ARRAY to JSON to match database schema)
+    visited_fragments = Column(JSON, default=[])
     decisions_made = Column(JSON, default={})
     narrative_items = Column(JSON, default={})
     narrative_variables = Column(JSON, default={})

@@ -235,9 +235,62 @@ class GamificationService(ICoreService):
                         "is_vip_only": mission.is_vip_only
                     }
                 
-                log.success(f"Cargadas {len(self.missions)} misiones activas en cache")
+                # If no missions found in database, load default missions
+                if len(missions) == 0:
+                    print("No missions found in database, loading default missions...")
+                    self._load_default_missions()
+                
+                print(f"Cargadas {len(self.missions)} misiones activas en cache")
         except Exception as e:
-            log.error(f"Error al cargar datos iniciales de gamificación", error=e)
+            print(f"Error al cargar datos iniciales de gamificación: {e}")
+            # Load default missions as fallback
+            print("Loading default missions as fallback...")
+            self._load_default_missions()
+    
+    def _load_default_missions(self):
+        """Load default missions when database is empty."""
+        default_missions = {
+            "daily_trivia": {
+                "id": 1,
+                "title": "Maestro del Conocimiento Diario",
+                "type": "DAILY",
+                "level_required": 1,
+                "is_vip_only": False
+            },
+            "first_steps": {
+                "id": 2,
+                "title": "Primeros Pasos",
+                "type": "ONE_TIME", 
+                "level_required": 1,
+                "is_vip_only": False
+            },
+            "daily_login": {
+                "id": 3,
+                "title": "Aventurero Constante",
+                "type": "DAILY",
+                "level_required": 1,
+                "is_vip_only": False
+            },
+            "point_collector": {
+                "id": 4,
+                "title": "Coleccionista de Besitos",
+                "type": "REPEATABLE",
+                "level_required": 2,
+                "is_vip_only": False
+            },
+            "story_explorer": {
+                "id": 5,
+                "title": "Explorador de Historias",
+                "type": "REPEATABLE",
+                "level_required": 3,
+                "is_vip_only": False
+            }
+        }
+        
+        for key, mission in default_missions.items():
+            self.missions[key] = mission
+        
+        print(f"Loaded {len(default_missions)} default missions")
 
     async def _award_points(self, user_id: int, points_to_award: int, source_event: IEvent) -> None:
         """

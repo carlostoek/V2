@@ -275,8 +275,10 @@ class DailyRewardsService(ICoreService):
         # Bonificación por racha consecutiva
         streak_bonus = min(consecutive_days * 2, 20)  # Máximo 20% de bonificación
         
-        # Ajustar probabilidades
+        # Ajustar probabilidades (Fixed: Use reward.id as key instead of reward object)
         probabilities = {}
+        reward_map = {}  # Map reward.id to reward object
+        
         for reward in available_rewards:
             base_prob = base_probabilities.get(reward.rarity, 10)
             
@@ -286,17 +288,18 @@ class DailyRewardsService(ICoreService):
             else:
                 final_prob = base_prob
                 
-            probabilities[reward] = final_prob
+            probabilities[reward.id] = final_prob  # Use hashable reward.id as key
+            reward_map[reward.id] = reward  # Keep mapping to reward object
         
         # Selección ponderada
         total_weight = sum(probabilities.values())
         rand_num = random.uniform(0, total_weight)
         
         current_weight = 0
-        for reward, weight in probabilities.items():
+        for reward_id, weight in probabilities.items():
             current_weight += weight
             if rand_num <= current_weight:
-                return reward
+                return reward_map[reward_id]  # Return the reward object
         
         # Fallback
         return available_rewards[0]
