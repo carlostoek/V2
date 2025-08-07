@@ -243,7 +243,7 @@ class DianaAdminMaster:
     # === MAIN ADMIN INTERFACE ===
     
     async def create_admin_main_interface(self, user_id: int) -> Tuple[str, InlineKeyboardMarkup]:
-        """Create the main admin interface"""
+        """Create the main admin interface with Lucien's voice"""
         
         # Check permissions
         if not await self.check_admin_permission(user_id):
@@ -255,19 +255,22 @@ class DianaAdminMaster:
         system_overview = await self.services_integration.get_system_overview()
         system_stats = system_overview['overview']
         
-        text = f"""🏛️ **DIANA BOT - CENTRO DE ADMINISTRACIÓN**
+        # Lucien's elegant introduction
+        text = f"""<b>🎩 Bienvenido al Sanctum Administrativo de Diana</b>
 
-⚡ **Estado del Sistema**
-• Usuarios Activos: {system_stats['active_users']} (24h)
-• Puntos Generados: {system_stats['points_generated']} besitos
-• Suscripciones VIP: {system_stats['vip_subscriptions']}
-• Uptime: {system_stats['uptime']}
+<i>Ah, ha regresado. Lucien a su servicio, guardián de los dominios administrativos de nuestra estimada Diana.</i>
 
-🎯 **Acceso Rápido**
-Selecciona una sección para administrar:
+<b>📊 Informe de Estado Actual:</b>
+• <b>Visitantes bajo observación:</b> {system_stats['active_users']} almas inquietas (últimas 24h)
+• <b>Besitos distribuidos:</b> {system_stats['points_generated']} fragmentos de atención
+• <b>Miembros del círculo exclusivo:</b> {system_stats['vip_subscriptions']} privilegiados
+• <b>Tiempo en operación:</b> {system_stats['uptime']} de vigilancia continua
 
-👑 **Nivel de Acceso**: {context.permission_level.value.replace('_', ' ').title()}
-🕐 **Sesión iniciada**: {context.session_start.strftime('%H:%M')}"""
+<b>🏛️ Sectores Bajo Su Jurisdicción:</b>
+<i>Cada sección revela secretos que Diana permite compartir con usted...</i>
+
+<b>👤 Su Estatus:</b> {self._format_permission_title(context.permission_level)}
+<b>🕐 Sesión iniciada:</b> {context.session_start.strftime('%H:%M')} hrs"""
 
         keyboard = self._create_main_admin_keyboard(context.permission_level)
         return text, keyboard
@@ -346,6 +349,29 @@ Selecciona una sección para administrar:
         
         return InlineKeyboardMarkup(inline_keyboard=buttons)
     
+    def _format_permission_title(self, permission_level: AdminPermissionLevel) -> str:
+        """Format permission level with Lucien's elegant titles"""
+        titles = {
+            AdminPermissionLevel.SUPER_ADMIN: "🎩 Mayordomo Superior - Acceso Total a los Archivos de Diana",
+            AdminPermissionLevel.ADMIN: "👤 Administrador de Confianza - Custodio de Secretos Selectos",
+            AdminPermissionLevel.MODERATOR: "🎪 Moderador del Círculo - Guardian de las Conversaciones",
+            AdminPermissionLevel.VIEWER: "👁️ Observador Discreto - Testigo Silencioso"
+        }
+        return titles.get(permission_level, "🤔 Visitante Desconocido")
+    
+    def _get_lucien_section_intro(self, section_key: str, section_title: str) -> str:
+        """Get Lucien's personalized introduction for each section"""
+        intros = {
+            "vip": "Ah, los dominios exclusivos de Diana. Aquí residen los secretos más preciados y los privilegiados que han ganado su favor especial.",
+            "free_channel": "El vestíbulo de ingreso, donde las almas curiosas toman sus primeros pasos hacia el mundo de Diana. Cada visitante es observado con atención.",
+            "global_config": "Los engranajes silenciosos que mantienen el reino en funcionamiento. Diana confía en que estos mecanismos permanezcan precisos.",
+            "gamification": "El sistema de recompensas que Diana ha diseñado con meticulosa elegancia. Cada punto otorgado tiene su propósito.",
+            "auctions": "Los eventos especiales donde Diana permite que sus tesoros cambien de manos. Cada transacción está cuidadosamente orquestada.",
+            "events": "Las celebraciones que Diana organiza para deliciar a sus seguidores. Momentos de revelación y sorpresa.",
+            "trivia": "Los desafíos intelectuales que Diana usa para medir la perspicacia de sus visitantes."
+        }
+        return intros.get(section_key, f"Un sector especial del dominio de Diana: {section_title}")
+    
     # === SECTION INTERFACES ===
     
     async def create_section_interface(self, user_id: int, section_key: str) -> Tuple[str, InlineKeyboardMarkup]:
@@ -361,18 +387,24 @@ Selecciona una sección para administrar:
         # Get section-specific stats from services integration
         section_stats = await self._get_section_stats_integrated(section_key)
         
-        # Generate breadcrumb
+        # Generate breadcrumb with Lucien's style
         breadcrumb = " → ".join(context.breadcrumb_path)
         
-        text = f"""🏛️ {breadcrumb}
+        # Lucien's section introduction
+        section_intro = self._get_lucien_section_intro(section_key, section.title)
+        
+        text = f"""<b>🏛️ {breadcrumb}</b>
 
-{section.icon} **{section.title.upper()}**
+<b>{section.icon} {section.title.upper()}</b>
 
-📋 **{section.description}**
+<i>{section_intro}</i>
 
-{await self._get_section_overview(section_key, section_stats)}
+<b>📋 Diana me ha confiado:</b> {section.description}
 
-🎯 **Opciones Disponibles:**"""
+{await self._get_section_overview_lucien_style(section_key, section_stats)}
+
+<b>🎯 Herramientas a su disposición:</b>
+<i>Seleccione sabiamente, cada acción es observada...</i>"""
         
         keyboard = self._create_section_keyboard(section, context.permission_level)
         return text, keyboard
@@ -432,13 +464,15 @@ Selecciona una sección para administrar:
         # Get subsection-specific content
         content = await self._get_subsection_content(section_key, subsection_key)
         
-        text = f"""🏛️ {breadcrumb}
+        text = f"""<b>🏛️ {breadcrumb}</b>
 
-{section.icon} **{subsection_title}**
+<b>{section.icon} {subsection_title}</b>
+
+<i>"{content['lucien_quote']}"</i>
 
 {content['description']}
 
-📊 **Estado Actual:**
+<b>📊 Registro de Actividad:</b>
 {content['stats']}
 
 {content['content']}"""
@@ -497,31 +531,38 @@ Selecciona una sección para administrar:
             self.logger.error(f"Error getting {section_key} stats", error=str(e))
             return {}
     
-    async def _get_section_overview(self, section_key: str, stats: Dict[str, Any]) -> str:
-        """Get overview text for a section"""
+    async def _get_section_overview_lucien_style(self, section_key: str, stats: Dict[str, Any]) -> str:
+        """Get overview text for a section with Lucien's elegant style"""
         
         if section_key == "vip":
-            return f"""💎 **Resumen VIP:**
-• Tarifas Activas: {stats.get('total_tariffs', 0)}
-• Suscripciones: {stats.get('active_subscriptions', 0)}
-• Ingresos Hoy: ${stats.get('revenue_today', 0):.2f}
-• Invitaciones Pendientes: {stats.get('pending_invitations', 0)}"""
+            return f"""<b>💎 Informe del Círculo Exclusivo:</b>
+• <b>Membresías disponibles:</b> {stats.get('total_tariffs', 0)} niveles de privilegio
+• <b>Almas en el círculo:</b> {stats.get('active_subscriptions', 0)} selectos miembros
+• <b>Tributos recaudados hoy:</b> ${stats.get('revenue_today', 0):.2f} en apreciación
+• <b>Invitaciones en espera:</b> {stats.get('pending_invitations', 0)} llaves sin usar
+
+<i>Diana observa con satisfacción el crecimiento de su círculo íntimo.</i>"""
             
         elif section_key == "gamification":
-            return f"""🎮 **Resumen Gamificación:**
-• Usuarios Totales: {stats.get('total_users', 0)}
-• Misiones Activas: {stats.get('active_missions', 0)}
-• Puntos Hoy: {stats.get('points_today', 0)}
-• Subidas de Nivel: {stats.get('level_ups_today', 0)}"""
+            return f"""<b>🎮 Estado del Sistema de Recompensas:</b>
+• <b>Participantes registrados:</b> {stats.get('total_users', 0)} almas en el juego
+• <b>Desafíos activos:</b> {stats.get('active_missions', 0)} pruebas disponibles
+• <b>Besitos distribuidos hoy:</b> {stats.get('points_today', 0)} fragmentos de atención
+• <b>Ascensos logrados:</b> {stats.get('level_ups_today', 0)} almas elevadas
+
+<i>El sistema funciona con la precisión que Diana exige.</i>"""
             
         elif section_key == "free_channel":
-            return f"""🔓 **Resumen Canal Gratuito:**
-• Suscriptores: {stats.get('total_subscribers', 0)}
-• Mensajes Hoy: {stats.get('messages_today', 0)}
-• Solicitudes: {stats.get('pending_requests', 0)}"""
+            return f"""<b>🔓 Reporte del Vestíbulo Público:</b>
+• <b>Visitantes suscritos:</b> {stats.get('total_subscribers', 0)} observadores
+• <b>Interacciones registradas:</b> {stats.get('messages_today', 0)} mensajes hoy
+• <b>Solicitudes pendientes:</b> {stats.get('pending_requests', 0)} en evaluación
+
+<i>El primer filtro de Diana funciona eficientemente.</i>"""
             
         else:
-            return "📊 **Estadísticas en tiempo real**"
+            return f"""<b>📊 Métricas en Observación Continua</b>
+<i>Los datos fluyen constantemente bajo la mirada atenta de Diana.</i>"""
     
     async def _get_subsection_content(self, section_key: str, subsection_key: str) -> Dict[str, Any]:
         """Get content for a specific subsection"""
@@ -530,9 +571,10 @@ Selecciona una sección para administrar:
         if section_key == "vip":
             if subsection_key == "config":
                 return {
-                    'description': "🛠 **Configuración del Sistema VIP**\nConfigura mensajes automáticos, recordatorios y flujos de suscripción.",
-                    'stats': "• Mensajes Configurados: 5\n• Recordatorios Activos: 3\n• Plantillas: 8",
-                    'content': "⚙️ **Opciones de Configuración:**\n• Mensajes de Bienvenida VIP\n• Recordatorios de Renovación\n• Flujos de Suscripción\n• Mensajes de Despedida",
+                    'lucien_quote': "Diana ha perfeccionado cada palabra, cada pausa, cada matiz de sus mensajes. Aquí yacen los textos que tocan el alma.",
+                    'description': "<b>🛠 Configuración del Círculo Exclusivo</b>\nLas palabras que Diana susurra a sus elegidos, cuidadosamente seleccionadas para despertar deseo.",
+                    'stats': "• <b>Mensajes de seducción:</b> 5 variaciones maestras\n• <b>Recordatorios susurrantes:</b> 3 secuencias activas\n• <b>Plantillas de intimidad:</b> 8 diseños disponibles",
+                    'content': "<b>⚙️ Herramientas de Personalización:</b>\n• <b>Mensajes de Bienvenida VIP:</b> La primera caricia verbal\n• <b>Recordatorios de Renovación:</b> Susurros de permanencia\n• <b>Flujos de Suscripción:</b> El camino hacia la intimidad\n• <b>Mensajes de Despedida:</b> La elegante retirada",
                     'actions': [
                         {'text': '✏️ Editar Mensajes', 'callback': 'admin:action:vip:edit_messages'},
                         {'text': '⏰ Config Recordatorios', 'callback': 'admin:action:vip:config_reminders'},
@@ -542,26 +584,28 @@ Selecciona una sección para administrar:
                 }
             elif subsection_key == "invite":
                 return {
-                    'description': "🏷 **Generador de Invitaciones VIP**\nCrea y gestiona tokens de invitación para acceso VIP.",
-                    'stats': "• Tokens Activos: 12\n• Tokens Usados Hoy: 3\n• Expirados: 2",
-                    'content': "🎫 **Gestión de Invitaciones:**\n• Generar nuevos tokens\n• Configurar duración\n• Asignar a tarifas específicas\n• Monitorear uso",
+                    'lucien_quote': "Cada invitación es una llave dorada, forjada con precisión para abrir puertas que pocos pueden atravesar.",
+                    'description': "<b>🏷 Forja de Invitaciones Exclusivas</b>\nLas llaves secretas que Diana otorga para acceso a sus dominios privados.",
+                    'stats': "• <b>Llaves en circulación:</b> 12 invitaciones activas\n• <b>Accesos otorgados hoy:</b> 3 almas elevadas\n• <b>Llaves expiradas:</b> 2 oportunidades perdidas",
+                    'content': "<b>🎫 Taller de Invitaciones Especiales:</b>\n• <b>Forjar nuevas llaves:</b> Crear tokens únicos\n• <b>Duración del encanto:</b> Configurar vigencia\n• <b>Asignación de privilegios:</b> Vincular a niveles VIP\n• <b>Vigilancia de uso:</b> Monitorear activaciones",
                     'actions': [
-                        {'text': '➕ Generar Token', 'callback': 'admin:action:vip:generate_token'},
-                        {'text': '📋 Ver Activos', 'callback': 'admin:action:vip:list_tokens'},
-                        {'text': '⚙️ Config Tokens', 'callback': 'admin:action:vip:config_tokens'},
-                        {'text': '📊 Estadísticas', 'callback': 'admin:action:vip:token_stats'}
+                        {'text': '➕ Forjar Token', 'callback': 'admin:action:vip:generate_token'},
+                        {'text': '📋 Llaves Activas', 'callback': 'admin:action:vip:list_tokens'},
+                        {'text': '⚙️ Configurar Llaves', 'callback': 'admin:action:vip:config_tokens'},
+                        {'text': '📊 Registro de Uso', 'callback': 'admin:action:vip:token_stats'}
                     ]
                 }
             elif subsection_key == "stats":
                 return {
-                    'description': "📊 **Estadísticas Completas VIP**\nAnalítica detallada del sistema VIP.",
-                    'stats': "• Conversiones Hoy: 5\n• Ingresos Totales: $1,234.56\n• Tasa Conversión: 12.3%",
-                    'content': "📈 **Métricas Disponibles:**\n• Conversiones por período\n• Análisis de ingresos\n• Retención de usuarios\n• Comparativas temporales",
+                    'lucien_quote': "Los números nunca mienten, pero en las manos de Diana, cada cifra cuenta una historia de seducción y conquista.",
+                    'description': "<b>📊 Observatorio de Conquistas VIP</b>\nCada métrica revela el arte de Diana para cautivar corazones y abrir carteras.",
+                    'stats': "• <b>Almas conquistadas hoy:</b> 5 nuevas conversiones\n• <b>Tributos acumulados:</b> $1,234.56 en devoción\n• <b>Efectividad de seducción:</b> 12.3% de éxito",
+                    'content': "<b>📈 Análisis de la Influencia de Diana:</b>\n• <b>Patrones de conversión:</b> El arte de la persuasión\n• <b>Flujo de tributos:</b> La generosidad inspirada\n• <b>Lealtad de devotos:</b> La persistencia del encanto\n• <b>Evolución temporal:</b> El crecimiento del imperio",
                     'actions': [
-                        {'text': '📈 Ver Conversiones', 'callback': 'admin:action:vip:conversion_stats'},
-                        {'text': '💰 Análisis Ingresos', 'callback': 'admin:action:vip:revenue_analysis'},
-                        {'text': '👥 Retención Usuarios', 'callback': 'admin:action:vip:retention_analysis'},
-                        {'text': '📊 Exportar Datos', 'callback': 'admin:action:vip:export_stats'}
+                        {'text': '📈 Conquistas Detalladas', 'callback': 'admin:action:vip:conversion_stats'},
+                        {'text': '💰 Flujo de Tributos', 'callback': 'admin:action:vip:revenue_analysis'},
+                        {'text': '👥 Lealtad de Devotos', 'callback': 'admin:action:vip:retention_analysis'},
+                        {'text': '📊 Exportar Inteligencia', 'callback': 'admin:action:vip:export_stats'}
                     ]
                 }
                 
@@ -569,40 +613,48 @@ Selecciona una sección para administrar:
         elif section_key == "gamification":
             if subsection_key == "stats":
                 return {
-                    'description': "📊 **Estadísticas de Gamificación**\nMétricas completas del sistema de puntos y progreso.",
-                    'stats': "• Puntos Totales: 125,000\n• Usuarios Activos: 456\n• Misiones Completadas: 1,234",
-                    'content': "🎯 **Métricas Disponibles:**\n• Distribución de puntos\n• Progreso de usuarios\n• Eficacia de misiones\n• Análisis de engagement",
+                    'lucien_quote': "Diana ha diseñado cada recompensa como un hilo invisible que une a sus seguidores con su mundo. Observo cómo responden con fascinación.",
+                    'description': "<b>📊 Observatorio del Sistema de Recompensas</b>\nEl ingenioso mecanismo que Diana usa para medir el compromiso y otorgar favores.",
+                    'stats': "• <b>Besitos en circulación:</b> 125,000 fragmentos de atención\n• <b>Participantes activos:</b> 456 almas comprometidas\n• <b>Desafíos completados:</b> 1,234 pruebas superadas",
+                    'content': "<b>🎯 Análisis del Engagement:</b>\n• <b>Distribución de recompensas:</b> Quién merece la atención de Diana\n• <b>Progreso individual:</b> El crecimiento de cada alma\n• <b>Efectividad de desafíos:</b> Qué despierta más pasión\n• <b>Patrones de compromiso:</b> La devoción medida en datos",
                     'actions': [
-                        {'text': '📈 Puntos por Usuario', 'callback': 'admin:action:gamification:points_distribution'},
-                        {'text': '🎯 Misiones Populares', 'callback': 'admin:action:gamification:mission_popularity'},
-                        {'text': '📊 Engagement', 'callback': 'admin:action:gamification:engagement_metrics'},
-                        {'text': '📋 Reporte Completo', 'callback': 'admin:action:gamification:full_report'}
+                        {'text': '📈 Distribución de Besitos', 'callback': 'admin:action:gamification:points_distribution'},
+                        {'text': '🎯 Desafíos Predilectos', 'callback': 'admin:action:gamification:mission_popularity'},
+                        {'text': '📊 Análisis de Devoción', 'callback': 'admin:action:gamification:engagement_metrics'},
+                        {'text': '📋 Informe Magistral', 'callback': 'admin:action:gamification:full_report'}
                     ]
                 }
                 
-        # Default fallback content
+        # Default fallback content with Lucien's touch
         return {
-            'description': f"🔧 **{subsection_key.replace('_', ' ').title()}**\nFuncionalidad en desarrollo.",
-            'stats': "• Estado: En desarrollo\n• Disponibilidad: Próximamente",
-            'content': "⚙️ Esta funcionalidad estará disponible en próximas versiones.\n\nMientras tanto, puedes:",
+            'lucien_quote': "Ah, esta es un área que Diana aún está perfeccionando. La paciencia es una virtud, y las mejores cosas llegan a quienes saben esperar.",
+            'description': f"<b>🔧 {subsection_key.replace('_', ' ').title()}</b>\nUn dominio que Diana está refinando con su característico detalle.",
+            'stats': "• <b>Estado:</b> En proceso de perfeccionamiento\n• <b>Disponibilidad:</b> Cuando Diana lo considere digno de revelación",
+            'content': "<b>⚙️ Mientras Diana completa su obra:</b>\n\nCada funcionalidad es meticulosamente diseñada para cumplir con sus elevados estándares.",
             'actions': [
-                {'text': '📞 Reportar Necesidad', 'callback': f'admin:action:report_need:{section_key}:{subsection_key}'},
-                {'text': '💡 Sugerir Mejora', 'callback': f'admin:action:suggest:{section_key}:{subsection_key}'}
+                {'text': '📞 Reportar Urgencia', 'callback': f'admin:action:report_need:{section_key}:{subsection_key}'},
+                {'text': '💡 Sugerir Refinamiento', 'callback': f'admin:action:suggest:{section_key}:{subsection_key}'}
             ]
         }
     
     # === UTILITY METHODS ===
     
     def _create_no_permission_interface(self) -> Tuple[str, InlineKeyboardMarkup]:
-        """Create interface for users without admin permissions"""
-        text = """🚫 **ACCESO DENEGADO**
+        """Create interface for users without admin permissions with Lucien's elegance"""
+        text = """<b>🎩 Un Momento, Estimado Visitante</b>
 
-No tienes permisos de administración para acceder a este panel.
+<i>Lucien aquí, guardián de los secretos administrativos de Diana.</i>
 
-Si crees que esto es un error, contacta con un administrador."""
+Me temo que estos salones están reservados para aquellos que han ganado la confianza especial de Diana. Los dominios administrativos requieren... ciertos privilegios.
+
+<b>🚪 Sus opciones:</b>
+• Regresar al mundo que conoce
+• Contactar con los guardianes apropiados
+
+<i>Diana comprende la curiosidad, pero también valora los límites apropiados.</i>"""
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+            [InlineKeyboardButton(text="🏠 Regresar al Reino de Diana", callback_data="diana:refresh")]
         ])
         
         return text, keyboard
@@ -627,7 +679,7 @@ async def cmd_admin(message: Message):
         
     user_id = message.from_user.id
     text, keyboard = await diana_admin_master.create_admin_main_interface(user_id)
-    await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
+    await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
 
 @admin_router.callback_query(F.data.startswith("admin:"))
 async def handle_admin_callbacks(callback: CallbackQuery):
@@ -684,7 +736,7 @@ async def handle_admin_callbacks(callback: CallbackQuery):
         else:
             text, keyboard = await diana_admin_master.create_admin_main_interface(user_id)
         
-        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
         
     except Exception as e:
         structlog.get_logger().error("Error in admin callback", error=str(e))
