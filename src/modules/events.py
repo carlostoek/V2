@@ -1,5 +1,6 @@
 from src.core.interfaces.IEventBus import IEvent
 from typing import Dict, List, Optional, Any
+from datetime import datetime
 
 class UserMessageEvent(IEvent):
     """Evento que se dispara cuando un usuario envía un mensaje."""

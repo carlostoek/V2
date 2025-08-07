@@ -262,6 +262,9 @@ class DianaMasterInterface:
         self.contextual_shortcuts: Dict[int, Dict[str, Any]] = {}
         self.dynamic_layouts: Dict[int, str] = {}
         
+        # 🎭 Event-Driven Intelligence - Subscribe to ecosystem events
+        self._subscribe_to_events()
+        
     async def create_adaptive_interface(self, user_id: int, trigger: str = "main") -> Tuple[str, InlineKeyboardMarkup]:
         """
         🎨 ADAPTIVE INTERFACE GENERATION
@@ -619,6 +622,228 @@ class DianaMasterInterface:
         ])
         
         return InlineKeyboardMarkup(inline_keyboard=buttons)
+    
+    def _subscribe_to_events(self):
+        """🎭 Subscribe Diana Master System to ecosystem events for intelligent mood updates"""
+        try:
+            event_bus = self.services.get('event_bus')
+            if event_bus:
+                # Import events here to avoid circular imports
+                from src.modules.events import (
+                    ReactionAddedEvent, PointsAwardedEvent, LevelUpEvent,
+                    VIPStatusChangedEvent, PieceUnlockedEvent, MissionCompletedEvent
+                )
+                
+                # Subscribe to key events that affect user mood and status
+                event_bus.subscribe(ReactionAddedEvent, self.handle_reaction_added)
+                event_bus.subscribe(PointsAwardedEvent, self.handle_points_awarded)
+                event_bus.subscribe(LevelUpEvent, self.handle_level_up)
+                event_bus.subscribe(VIPStatusChangedEvent, self.handle_vip_status_changed)
+                event_bus.subscribe(PieceUnlockedEvent, self.handle_piece_unlocked)
+                event_bus.subscribe(MissionCompletedEvent, self.handle_mission_completed)
+                
+                self.logger.info("Diana Master System subscribed to ecosystem events")
+            else:
+                self.logger.warning("EventBus not available - Diana will not react to ecosystem events")
+        except Exception as e:
+            self.logger.error("Error subscribing to events", error=str(e))
+    
+    # === EVENT HANDLERS FOR DIANA INTELLIGENCE ===
+    
+    async def handle_reaction_added(self, event) -> None:
+        """🌹 Diana notices when users react - adds to interaction patterns for mood detection"""
+        try:
+            user_id = event.user_id
+            
+            # Add to interaction patterns for mood detection
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('reaction', datetime.now())
+            )
+            
+            # Keep only recent interactions (last 30)
+            if len(self.context_engine.interaction_patterns[user_id]) > 30:
+                self.context_engine.interaction_patterns[user_id] = \
+                    self.context_engine.interaction_patterns[user_id][-30:]
+            
+            self.logger.info("Diana noticed user reaction", 
+                           user_id=user_id, 
+                           points_awarded=getattr(event, 'points_to_award', 5))
+        
+        except Exception as e:
+            self.logger.error("Error handling reaction event", error=str(e))
+    
+    async def handle_points_awarded(self, event) -> None:
+        """💎 Diana observes user growth through points - may trigger mood updates"""
+        try:
+            user_id = event.user_id
+            points = event.points
+            source = getattr(event, 'source_event', 'unknown')
+            
+            # Track significant point awards that might affect mood
+            if points >= 50:  # Significant point award
+                await self._invalidate_user_context(user_id, f"significant_points_{points}")
+            
+            self.logger.info("Diana observes user growth", 
+                           user_id=user_id, 
+                           points=points,
+                           source=source)
+        
+        except Exception as e:
+            self.logger.error("Error handling points awarded event", error=str(e))
+    
+    async def handle_level_up(self, event) -> None:
+        """🌟 Diana celebrates level ups - always triggers mood reevaluation"""
+        try:
+            user_id = event.user_id
+            new_level = event.new_level
+            
+            # Level ups ALWAYS trigger mood reevaluation
+            await self._invalidate_user_context(user_id, f"level_up_to_{new_level}")
+            
+            # Add to interaction patterns as significant event
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('level_up', datetime.now())
+            )
+            
+            self.logger.info("Diana celebrates user level up", 
+                           user_id=user_id, 
+                           new_level=new_level,
+                           rewards=getattr(event, 'rewards', {}))
+        
+        except Exception as e:
+            self.logger.error("Error handling level up event", error=str(e))
+    
+    async def handle_vip_status_changed(self, event) -> None:
+        """👑 Diana adjusts treatment when VIP status changes - critical mood update"""
+        try:
+            user_id = event.user_id
+            is_vip = event.is_vip
+            
+            # VIP status changes are CRITICAL - always force mood reevaluation
+            await self._invalidate_user_context(user_id, f"vip_status_{'granted' if is_vip else 'revoked'}")
+            
+            # Add to interaction patterns
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('vip_status_change', datetime.now())
+            )
+            
+            self.logger.info("Diana adjusts treatment for VIP status change", 
+                           user_id=user_id, 
+                           is_vip=is_vip)
+        
+        except Exception as e:
+            self.logger.error("Error handling VIP status change event", error=str(e))
+    
+    async def handle_piece_unlocked(self, event) -> None:
+        """🎭 Diana reacts to narrative unlocks - may change mood to storyteller"""
+        try:
+            user_id = event.user_id
+            piece_id = getattr(event, 'piece_id', 'unknown')
+            
+            # Narrative progression might change user mood
+            await self._check_mood_update_needed(user_id, "narrative_unlock")
+            
+            # Add to interaction patterns
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('story_unlock', datetime.now())
+            )
+            
+            self.logger.info("Diana unlocks narrative secrets", 
+                           user_id=user_id, 
+                           piece_id=piece_id)
+        
+        except Exception as e:
+            self.logger.error("Error handling piece unlocked event", error=str(e))
+    
+    async def handle_mission_completed(self, event) -> None:
+        """🏆 Diana recognizes achievements - may trigger mood changes"""
+        try:
+            user_id = event.user_id
+            mission_id = getattr(event, 'mission_id', 'unknown')
+            reward_points = getattr(event, 'reward_points', 0)
+            
+            # Mission completion might change user mood to achiever
+            await self._check_mood_update_needed(user_id, "mission_complete")
+            
+            # Add to interaction patterns
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('mission_complete', datetime.now())
+            )
+            
+            self.logger.info("Diana acknowledges user achievement", 
+                           user_id=user_id, 
+                           mission_id=mission_id,
+                           reward_points=reward_points)
+        
+        except Exception as e:
+            self.logger.error("Error handling mission completed event", error=str(e))
+    
+    # === CONTEXT MANAGEMENT METHODS ===
+    
+    async def _invalidate_user_context(self, user_id: int, reason: str) -> None:
+        """🔄 Invalidate user context cache to force fresh mood detection"""
+        try:
+            # Clear cached context
+            if hasattr(self.context_engine, 'user_contexts'):
+                self.context_engine.user_contexts.pop(user_id, None)
+            
+            # Optionally pre-analyze new context
+            await self.context_engine.analyze_user_context(user_id)
+            
+            self.logger.debug("Diana context invalidated", 
+                            user_id=user_id, 
+                            reason=reason)
+        
+        except Exception as e:
+            self.logger.error("Error invalidating user context", 
+                            user_id=user_id, 
+                            reason=reason,
+                            error=str(e))
+    
+    async def _check_mood_update_needed(self, user_id: int, trigger: str) -> None:
+        """🎯 Check if user mood needs updating based on recent activities"""
+        try:
+            # Get current context
+            old_context = self.context_engine.user_contexts.get(user_id)
+            old_mood = old_context.current_mood if old_context else None
+            
+            # Re-analyze context
+            new_context = await self.context_engine.analyze_user_context(user_id)
+            new_mood = new_context.current_mood
+            
+            # Log mood changes
+            if old_mood != new_mood:
+                self.logger.info("Diana mood change detected", 
+                               user_id=user_id,
+                               old_mood=old_mood.value if old_mood else None,
+                               new_mood=new_mood.value,
+                               trigger=trigger)
+        
+        except Exception as e:
+            self.logger.error("Error checking mood update", 
+                            user_id=user_id, 
+                            trigger=trigger,
+                            error=str(e))
 
 
 # === GLOBAL ROUTER REGISTRATION ===
