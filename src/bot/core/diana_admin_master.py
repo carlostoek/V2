@@ -14,7 +14,7 @@ Based on Diana Master System architecture with admin-specific enhancements.
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Union
 from dataclasses import dataclass
 from enum import Enum
 
@@ -26,6 +26,7 @@ import structlog
 
 from .diana_admin_services_integration import DianaAdminServicesIntegration
 from .diana_admin_security import DianaAdminSecurity, AdminPermission
+# from .diana_core_system import DianaCoreSystem  # Removed to avoid circular import
 
 # === ADMIN SYSTEM CONFIGURATION ===
 
@@ -151,12 +152,10 @@ class DianaAdminMaster:
     real service integration, and professional admin controls.
     """
     
-    def __init__(self, services: Dict[str, Any]):
+    def __init__(self, services: Dict[str, Any], services_integration: DianaAdminServicesIntegration = None):
         self.services = services
         self.logger = structlog.get_logger()
-        
-        # Services integration layer
-        self.services_integration = DianaAdminServicesIntegration(services)
+        self.services_integration = services_integration or DianaAdminServicesIntegration(services)
         
         # Security system
         self.security = DianaAdminSecurity()
@@ -181,16 +180,21 @@ class DianaAdminMaster:
             if not await self.security.check_rate_limit(user_id, "admin_access"):
                 return False
             
-            # Map required level to permission
-            permission_map = {
-                "super_admin": AdminPermission.SUPER_ADMIN,
-                "admin": AdminPermission.ADMIN,
-                "moderator": AdminPermission.MODERATOR,
-                "viewer": AdminPermission.VIEWER
+            # Hierarchical permission checking - higher levels include lower levels
+            user_role = self.security.user_roles.get(user_id)
+            if not user_role:
+                return False
+                
+            # Permission hierarchy (higher includes lower)
+            hierarchy = {
+                "super_admin": ["super_admin", "admin", "moderator", "viewer"],
+                "admin": ["admin", "moderator", "viewer"],
+                "moderator": ["moderator", "viewer"],
+                "viewer": ["viewer"]
             }
             
-            required_permission = permission_map.get(required_level, AdminPermission.ADMIN)
-            return await self.security.check_permission(user_id, required_permission)
+            allowed_levels = hierarchy.get(user_role, [])
+            return required_level in allowed_levels
             
         except Exception as e:
             self.logger.error("Error checking admin permission", error=str(e))

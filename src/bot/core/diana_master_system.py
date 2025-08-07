@@ -15,6 +15,8 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
+from .diana_admin_services_integration import DianaAdminServicesIntegration
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
@@ -69,8 +71,9 @@ class AdaptiveContextEngine:
     Each interaction is analyzed, predicted, and optimized.
     """
     
-    def __init__(self, services: Dict[str, Any]):
+    def __init__(self, services: Dict[str, Any], services_integration: Any = None):
         self.services = services
+        self.services_integration = services_integration
         self.logger = structlog.get_logger()
         self.user_contexts: Dict[int, UserContext] = {}
         self.interaction_patterns: Dict[int, List[Tuple[str, datetime]]] = {}
@@ -213,8 +216,9 @@ class DianaMasterInterface:
     Every button, every text, every flow is intelligently crafted.
     """
     
-    def __init__(self, services: Dict[str, Any]):
+    def __init__(self, services: Dict[str, Any], services_integration: DianaAdminServicesIntegration = None):
         self.services = services
+        self.services_integration = services_integration or DianaAdminServicesIntegration(services)
         self.context_engine = AdaptiveContextEngine(services)
         self.logger = structlog.get_logger()
         
