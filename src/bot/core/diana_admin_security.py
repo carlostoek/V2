@@ -120,7 +120,11 @@ class DianaAdminSecurity:
         self.roles = self._initialize_admin_roles()
         
         # User role assignments (would be from database in production)
-        self.user_roles: Dict[int, str] = {}
+        self.user_roles: Dict[int, str] = {
+            # ADD YOUR TELEGRAM USER ID HERE - Get it from @userinfobot
+            123456789: "super_admin",  # 👈 REPLACE WITH YOUR REAL USER ID
+            # Example: 987654321: "admin",
+        }
         
     def _initialize_admin_roles(self) -> Dict[str, AdminRole]:
         """Initialize admin role definitions"""
