@@ -137,12 +137,35 @@ class DianaAdminServicesIntegration:
     # === GAMIFICATION INTEGRATION ===
     
     async def get_gamification_stats(self) -> Dict[str, Any]:
-        """Get gamification statistics with fallback"""
-        
-        # Check cache first
+        """Get real-time gamification statistics"""
         cache_key = "gamification_stats"
-        if self._is_cache_valid(cache_key):
+        
+        # Use cache only if less than 1 minute old
+        if self._is_cache_valid(cache_key) and (datetime.now() - self._cache_expiry[cache_key]).total_seconds() < 60:
             return self._stats_cache[cache_key]
+            
+        try:
+            if "gamification" not in self.services:
+                return self._get_fallback_gamification_stats()
+            
+            service = self.services["gamification"]
+            stats = {}
+            
+            # Get real stats from service
+            if hasattr(service, 'get_global_stats'):
+                stats = await service.get_global_stats()
+            else:
+                # Fallback to direct database queries if available
+                stats = {
+                    "total_users": await self._get_total_users(),
+                    "active_users_today": await self._get_active_users_count(),
+                    "total_points_distributed": await self._get_total_points(),
+                    "points_distributed_today": await self._get_today_points(),
+                    "active_missions": await self._get_active_missions_count(),
+                    "completed_missions_today": await self._get_completed_missions(),
+                    "level_ups_today": await self._get_level_ups(),
+                    "average_user_level": await self._get_avg_level()
+                }
         
         try:
             if "gamification" not in self.services:
@@ -433,6 +456,41 @@ class DianaAdminServicesIntegration:
     
     # === FALLBACK DATA PROVIDERS ===
     
+    async def _get_total_users(self) -> int:
+        """Get total users count from database"""
+        from src.bot.database.models.user import User
+        async with self.services['database'].session() as session:
+            result = await session.execute(select(func.count(User.id)))
+            return result.scalar() or 0
+
+    async def _get_active_users_count(self) -> int:
+        """Get active users count (last 24h)"""
+        from src.bot.database.models.user import User
+        from datetime import datetime, timedelta
+        async with self.services['database'].session() as session:
+            result = await session.execute(
+                select(func.count(User.id)).where(
+                    User.last_active >= datetime.now() - timedelta(hours=24))
+            return result.scalar() or 0
+
+    async def _get_total_points(self) -> int:
+        """Get total points distributed"""
+        from src.bot.database.models.gamification import UserPoints
+        async with self.services['database'].session() as session:
+            result = await session.execute(
+                select(func.sum(UserPoints.points)))
+            return int(result.scalar() or 0)
+
+    async def _get_today_points(self) -> int:
+        """Get points distributed today"""
+        from src.bot.database.models.gamification import UserPoints
+        from datetime import datetime, timedelta
+        async with self.services['database'].session() as session:
+            result = await session.execute(
+                select(func.sum(UserPoints.points)).where(
+                    UserPoints.created_at >= datetime.now().date()))
+            return int(result.scalar() or 0)
+
     def _get_fallback_gamification_stats(self) -> Dict[str, Any]:
         """Fallback gamification statistics"""
         return {
@@ -444,7 +502,8 @@ class DianaAdminServicesIntegration:
             "completed_missions_today": 0,
             "level_ups_today": 0,
             "average_user_level": 0.0,
-            "service_status": "unavailable"
+            "service_status": "unavailable",
+            "timestamp": datetime.now().isoformat()  # Track when fallback was used
         }
     
     def _get_fallback_user_gamification(self) -> Dict[str, Any]:

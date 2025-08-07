@@ -243,31 +243,60 @@ class DianaAdminMaster:
     # === MAIN ADMIN INTERFACE ===
     
     async def create_admin_main_interface(self, user_id: int) -> Tuple[str, InlineKeyboardMarkup]:
-        """Create the main admin interface"""
+        """Create the main admin interface with real-time data"""
         
-        # Check permissions
         if not await self.check_admin_permission(user_id):
             return self._create_no_permission_interface()
             
         context = await self.get_admin_context(user_id)
         
-        # Get real-time system stats from services integration
+        # Get comprehensive real-time data
         system_overview = await self.services_integration.get_system_overview()
-        system_stats = system_overview['overview']
+        service_health = await self.services_integration.check_all_services_health()
+        gamification_stats = await self.services_integration.get_gamification_stats()
+        vip_stats = await self.services_integration.get_vip_system_stats()
         
-        text = f"""🏛️ **DIANA BOT - CENTRO DE ADMINISTRACIÓN**
-
-⚡ **Estado del Sistema**
-• Usuarios Activos: {system_stats['active_users']} (24h)
-• Puntos Generados: {system_stats['points_generated']} besitos
-• Suscripciones VIP: {system_stats['vip_subscriptions']}
-• Uptime: {system_stats['uptime']}
-
-🎯 **Acceso Rápido**
-Selecciona una sección para administrar:
-
-👑 **Nivel de Acceso**: {context.permission_level.value.replace('_', ' ').title()}
-🕐 **Sesión iniciada**: {context.session_start.strftime('%H:%M')}"""
+        # Calculate system health
+        healthy_services = sum(1 for s in service_health.values() if s.status == ServiceStatus.HEALTHY)
+        total_services = len(service_health)
+        health_percentage = (healthy_services / total_services) * 100 if total_services > 0 else 100
+        
+        # Build the header with EliteUI
+        builder = EliteUIBuilder(theme=theme_manager.get_user_theme(user_id))
+        
+        builder.header(
+            "DIANA BOT - CENTRO DE ADMINISTRACIÓN",
+            "Panel de Control Principal",
+            level=1
+        )
+        
+        # System status section
+        builder.stats_card("⚡ ESTADO DEL SISTEMA", {
+            "Usuarios Activos": gamification_stats.get('active_users_today', 0),
+            "Puntos Hoy": gamification_stats.get('points_distributed_today', 0),
+            "Suscripciones VIP": vip_stats.get('active_subscriptions', 0),
+            "Salud del Sistema": f"{health_percentage:.1f}%",
+            "Servicios Activos": f"{healthy_services}/{total_services}"
+        }, compact=True)
+        
+        # Service health alerts
+        for service, health in service_health.items():
+            if health.status != ServiceStatus.HEALTHY:
+                builder.alert(
+                    f"{service}: {health.status.value}",
+                    "warning" if health.status == ServiceStatus.DEGRADED else "error",
+                    "Estado de Servicios"
+                )
+                break
+        
+        # User context
+        builder.stats_card("👤 CONTEXTO DE ADMINISTRADOR", {
+            "Nivel de Acceso": context.permission_level.value.replace('_', ' ').title(),
+            "Sesión Activa": f"{(datetime.now() - context.session_start).seconds // 60} min",
+            "Última Acción": "Ahora"
+        }, compact=True)
+        
+        text, keyboard = builder.build()
 
         keyboard = self._create_main_admin_keyboard(context.permission_level)
         return text, keyboard
