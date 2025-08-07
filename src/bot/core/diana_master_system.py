@@ -401,17 +401,17 @@ class DianaMasterInterface:
             if hasattr(self.services['gamification'], 'get_user_stats'):
                 user_stats_raw = await self.services['gamification'].get_user_stats(context.user_id)
                 stats = {
-                    'level': user_stats_raw['level'],
-                    'points': user_stats_raw['points'],
-                    'streak': user_stats_raw['streak'],  # Will be updated from daily rewards
+                    'level': user_stats_raw.get('level', 1),
+                    'points': user_stats_raw.get('points', 0),
+                    'streak': user_stats_raw.get('streak', 0),  # Will be updated from daily rewards
                     'inventory': list(context.narrative_progress.get('narrative_items', {}).keys()) if context.narrative_progress else [],
-                    'achievements': user_stats_raw['achievements_count'],
+                    'achievements': user_stats_raw.get('achievements_count', 0),
                     'clues': context.narrative_progress.get('fragments_visited', 0) if context.narrative_progress else 0,
                     'fragments': context.narrative_progress.get('total_fragments', 0) if context.narrative_progress else 0,
-                    'efficiency_score': min(100, int(user_stats_raw['points'] / 10)),  # Dynamic calculation
+                    'efficiency_score': min(100, int(user_stats_raw.get('points', 0) / 10)),  # Dynamic calculation
                     'active_goals': 3,  # Placeholder 
-                    'active_missions': user_stats_raw['active_missions'],
-                    'engagement_level': user_stats_raw['points'] / 1000.0
+                    'active_missions': user_stats_raw.get('active_missions', 0),
+                    'engagement_level': user_stats_raw.get('points', 0) / 1000.0
                 }
             else:
                 # Fallback to mock stats
@@ -865,6 +865,8 @@ def initialize_diana_master(services: Dict[str, Any]):
 @master_router.message(Command("start"))
 async def cmd_start(message: Message):
     """🌟 The entry point to the Diana universe"""
+    print(f"🎭 DEBUG: Diana Master System /start handler called for user {message.from_user.id}")
+    
     if not diana_master:
         await message.reply("🔧 Sistema inicializándose...")
         return
