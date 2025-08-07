@@ -1,0 +1,3 @@
+USE_SQLITE=True
+BOT_TOKEN=dummy_token
+DATABASE_URL=sqlite+aiosqlite:///bot.db

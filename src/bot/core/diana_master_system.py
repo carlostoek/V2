@@ -141,19 +141,41 @@ class AdaptiveContextEngine:
                     user_stats = {}
                     if hasattr(self.services['gamification'], 'get_user_stats'):
                         user_stats_raw = await self.services['gamification'].get_user_stats(user_id)
-                        user_stats = {
-                            'level': user_stats_raw.get('level', 1),
-                            'points': user_stats_raw.get('points', 0),
-                            'engagement': user_stats_raw.get('points', 0) / 1000.0
-                        }
+                        
+                        # 🚨 DEBUG: Log what we get from gamification service
+                        self.logger.debug("Diana mood debug - VIP user stats", 
+                                        user_id=user_id, 
+                                        stats_type=type(user_stats_raw).__name__, 
+                                        stats_value=str(user_stats_raw)[:200])
+                        
+                        # Handle case where stats is not a dict
+                        if isinstance(user_stats_raw, dict):
+                            user_stats = {
+                                'level': user_stats_raw.get('level', 1),
+                                'points': user_stats_raw.get('points', 0),
+                                'engagement': user_stats_raw.get('points', 0) / 1000.0
+                            }
+                        else:
+                            # Fallback for non-dict response
+                            user_stats = {
+                                'level': 1,
+                                'points': 0, 
+                                'engagement': 0
+                            }
                     
                     # High engagement VIPs ready for premium upsell
                     if user_stats.get('level', 1) >= 5 or user_stats.get('engagement', 0) > 0.7:
                         return UserMoodState.VIP_UPSELL
                         
                 else:
-                    # FREE users - check conversion readiness
+                    # FREE users - check conversion readiness  
                     engagement_score = len(interactions) if interactions else 0
+                    
+                    # 🚨 DEBUG: Log FREE user analysis
+                    self.logger.debug("Diana mood debug - FREE user analysis", 
+                                    user_id=user_id,
+                                    engagement_score=engagement_score,
+                                    interactions_count=len(interactions) if interactions else 0)
                     
                     # HIGH ENGAGEMENT = Ready for conversion
                     if engagement_score >= 5:  # Active user, ready to convert
@@ -400,19 +422,43 @@ class DianaMasterInterface:
         try:
             if hasattr(self.services['gamification'], 'get_user_stats'):
                 user_stats_raw = await self.services['gamification'].get_user_stats(context.user_id)
-                stats = {
-                    'level': user_stats_raw['level'],
-                    'points': user_stats_raw['points'],
-                    'streak': user_stats_raw['streak'],  # Will be updated from daily rewards
-                    'inventory': list(context.narrative_progress.get('narrative_items', {}).keys()) if context.narrative_progress else [],
-                    'achievements': user_stats_raw['achievements_count'],
-                    'clues': context.narrative_progress.get('fragments_visited', 0) if context.narrative_progress else 0,
-                    'fragments': context.narrative_progress.get('total_fragments', 0) if context.narrative_progress else 0,
-                    'efficiency_score': min(100, int(user_stats_raw['points'] / 10)),  # Dynamic calculation
-                    'active_goals': 3,  # Placeholder 
-                    'active_missions': user_stats_raw['active_missions'],
-                    'engagement_level': user_stats_raw['points'] / 1000.0
-                }
+                
+                # 🚨 DEBUG: Log what we get from gamification service for dashboard  
+                self.logger.debug("Diana dashboard debug - user stats", 
+                                user_id=context.user_id,
+                                stats_type=type(user_stats_raw).__name__, 
+                                stats_value=str(user_stats_raw)[:200])
+                
+                # Handle case where stats is not a dict 
+                if isinstance(user_stats_raw, dict):
+                    stats = {
+                        'level': user_stats_raw.get('level', 1),
+                        'points': user_stats_raw.get('points', 0),
+                        'streak': user_stats_raw.get('streak', 0),  # Will be updated from daily rewards
+                        'inventory': list(context.narrative_progress.get('narrative_items', {}).keys()) if context.narrative_progress else [],
+                        'achievements': user_stats_raw.get('achievements_count', 0),
+                        'clues': context.narrative_progress.get('fragments_visited', 0) if context.narrative_progress else 0,
+                        'fragments': context.narrative_progress.get('total_fragments', 0) if context.narrative_progress else 0,
+                        'efficiency_score': min(100, int(user_stats_raw.get('points', 0) / 10)),  # Dynamic calculation
+                        'active_goals': 3,  # Placeholder 
+                        'active_missions': user_stats_raw.get('active_missions', 0),
+                        'engagement_level': user_stats_raw.get('points', 0) / 1000.0
+                    }
+                else:
+                    # Fallback for non-dict response
+                    stats = {
+                        'level': 1,
+                        'points': 0,
+                        'streak': 0,
+                        'inventory': [],
+                        'achievements': 0,
+                        'clues': 0,
+                        'fragments': 0,
+                        'efficiency_score': 85,
+                        'active_goals': 3,
+                        'active_missions': 0,
+                        'engagement_level': 0.0
+                    }
             else:
                 # Fallback to mock stats
                 stats = {

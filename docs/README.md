@@ -26,6 +26,11 @@ Bienvenido a la documentación completa de Diana Bot V2, un ecosistema narrativo
 - **[Base de Datos](architecture/04-base-datos.md)** - Modelos y relaciones
 - **[Integración Diana](architecture/05-diana-integration.md)** - Sistema de validación externa
 
+### 🎭 [Sistemas Especializados](/)
+- **[Diana Master System - Validación Ecosistema](DIANA_MASTER_SYSTEM_ECOSYSTEM_VALIDATION.md)** - Validación completa del sistema unificado
+- **[Diana User System Complete](DIANA_USER_SYSTEM_COMPLETE.md)** - Sistema de conversión y templates
+- **[Diana Admin Integration](DIANA_ADMIN_INTEGRATION_GUIDE.md)** - Panel administrativo avanzado
+
 ### 📡 [API y Interfaces](api/)
 - **[Event Bus API](api/event-bus.md)** - Eventos y suscriptores
 - **[Service Interfaces](api/services.md)** - Interfaces de servicios
@@ -52,6 +57,8 @@ Bienvenido a la documentación completa de Diana Bot V2, un ecosistema narrativo
 - Panel de Administración
 - Integración Diana Validation
 - Event Bus y Arquitectura Limpia
+- **🎭 Diana Master System** - Sistema unificado con EventBus integration
+- **🎯 Conversion Templates** - FREE → VIP → Premium optimization
 
 ### 🔄 En Desarrollo
 - Sistema Narrativo Avanzado
