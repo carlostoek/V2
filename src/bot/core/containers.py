@@ -61,7 +61,8 @@ class ServicesContainer(containers.DeclarativeContainer):
     user_service = providers.Factory(
         UserService,
         event_bus=event_bus,
-        session=db_session
+        session=db_session,
+        central_config=central_config
     )
     
     emotional_service = providers.Factory(

@@ -21,12 +21,34 @@ class EventBus(IEventBus):
         logger.debug(f"Handler {handler.__name__} subscribed to {event_type.__name__}")
 
     async def publish(self, event: IEvent) -> None:
-        """Publica un evento, notificando a todos los suscriptores."""
+        """Publica un evento, notificando a todos los suscriptores.
+        
+        Args:
+            event: Instancia del evento a publicar
+            
+        Note:
+            Continúa ejecución incluso si algún handler falla
+            Los errores son logueados pero no propagados
+        """
         event_type = type(event)
-        if event_type in self._subscribers:
-            logger.debug(f"Publishing {event_type.__name__} to {len(self._subscribers[event_type])} handlers")
-            tasks = [handler(event) for handler in self._subscribers[event_type]]
-            await asyncio.gather(*tasks)
+        if event_type not in self._subscribers:
+            logger.debug(f"No hay handlers para {event_type.__name__}")
+            return
+
+        logger.debug(f"Publicando {event_type.__name__} a {len(self._subscribers[event_type])} handlers")
+        
+        async def safe_handler(handler):
+            try:
+                return await handler(event)
+            except Exception as e:
+                logger.error(f"Error en handler {handler.__name__}",
+                           event=event_type.__name__,
+                           error=str(e),
+                           exc_info=True)
+                return None
+
+        tasks = [safe_handler(handler) for handler in self._subscribers[event_type]]
+        await asyncio.gather(*tasks)
 
     def auto_subscribe(self, instance: object) -> None:
         """Busca y suscribe automáticamente métodos que manejan eventos."""
