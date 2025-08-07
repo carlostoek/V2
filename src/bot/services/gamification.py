@@ -24,11 +24,17 @@ logger = structlog.get_logger()
 class GamificationService:
     """Servicio para gestionar el sistema de gamificación."""
     
-    def __init__(self):
+    def __init__(self, event_bus=None, user_service=None, session=None):
         self.logger = structlog.get_logger(service="GamificationService")
+        self.event_bus = event_bus
+        self.user_service = user_service
+        self.session = session
         self.points_service = PointsService()
         self.achievement_service = AchievementService()
         self.mission_service = MissionService()
+
+        if event_bus:
+            event_bus.auto_subscribe(self)
     
     async def get_user_profile(
         self, session: AsyncSession, user_id: int
@@ -99,6 +105,21 @@ class GamificationService:
         
         return result
     
+    @handles_event(PointsAwardedEvent)
+    async def handle_points_awarded(self, event: PointsAwardedEvent):
+        """Registra otorgamiento de puntos"""
+        session = await self.session()
+        points = await self.points_service.get_user_points(session, event.user_id)
+        if points:
+            await self.points_service.update(
+                session,
+                points.id,
+                {
+                    "current_points": points.current_points + event.points,
+                    "total_earned": points.total_earned + event.points
+                }
+            )
+
     async def award_points(
         self, session: AsyncSession, user_id: int, amount: float, source: str, 
         description: Optional[str] = None

@@ -21,13 +21,32 @@ logger = structlog.get_logger()
 class NarrativeService:
     """Servicio para gestionar el sistema narrativo."""
     
-    def __init__(self):
+    def __init__(self, event_bus=None, gamification_service=None, session=None):
         self.logger = structlog.get_logger(service="NarrativeService")
+        self.event_bus = event_bus
+        self.gamification_service = gamification_service
+        self.session = session
         self.fragment_service = StoryFragmentService()
         self.choice_service = NarrativeChoiceService()
         self.state_service = UserNarrativeStateService()
         self.trigger_service = NarrativeTriggerService()
+
+        if event_bus:
+            event_bus.auto_subscribe(self)
     
+    @handles_event(NarrativeProgressionEvent)
+    async def handle_progression(self, event: NarrativeProgressionEvent):
+        """Maneja progreso en la narrativa"""
+        session = await self.session()
+        # Otorgar puntos por progreso narrativo
+        if self.gamification_service:
+            await self.gamification_service.award_points(
+                session,
+                event.user_id,
+                10,  # Puntos por progreso
+                "narrative_progress"
+            )
+
     async def get_current_fragment(
         self, session: AsyncSession, user_id: int
     ) -> Dict[str, Any]:

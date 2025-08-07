@@ -22,14 +22,45 @@ logger = structlog.get_logger()
 class EmotionalService:
     """Servicio para gestionar el sistema emocional."""
     
-    def __init__(self):
+    def __init__(self, event_bus=None, user_service=None, session=None):
         self.logger = structlog.get_logger(service="EmotionalService")
+        self.event_bus = event_bus
+        self.user_service = user_service
+        self.session = session
         self.profile_service = CharacterProfileService()
         self.relationship_service = RelationshipService()
         self.emotional_state_service = EmotionalStateService()
         self.memory_service = EmotionalMemoryService()
         self.personality_service = PersonalityAdaptationService()
+
+        if event_bus:
+            event_bus.auto_subscribe(self)
     
+    @handles_event(UserMessageEvent)
+    async def handle_user_message(self, event: UserMessageEvent):
+        """Maneja eventos de mensajes de usuario"""
+        session = await self.session()
+        return await self.process_message(
+            session,
+            event.user_id,
+            "Diana",  # Personaje por defecto
+            event.message,
+            "direct_message"
+        )
+
+    @handles_event(ReactionAddedEvent) 
+    async def handle_reaction(self, event: ReactionAddedEvent):
+        """Maneja eventos de reacciones"""
+        session = await self.session()
+        # Lógica para manejar impacto emocional de reacciones
+        return await self.process_message(
+            session,
+            event.user_id,
+            "Diana",
+            f"Reacción recibida (puntos: {event.points_to_award})",
+            "reaction"
+        )
+
     async def process_message(
         self,
         session: AsyncSession,
