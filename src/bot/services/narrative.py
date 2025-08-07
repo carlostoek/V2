@@ -2,6 +2,8 @@
 
 from typing import Optional, Dict, Any, List, Tuple
 import structlog
+from src.core.event_bus import handles_event
+from src.modules.events import NarrativeProgressionEvent
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
