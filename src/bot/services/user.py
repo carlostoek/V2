@@ -41,20 +41,56 @@ class UserService(BaseService[User]):
         result = await session.execute(query)
         return list(result.scalars().all())
     
-    async def search_users(self, session: AsyncSession, query_string: str) -> List[User]:
-        """Busca usuarios por nombre o nombre de usuario."""
-        self.logger.debug("Buscando usuarios", query=query_string)
+    async def search_users(
+        self,
+        search_term: str,
+        *,
+        is_active: bool = True,
+        is_admin: Optional[bool] = None,
+        is_vip: Optional[bool] = None,
+        limit: int = 10,
+        offset: int = 0
+    ) -> List[User]:
+        """Búsqueda avanzada de usuarios con filtros y paginación.
         
-        query = select(User).where(
-            or_(
-                User.username.ilike(f"%{query_string}%"),
-                User.first_name.ilike(f"%{query_string}%"),
-                User.last_name.ilike(f"%{query_string}%")
-            )
-        )
-        
-        result = await session.execute(query)
-        return list(result.scalars().all())
+        Args:
+            search_term: Término para buscar en username, first_name, last_name
+            is_active: Filtrar por usuarios activos/inactivos
+            is_admin: Filtrar por estado admin (None para ignorar)
+            is_vip: Filtrar por estado VIP (None para ignorar)
+            limit: Máximo de resultados
+            offset: Desplazamiento para paginación
+            
+        Returns:
+            Lista de usuarios que coinciden con los criterios
+        """
+        session = await self.session()
+        try:
+            query = select(User).where(
+                and_(
+                    User.is_active == is_active,
+                    or_(
+                        User.username.ilike(f"%{search_term}%"),
+                        User.first_name.ilike(f"%{search_term}%"),
+                        User.last_name.ilike(f"%{search_term}%")
+                    ),
+                    *([
+                        User.is_admin == is_admin
+                    ] if is_admin is not None else []),
+                    *([
+                        User.is_vip == is_vip
+                    ] if is_vip is not None else [])
+                )
+            ).limit(limit).offset(offset)
+            
+            result = await session.execute(query)
+            return list(result.scalars().all())
+            
+        except Exception as e:
+            self.logger.error("Error en búsqueda de usuarios", 
+                             error=str(e),
+                             search_term=search_term)
+            raise
     
     async def create_or_update_user(
         self, session: AsyncSession, user_id: int, user_data: Dict[str, Any]
