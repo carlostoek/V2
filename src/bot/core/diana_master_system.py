@@ -373,9 +373,9 @@ class DianaMasterInterface:
                 "🎛️ Control total de tu progreso"
             ],
             UserMoodState.NEWCOMER: [
-                "🌅 ¡Bienvenido al mundo de Diana!",
-                "🗝️ Te voy a mostrar los secretos de este lugar",
-                "👑 Tu aventura épica comienza ahora"
+                "🌅 ¡Bienvenido al mundo de Diana!1",
+                "🗝️ Te voy a mostrar los secretos de este lugar1.1",
+                "👑 Tu aventura épica comienza ahora1.2"
             ],
             # 🎭 Diana Conversion & Upsell Templates
             UserMoodState.FREE_CONVERSION: [
@@ -473,7 +473,7 @@ class DianaMasterInterface:
         else:  # Default/Explorer/Newcomer/Socializer
             active_missions = stats.get('active_missions', 0)
             missions_count = active_missions if isinstance(active_missions, int) else len(active_missions) if isinstance(active_missions, (list, tuple)) else 0
-            return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {missions_count} activas"
+            return f"🌟 **ESTADO DEL AVENTURERO2**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {missions_count} activas"
     
     async def _generate_predictive_actions(self, context: UserContext) -> str:
         """🔮 AI-powered action predictions"""
@@ -505,7 +505,7 @@ class DianaMasterInterface:
         if context.narrative_progress > 70:
             predictions.append("📖 *Recomendación: El final de tu historia se acerca...*")
             
-        return "\n".join(predictions) if predictions else "✨ *El sistema está analizando tus próximas oportunidades...*"
+        return "\n".join(predictions) if predictions else "✨ *El sistema está analizando tus próximas oportunidades...3*"
     
     async def _generate_smart_shortcuts(self, context: UserContext) -> List[Dict[str, str]]:
         """⚡ Intelligent shortcut generation"""
