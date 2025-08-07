@@ -11,6 +11,7 @@ from src.modules.gamification.service import GamificationService
 from ..services.user import UserService
 from ..services.emotional import EmotionalService
 from ..services.admin import AdminService
+from ..services.role import RoleService
 from ..database import get_session
 
 T = TypeVar('T')
