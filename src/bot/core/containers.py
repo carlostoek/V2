@@ -57,32 +57,48 @@ class ServicesContainer(containers.DeclarativeContainer):
     db_session = providers.Dependency()
     central_config = providers.Dependency()
     
-    # Module services
-    narrative_service = providers.Factory(
-        NarrativeService,
-        event_bus=event_bus
+    # Module services with cross-dependencies
+    user_service = providers.Factory(
+        UserService,
+        event_bus=event_bus,
+        session=db_session
+    )
+    
+    emotional_service = providers.Factory(
+        EmotionalService,
+        event_bus=event_bus,
+        user_service=user_service,
+        session=db_session
     )
     
     gamification_service = providers.Factory(
         GamificationService,
-        event_bus=event_bus
+        event_bus=event_bus,
+        user_service=user_service,
+        emotional_service=emotional_service,
+        session=db_session
     )
     
-    user_service = providers.Factory(
-        UserService
-    )
-    
-    emotional_service = providers.Factory(
-        EmotionalService
+    narrative_service = providers.Factory(
+        NarrativeService,
+        event_bus=event_bus,
+        gamification_service=gamification_service,
+        emotional_service=emotional_service,
+        session=db_session
     )
     
     admin_service = providers.Factory(
         AdminService,
-        event_bus=event_bus
+        event_bus=event_bus,
+        user_service=user_service,
+        session=db_session
     )
     
     role_service = providers.Factory(
-        RoleService
+        RoleService,
+        event_bus=event_bus,
+        user_service=user_service,
+        session=db_session
     )
 
 

@@ -39,36 +39,52 @@ async def setup_di_container(bot: Bot, dp: Dispatcher) -> Container:
     container.register(Bot, bot)
     container.register(Dispatcher, dp)
     
-    # Crear el bus de eventos
+    # Crear el bus de eventos con auto-suscripción
     event_bus = EventBus()
     container.register(IEventBus, event_bus)
     container.register(EventBus, event_bus)
     
-    # Crear servicios de módulos
-    narrative_service = NarrativeService(event_bus)
-    gamification_service = GamificationService(event_bus)
-    
-    # Configurar servicios
-    await narrative_service.setup()
-    await gamification_service.setup()
-    
-    # Registrar servicios de módulos
-    container.register(NarrativeService, narrative_service)
-    container.register(GamificationService, gamification_service)
-    
     # Crear sesión de base de datos
     async for session in get_session():
-        # Crear servicios de aplicación
-        user_service = UserService()
-        emotional_service = EmotionalService()
-        admin_service = AdminService(event_bus, session)
+        # Crear servicios con dependencias cruzadas
+        user_service = UserService(event_bus, session)
+        emotional_service = EmotionalService(event_bus, user_service, session)
+        gamification_service = GamificationService(
+            event_bus, 
+            user_service,
+            emotional_service,
+            session
+        )
+        narrative_service = NarrativeService(
+            event_bus,
+            gamification_service,
+            emotional_service,
+            session
+        )
+        admin_service = AdminService(event_bus, user_service, session)
+        role_service = RoleService(event_bus, user_service, session)
         
-        # Registrar servicios de aplicación
+        # Auto-suscribir manejadores de eventos
+        for service in [user_service, emotional_service, 
+                       gamification_service, narrative_service,
+                       admin_service, role_service]:
+            event_bus.auto_subscribe(service)
+        
+        # Configurar servicios
+        await narrative_service.setup()
+        await gamification_service.setup()
+        await emotional_service.setup()
+        
+        # Registrar servicios
         container.register(UserService, user_service)
         container.register(EmotionalService, emotional_service)
+        container.register(GamificationService, gamification_service)
+        container.register(NarrativeService, narrative_service)
         container.register(AdminService, admin_service)
-        break # Solo necesitamos una sesión para la inyección
+        container.register(RoleService, role_service)
+        
+        break  # Solo necesitamos una sesión
     
-    logger.info("Contenedor de inyección de dependencias configurado")
+    logger.info("DI Container configurado con dependencias cruzadas y auto-suscripción")
     
     return container
