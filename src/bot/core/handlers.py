@@ -27,8 +27,8 @@ def setup_handlers(dp: Dispatcher) -> None:
     admin_service = container.resolve(AdminService)
     
     # Registrar manejadores de usuarios regulares
-    register_user_handlers(dp, event_bus, gamification_service, admin_service)
-    logger.info("Manejadores de usuarios registrados")
+    # register_user_handlers(dp, event_bus, gamification_service, admin_service)  # DESACTIVADO - Diana Master System maneja esto ahora
+    logger.info("Manejadores de usuarios legacy DESACTIVADOS - Diana Master System los reemplaza")
     
     # Registrar manejadores de administradores
     # register_admin_handlers(dp, admin_service)  # ELIMINADO - Será manejado por menú maestro
