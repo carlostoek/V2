@@ -23,6 +23,8 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.filters import Command
 
 import structlog
+from .diana_admin_elite_ui import EliteUIBuilder, theme_manager
+from .diana_admin_services_integration import ServiceStatus
 
 from .diana_admin_services_integration import DianaAdminServicesIntegration
 from .diana_admin_security import DianaAdminSecurity, AdminPermission

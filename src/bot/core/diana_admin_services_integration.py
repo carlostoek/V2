@@ -166,8 +166,6 @@ class DianaAdminServicesIntegration:
                     "level_ups_today": await self._get_level_ups(),
                     "average_user_level": await self._get_avg_level()
                 }
-        
-        try:
             if "gamification" not in self.services:
                 return self._get_fallback_gamification_stats()
             
@@ -470,7 +468,9 @@ class DianaAdminServicesIntegration:
         async with self.services['database'].session() as session:
             result = await session.execute(
                 select(func.count(User.id)).where(
-                    User.last_active >= datetime.now() - timedelta(hours=24))
+                    User.last_active >= datetime.now() - timedelta(hours=24)
+                )
+            )
             return result.scalar() or 0
 
     async def _get_total_points(self) -> int:
