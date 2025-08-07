@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Any, Tuple, Union
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from enum import Enum
+from sqlalchemy import select, func
 
 # === SERVICE HEALTH MONITORING ===
 
