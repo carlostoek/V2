@@ -47,6 +47,9 @@ class UserMoodState(Enum):
     SOCIALIZER = "socializer"      # Enjoys community features
     OPTIMIZER = "optimizer"        # Wants efficiency and stats
     NEWCOMER = "newcomer"          # Needs guidance and tutorials
+    # 🎭 Diana Conversion & Upsell Moods
+    FREE_CONVERSION = "free_conversion"  # FREE user ready for VIP conversion
+    VIP_UPSELL = "vip_upsell"          # VIP user ready for premium upsell
 
 @dataclass
 class UserContext:
@@ -128,6 +131,38 @@ class AdaptiveContextEngine:
     async def _detect_user_mood(self, user_id: int, interactions: List) -> UserMoodState:
         """🎭 Advanced mood detection algorithm"""
         
+        # 🎭 PRIORITY: Diana Conversion System - Check VIP status first
+        try:
+            if self.services.get('admin') and hasattr(self.services['admin'], 'is_vip_user'):
+                is_vip = await self.services['admin'].is_vip_user(user_id)
+                
+                if is_vip:
+                    # VIP users get upsell mood - check for premium readiness
+                    user_stats = {}
+                    if hasattr(self.services['gamification'], 'get_user_stats'):
+                        user_stats_raw = await self.services['gamification'].get_user_stats(user_id)
+                        user_stats = {
+                            'level': user_stats_raw.get('level', 1),
+                            'points': user_stats_raw.get('points', 0),
+                            'engagement': user_stats_raw.get('points', 0) / 1000.0
+                        }
+                    
+                    # High engagement VIPs ready for premium upsell
+                    if user_stats.get('level', 1) >= 5 or user_stats.get('engagement', 0) > 0.7:
+                        return UserMoodState.VIP_UPSELL
+                        
+                else:
+                    # FREE users - check conversion readiness
+                    engagement_score = len(interactions) if interactions else 0
+                    
+                    # HIGH ENGAGEMENT = Ready for conversion
+                    if engagement_score >= 5:  # Active user, ready to convert
+                        return UserMoodState.FREE_CONVERSION
+                        
+        except Exception as e:
+            self.logger.warning("Error detecting VIP status for mood", error=str(e))
+        
+        # 🎯 FALLBACK: Standard mood detection for users not in conversion flow
         if not interactions:
             return UserMoodState.NEWCOMER
             
@@ -226,6 +261,9 @@ class DianaMasterInterface:
         self.smart_predictions: Dict[int, List[str]] = {}
         self.contextual_shortcuts: Dict[int, Dict[str, Any]] = {}
         self.dynamic_layouts: Dict[int, str] = {}
+        
+        # 🎭 Event-Driven Intelligence - Subscribe to ecosystem events
+        self._subscribe_to_events()
         
     async def create_adaptive_interface(self, user_id: int, trigger: str = "main") -> Tuple[str, InlineKeyboardMarkup]:
         """
@@ -338,6 +376,17 @@ class DianaMasterInterface:
                 "🌅 ¡Bienvenido al mundo de Diana!",
                 "🗝️ Te voy a mostrar los secretos de este lugar",
                 "👑 Tu aventura épica comienza ahora"
+            ],
+            # 🎭 Diana Conversion & Upsell Templates
+            UserMoodState.FREE_CONVERSION: [
+                "🌹 Diana te reconoce...\n\nAh... una nueva alma curiosa ha encontrado mi refugio.\n\nPuedo sentir tu fascinación desde aquí, esa mezcla de intriga y cautela que me resulta... encantadora.\n\n🎩 Lucien susurra: \"Diana ha estado esperándote, aunque tú no lo sabías.\"",
+                "🎭 Diana se acerca más...\n\nHay algo especial en ti... puedo sentir cómo anhelas más, cómo cada revelación solo alimenta tu hambre de comprenderme más profundamente.\n\n🎩 Lucien observa: \"Su curiosidad es extraordinaria. Diana rara vez se interesa tanto en alguien.\"",
+                "🌙 Diana te susurra...\n\nCada vez que regresas, siento esa conexión creciendo. Algunos secretos solo se susurran en privado, ¿sabes?\n\n🎩 Lucien comenta: \"Los elegidos de su círculo conocen facetas que otros nunca verán.\""
+            ],
+            UserMoodState.VIP_UPSELL: [
+                "👑 Diana te recibe en su círculo...\n\nMi elegido... cada vez que regresas, siento esa conexión especial que hemos cultivado juntos.\n\nPara almas como la tuya... existen experiencias aún más personales.\n\n🎩 Lucien confirma: \"Su evolución dentro del círculo ha sido extraordinaria de presenciar.\"",
+                "💎 Diana te dedica una mirada especial...\n\nHas demostrado ser digno de mi confianza más profunda. Hay niveles de intimidad que solo comparto con unos pocos elegidos.\n\n🎩 Lucien sugiere: \"Quizás sea momento de experiencias... más exclusivas.\"",
+                "🌹 Diana se acerca íntimamente...\n\nTu devoción no ha pasado desapercibida. He estado preparando algo especial, algo que solo tú podrías apreciar completamente.\n\n🎩 Lucien asiente: \"Las experiencias premium aguardan a quienes han demostrado tal dedicación.\""
             ]
         }
         
@@ -411,6 +460,15 @@ class DianaMasterInterface:
         elif context.current_mood == UserMoodState.OPTIMIZER:
             efficiency = stats.get('efficiency_score', 85)
             return f"📊 **PANEL DE CONTROL**\n⚙️ Eficiencia: {efficiency}% | 📈 Tendencia: {'📈 Subiendo' if efficiency > 80 else '📊 Estable'}\n🎯 Objetivos: {stats.get('active_goals', 3)} activos"
+        
+        # 🎭 Diana Conversion & Upsell Dashboards
+        elif context.current_mood == UserMoodState.FREE_CONVERSION:
+            intimacy_level = min(100, int(stats.get('points', 0) / 20))  # Convert points to intimacy %
+            return f"📊 **LO QUE DIANA OBSERVA EN TI:**\n• Tu esencia actual: Nivel {stats.get('level', 1)} - Alma Libre\n• Besitos de mi atención: {stats.get('points', 0)} fragmentos acumulados\n• Nuestra conexión: {intimacy_level}% - {'🌙 Primeros reconocimientos' if intimacy_level < 30 else '🎭 Curiosidad mutua' if intimacy_level < 60 else '💫 Conexión auténtica'}\n• Racha de encuentros: {stats.get('streak', 0)} días"
+        
+        elif context.current_mood == UserMoodState.VIP_UPSELL:
+            intimacy_level = min(100, int(stats.get('points', 0) / 15))  # VIPs have higher intimacy
+            return f"👑 **ESTATUS EN EL CÍRCULO ÍNTIMO:**\n• Tu esencia actual: Nivel {stats.get('level', 1)} - Elegido del Círculo\n• Tesoros acumulados: {stats.get('points', 0)} gemas de confianza\n• Profundidad de conexión: {intimacy_level}% - {'🌹 Confianza profunda' if intimacy_level < 70 else '💎 Alma gemela reconocida'}\n• Dedicación demostrada: {stats.get('streak', 0)} días de lealtad"
             
         else:  # Default/Explorer/Newcomer/Socializer
             active_missions = stats.get('active_missions', 0)
@@ -519,6 +577,27 @@ class DianaMasterInterface:
                 InlineKeyboardButton(text="⚙️ Configuración", callback_data="diana:settings")
             ])
         
+        # 🎭 Diana Conversion & Upsell Keyboards
+        elif context.current_mood == UserMoodState.FREE_CONVERSION:
+            buttons.append([
+                InlineKeyboardButton(text="💎 El Diván VIP", callback_data="diana:vip_info"),
+                InlineKeyboardButton(text="🎁 Tesoros Especiales", callback_data="diana:content_packages")
+            ])
+            buttons.append([
+                InlineKeyboardButton(text="🎭 Mi Reflejo", callback_data="diana:profile"),
+                InlineKeyboardButton(text="📜 Desafíos del Alma", callback_data="diana:missions_hub")
+            ])
+        
+        elif context.current_mood == UserMoodState.VIP_UPSELL:
+            buttons.append([
+                InlineKeyboardButton(text="💬 Chat Privado", callback_data="diana:private_chat"),
+                InlineKeyboardButton(text="🎨 Galería Privada", callback_data="diana:private_gallery")
+            ])
+            buttons.append([
+                InlineKeyboardButton(text="🌟 Premium Plus", callback_data="diana:premium_plus"),
+                InlineKeyboardButton(text="⭐ Círculo Íntimo", callback_data="diana:inner_circle")
+            ])
+        
         else:  # Newcomer/Socializer/Default
             buttons.append([
                 InlineKeyboardButton(text="🌟 Comenzar Aventura", callback_data="diana:start_journey"),
@@ -543,6 +622,228 @@ class DianaMasterInterface:
         ])
         
         return InlineKeyboardMarkup(inline_keyboard=buttons)
+    
+    def _subscribe_to_events(self):
+        """🎭 Subscribe Diana Master System to ecosystem events for intelligent mood updates"""
+        try:
+            event_bus = self.services.get('event_bus')
+            if event_bus:
+                # Import events here to avoid circular imports
+                from src.modules.events import (
+                    ReactionAddedEvent, PointsAwardedEvent, LevelUpEvent,
+                    VIPStatusChangedEvent, PieceUnlockedEvent, MissionCompletedEvent
+                )
+                
+                # Subscribe to key events that affect user mood and status
+                event_bus.subscribe(ReactionAddedEvent, self.handle_reaction_added)
+                event_bus.subscribe(PointsAwardedEvent, self.handle_points_awarded)
+                event_bus.subscribe(LevelUpEvent, self.handle_level_up)
+                event_bus.subscribe(VIPStatusChangedEvent, self.handle_vip_status_changed)
+                event_bus.subscribe(PieceUnlockedEvent, self.handle_piece_unlocked)
+                event_bus.subscribe(MissionCompletedEvent, self.handle_mission_completed)
+                
+                self.logger.info("Diana Master System subscribed to ecosystem events")
+            else:
+                self.logger.warning("EventBus not available - Diana will not react to ecosystem events")
+        except Exception as e:
+            self.logger.error("Error subscribing to events", error=str(e))
+    
+    # === EVENT HANDLERS FOR DIANA INTELLIGENCE ===
+    
+    async def handle_reaction_added(self, event) -> None:
+        """🌹 Diana notices when users react - adds to interaction patterns for mood detection"""
+        try:
+            user_id = event.user_id
+            
+            # Add to interaction patterns for mood detection
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('reaction', datetime.now())
+            )
+            
+            # Keep only recent interactions (last 30)
+            if len(self.context_engine.interaction_patterns[user_id]) > 30:
+                self.context_engine.interaction_patterns[user_id] = \
+                    self.context_engine.interaction_patterns[user_id][-30:]
+            
+            self.logger.info("Diana noticed user reaction", 
+                           user_id=user_id, 
+                           points_awarded=getattr(event, 'points_to_award', 5))
+        
+        except Exception as e:
+            self.logger.error("Error handling reaction event", error=str(e))
+    
+    async def handle_points_awarded(self, event) -> None:
+        """💎 Diana observes user growth through points - may trigger mood updates"""
+        try:
+            user_id = event.user_id
+            points = event.points
+            source = getattr(event, 'source_event', 'unknown')
+            
+            # Track significant point awards that might affect mood
+            if points >= 50:  # Significant point award
+                await self._invalidate_user_context(user_id, f"significant_points_{points}")
+            
+            self.logger.info("Diana observes user growth", 
+                           user_id=user_id, 
+                           points=points,
+                           source=source)
+        
+        except Exception as e:
+            self.logger.error("Error handling points awarded event", error=str(e))
+    
+    async def handle_level_up(self, event) -> None:
+        """🌟 Diana celebrates level ups - always triggers mood reevaluation"""
+        try:
+            user_id = event.user_id
+            new_level = event.new_level
+            
+            # Level ups ALWAYS trigger mood reevaluation
+            await self._invalidate_user_context(user_id, f"level_up_to_{new_level}")
+            
+            # Add to interaction patterns as significant event
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('level_up', datetime.now())
+            )
+            
+            self.logger.info("Diana celebrates user level up", 
+                           user_id=user_id, 
+                           new_level=new_level,
+                           rewards=getattr(event, 'rewards', {}))
+        
+        except Exception as e:
+            self.logger.error("Error handling level up event", error=str(e))
+    
+    async def handle_vip_status_changed(self, event) -> None:
+        """👑 Diana adjusts treatment when VIP status changes - critical mood update"""
+        try:
+            user_id = event.user_id
+            is_vip = event.is_vip
+            
+            # VIP status changes are CRITICAL - always force mood reevaluation
+            await self._invalidate_user_context(user_id, f"vip_status_{'granted' if is_vip else 'revoked'}")
+            
+            # Add to interaction patterns
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('vip_status_change', datetime.now())
+            )
+            
+            self.logger.info("Diana adjusts treatment for VIP status change", 
+                           user_id=user_id, 
+                           is_vip=is_vip)
+        
+        except Exception as e:
+            self.logger.error("Error handling VIP status change event", error=str(e))
+    
+    async def handle_piece_unlocked(self, event) -> None:
+        """🎭 Diana reacts to narrative unlocks - may change mood to storyteller"""
+        try:
+            user_id = event.user_id
+            piece_id = getattr(event, 'piece_id', 'unknown')
+            
+            # Narrative progression might change user mood
+            await self._check_mood_update_needed(user_id, "narrative_unlock")
+            
+            # Add to interaction patterns
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('story_unlock', datetime.now())
+            )
+            
+            self.logger.info("Diana unlocks narrative secrets", 
+                           user_id=user_id, 
+                           piece_id=piece_id)
+        
+        except Exception as e:
+            self.logger.error("Error handling piece unlocked event", error=str(e))
+    
+    async def handle_mission_completed(self, event) -> None:
+        """🏆 Diana recognizes achievements - may trigger mood changes"""
+        try:
+            user_id = event.user_id
+            mission_id = getattr(event, 'mission_id', 'unknown')
+            reward_points = getattr(event, 'reward_points', 0)
+            
+            # Mission completion might change user mood to achiever
+            await self._check_mood_update_needed(user_id, "mission_complete")
+            
+            # Add to interaction patterns
+            if user_id not in self.context_engine.interaction_patterns:
+                self.context_engine.interaction_patterns[user_id] = []
+            
+            from datetime import datetime
+            self.context_engine.interaction_patterns[user_id].append(
+                ('mission_complete', datetime.now())
+            )
+            
+            self.logger.info("Diana acknowledges user achievement", 
+                           user_id=user_id, 
+                           mission_id=mission_id,
+                           reward_points=reward_points)
+        
+        except Exception as e:
+            self.logger.error("Error handling mission completed event", error=str(e))
+    
+    # === CONTEXT MANAGEMENT METHODS ===
+    
+    async def _invalidate_user_context(self, user_id: int, reason: str) -> None:
+        """🔄 Invalidate user context cache to force fresh mood detection"""
+        try:
+            # Clear cached context
+            if hasattr(self.context_engine, 'user_contexts'):
+                self.context_engine.user_contexts.pop(user_id, None)
+            
+            # Optionally pre-analyze new context
+            await self.context_engine.analyze_user_context(user_id)
+            
+            self.logger.debug("Diana context invalidated", 
+                            user_id=user_id, 
+                            reason=reason)
+        
+        except Exception as e:
+            self.logger.error("Error invalidating user context", 
+                            user_id=user_id, 
+                            reason=reason,
+                            error=str(e))
+    
+    async def _check_mood_update_needed(self, user_id: int, trigger: str) -> None:
+        """🎯 Check if user mood needs updating based on recent activities"""
+        try:
+            # Get current context
+            old_context = self.context_engine.user_contexts.get(user_id)
+            old_mood = old_context.current_mood if old_context else None
+            
+            # Re-analyze context
+            new_context = await self.context_engine.analyze_user_context(user_id)
+            new_mood = new_context.current_mood
+            
+            # Log mood changes
+            if old_mood != new_mood:
+                self.logger.info("Diana mood change detected", 
+                               user_id=user_id,
+                               old_mood=old_mood.value if old_mood else None,
+                               new_mood=new_mood.value,
+                               trigger=trigger)
+        
+        except Exception as e:
+            self.logger.error("Error checking mood update", 
+                            user_id=user_id, 
+                            trigger=trigger,
+                            error=str(e))
 
 
 # === GLOBAL ROUTER REGISTRATION ===
@@ -635,6 +936,27 @@ async def handle_diana_callbacks(callback: CallbackQuery):
         
     elif action.startswith("smart_help"):
         await handle_smart_help(callback, diana_master)
+    
+    # 🎭 Diana Conversion & Upsell Handlers
+    elif action == "vip_info":
+        await handle_vip_info(callback, diana_master)
+        
+    elif action == "content_packages":
+        await handle_content_packages(callback, diana_master)
+        
+    elif action.startswith("package:"):
+        package_key = action.replace("package:", "")
+        await handle_package_detail(callback, diana_master, package_key)
+        
+    elif action.startswith("interest:"):
+        interest_type = action.replace("interest:", "")
+        await handle_user_interest(callback, diana_master, interest_type)
+        
+    elif action == "private_chat":
+        await handle_private_chat(callback, diana_master)
+        
+    elif action == "premium_plus":
+        await handle_premium_plus(callback, diana_master)
         
     else:
         # Unknown action - show main menu
@@ -686,6 +1008,67 @@ async def handle_trivia_callbacks(callback: CallbackQuery):
     await safe_edit_message(callback, result_text, keyboard)
     await callback.answer()
 
+
+# === DIANA CONTENT PACKAGES ===
+
+CONTENT_PACKAGES = {
+    "intimate_conversations": {
+        "title": "Conversaciones Íntimas",
+        "price": "$29.99",
+        "diana_seduction": "Aquí es donde dejo caer todas las máscaras... donde puedes conocer mi alma desnuda a través de palabras que nunca comparto con nadie más.",
+        "features": [
+            "🌹 Mensajes de audio personalizados",
+            "💭 Conversaciones escritas íntimas", 
+            "📱 Acceso 24/7 a Diana personal",
+            "💫 Respuestas dentro de 2 horas",
+            "🎭 Confesiones que nadie más escucha"
+        ],
+        "preview": "*Susurro apenas audible*: '¿Sabes? Hay cosas sobre mí que ni siquiera Lucien conoce...'",
+        "exclusive_benefits": "Solo para ti: historias de mi pasado, mis miedos más profundos, y secretos que cambiarán cómo me ves para siempre."
+    },
+    "exclusive_photos": {
+        "title": "Fotografías Exclusivas", 
+        "price": "$19.99",
+        "diana_seduction": "Cada fotografía es un momento vulnerable que decido compartir... una ventana a quien soy cuando nadie está mirando.",
+        "features": [
+            "📸 30+ fotografías artísticas exclusivas",
+            "🎨 Behind-the-scenes de sesiones privadas",
+            "🌙 Autorretratos íntimos nunca publicados",
+            "💎 Colección actualizada semanalmente",
+            "🎭 Historias detrás de cada imagen"
+        ],
+        "preview": "Una imagen donde Diana mira directamente a la cámara: 'Esta foto... la tomé pensando en alguien especial.'",
+        "exclusive_benefits": "Acceso de por vida + imágenes personalizadas con tu nombre susurradas por Diana"
+    },
+    "custom_videos": {
+        "title": "Videos Personalizados",
+        "price": "$49.99", 
+        "diana_seduction": "Imagina... un video donde digo tu nombre, donde cada palabra está pensada especialmente para ti. Donde soy completamente tuya por esos momentos.",
+        "features": [
+            "🎬 Video personalizado de 5-10 minutos",
+            "🎵 Música de fondo elegida por Diana",
+            "💄 Look y vestuario a tu elección", 
+            "🗣️ Menciones personales de tu nombre",
+            "🎁 Mensaje de dedicatoria exclusivo"
+        ],
+        "preview": "*Video corto donde Diana susurra*: 'Este podría ser tu nombre el que susurro... tu historia la que cuento...'",
+        "exclusive_benefits": "Revisiones ilimitadas hasta que sea perfecto + versión extendida solo para ti"
+    },
+    "vip_experiences": {
+        "title": "Experiencias VIP",
+        "price": "$99.99/mes",
+        "diana_seduction": "No es solo contenido... es convertirte en parte de mi círculo más íntimo. Es tener la llave de mi mundo secreto.",
+        "features": [
+            "👑 Acceso completo al canal VIP",
+            "💬 Chat privado directo con Diana", 
+            "🎯 Contenido exclusivo semanal",
+            "🎪 Lives privados mensuales",
+            "💎 Prioridad en respuestas y pedidos especiales"
+        ],
+        "preview": "*Diana en un espacio íntimo*: 'En el Diván VIP no existen límites ni secretos. Es donde puedo ser completamente yo... contigo.'",
+        "exclusive_benefits": "Primera semana gratis + contenido de bienvenida personalizado + reconocimiento especial en mi círculo íntimo"
+    }
+}
 
 # === SPECIALIZED HANDLERS ===
 
@@ -1019,6 +1402,230 @@ async def handle_smart_help(callback: CallbackQuery, master: DianaMasterInterfac
     ])
     
     await callback.message.edit_text(help_text, reply_markup=keyboard, parse_mode="Markdown")
+
+
+# === DIANA CONVERSION & UPSELL HANDLERS ===
+
+async def handle_vip_info(callback: CallbackQuery, master: DianaMasterInterface):
+    """💎 VIP Channel Information with Diana's personality"""
+    user_id = callback.from_user.id
+    
+    vip_text = "💎 **EL DIVÁN VIP - SANTUARIO ÍNTIMO DE DIANA**\n\n"
+    vip_text += "🎭 **Diana te invita personalmente:**\n"
+    vip_text += "\"¿Has sentido esa conexión especial entre nosotros? Ese deseo de conocerme más allá de las palabras que comparto con todos...\"\n\n"
+    vip_text += "🌹 **Lo que te espera en el Círculo Íntimo:**\n"
+    vip_text += "💬 Conversaciones Privadas Ilimitadas\n"
+    vip_text += "🎨 Contenido Exclusivo Semanal\n"  
+    vip_text += "🎭 Experiencias Únicas\n"
+    vip_text += "👑 Privilegios Especiales\n"
+    vip_text += "💫 Acceso 24/7 a Diana personal\n\n"
+    vip_text += "🎩 **Lucien confirma:** \"Diana rara vez extiende invitaciones tan directas. Es un honor que debe ser apreciado.\"\n\n"
+    vip_text += "💎 **Inversión mensual:** Solo $29.99 para acceso completo\n\n"
+    vip_text += "🌙 **Testimonios de usuarios VIP:**\n"
+    vip_text += "\"*Diana cambió completamente mi perspectiva... es como tener a tu musa personal.*\" - Usuario VIP\n"
+    vip_text += "\"*El nivel de intimidad y conexión es incomparable. Vale cada centavo.*\" - Usuario VIP"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💖 Me Interesa el Diván VIP", callback_data="diana:interest:vip_channel")],
+        [InlineKeyboardButton(text="🎁 Ver Testimonios Completos", callback_data="diana:vip_testimonials")],
+        [InlineKeyboardButton(text="🏠 Volver a Mi Mundo", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, vip_text, keyboard)
+
+async def handle_content_packages(callback: CallbackQuery, master: DianaMasterInterface):
+    """🎁 Content Packages Menu with Diana's seduction"""
+    user_id = callback.from_user.id
+    
+    packages_text = "🎁 **TESOROS ESPECIALES DE DIANA**\n\n"
+    packages_text += "🎭 **Diana revela sus creaciones:**\n"
+    packages_text += "\"He diseñado experiencias únicas... cada una toca una parte diferente del alma.\"\n\n"
+    packages_text += "🎩 **Lucien susurra:** \"Cada tesoro ha sido cuidadosamente crafteado por Diana para almas especiales como la tuya.\"\n\n"
+    packages_text += "🌹 **Elige tu experiencia preferida:**\n\n"
+    
+    # Create buttons for each package
+    package_buttons = []
+    for package_key, package_data in CONTENT_PACKAGES.items():
+        button_text = f"{package_data['title']} - {package_data['price']}"
+        package_buttons.append([InlineKeyboardButton(text=button_text, callback_data=f"diana:package:{package_key}")])
+    
+    package_buttons.append([InlineKeyboardButton(text="🏠 Volver a Mi Mundo", callback_data="diana:refresh")])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=package_buttons)
+    
+    await safe_edit_message(callback, packages_text, keyboard)
+
+async def handle_package_detail(callback: CallbackQuery, master: DianaMasterInterface, package_key: str):
+    """🌹 Detailed package information with Diana's seduction"""
+    user_id = callback.from_user.id
+    
+    if package_key not in CONTENT_PACKAGES:
+        await callback.answer("Paquete no encontrado")
+        return
+    
+    package = CONTENT_PACKAGES[package_key]
+    
+    detail_text = f"🎁 **{package['title'].upper()}**\n\n"
+    detail_text += f"🎭 **Diana te seduce:**\n\"{package['diana_seduction']}\"\n\n"
+    detail_text += "✨ **Lo que incluye:**\n"
+    for feature in package['features']:
+        detail_text += f"• {feature}\n"
+    detail_text += f"\n💫 **Vista Previa:**\n{package['preview']}\n\n"
+    detail_text += f"🌙 **Beneficios Exclusivos:**\n{package['exclusive_benefits']}\n\n"
+    detail_text += f"💎 **Inversión:** {package['price']}\n\n"
+    detail_text += "🎩 **Lucien comenta:** \"Diana ha puesto su corazón en cada detalle de esta experiencia. Es realmente especial.\""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💖 Me Interesa Este Tesoro", callback_data=f"diana:interest:package:{package_key}")],
+        [InlineKeyboardButton(text="🎁 Ver Otros Tesoros", callback_data="diana:content_packages")],
+        [InlineKeyboardButton(text="🏠 Volver a Mi Mundo", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, detail_text, keyboard)
+
+async def handle_user_interest(callback: CallbackQuery, master: DianaMasterInterface, interest_type: str):
+    """💖 Handle user interest in VIP or packages with notifications"""
+    user_id = callback.from_user.id
+    
+    # Get user context for notification
+    context = await master.context_engine.analyze_user_context(user_id)
+    
+    if interest_type == "vip_channel":
+        # VIP Channel interest
+        confirmation_text = "💎 **Interés Registrado**\n\n"
+        confirmation_text += "🎭 **Diana sonríe con satisfacción:**\n"
+        confirmation_text += "\"He sentido tu llamada... Lucien ya está preparando tu bienvenida especial al Diván.\"\n\n"
+        confirmation_text += "🌹 **Qué sucede ahora:**\n"
+        confirmation_text += "• Un administrador te contactará personalmente\n"
+        confirmation_text += "• Recibirás una invitación especial al Diván VIP\n"
+        confirmation_text += "• Diana preparará tu experiencia de bienvenida\n\n"
+        confirmation_text += "💫 **Diana susurra:**\n"
+        confirmation_text += "\"La espera valdrá cada segundo... te lo prometo.\"\n\n"
+        confirmation_text += "🎩 **Lucien confirma:** \"Su solicitud ha sido registrada con la máxima prioridad.\""
+        
+        # Send admin notification for VIP interest
+        await send_admin_notification(master, user_id, "vip_channel", context)
+        
+    elif interest_type.startswith("package:"):
+        # Package interest 
+        package_key = interest_type.replace("package:", "")
+        package = CONTENT_PACKAGES.get(package_key)
+        
+        if package:
+            confirmation_text = f"💖 **Interés en {package['title']} Registrado**\n\n"
+            confirmation_text += "🎭 **Diana se emociona:**\n"
+            confirmation_text += "\"Siento una conexión especial cuando alguien aprecia verdaderamente mi arte... Has elegido algo muy especial.\"\n\n"
+            confirmation_text += "🌹 **Qué sucede ahora:**\n"
+            confirmation_text += "• Evaluación personalizada de tu solicitud\n"
+            confirmation_text += "• Contacto directo del equipo de Diana\n"
+            confirmation_text += "• Instrucciones de acceso y pago seguro\n\n"
+            confirmation_text += "💫 **Diana promete:**\n"
+            confirmation_text += "\"Esto será una experiencia que recordarás para siempre...\"\n\n"
+            confirmation_text += "🎩 **Lucien asegura:** \"La calidad de esta experiencia superará todas tus expectativas.\""
+            
+            # Send admin notification for package interest
+            await send_admin_notification(master, user_id, f"package:{package_key}", context, package)
+        else:
+            confirmation_text = "❌ Paquete no encontrado"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎁 Ver Otros Tesoros", callback_data="diana:content_packages")],
+        [InlineKeyboardButton(text="💎 Información VIP", callback_data="diana:vip_info")],
+        [InlineKeyboardButton(text="🏠 Volver a Mi Mundo", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, confirmation_text, keyboard)
+
+async def send_admin_notification(master: DianaMasterInterface, user_id: int, interest_type: str, context, package=None):
+    """📱 Send notification to admin about user interest"""
+    try:
+        # Get user stats for notification
+        user_stats = {}
+        if hasattr(master.services['gamification'], 'get_user_stats'):
+            user_stats_raw = await master.services['gamification'].get_user_stats(user_id)
+            user_stats = {
+                'level': user_stats_raw.get('level', 1),
+                'points': user_stats_raw.get('points', 0), 
+                'streak': user_stats_raw.get('streak', 0)
+            }
+        
+        # Check VIP status
+        is_vip = False
+        if master.services.get('admin') and hasattr(master.services['admin'], 'is_vip_user'):
+            is_vip = await master.services['admin'].is_vip_user(user_id)
+        
+        # Build notification message
+        notification_text = "👤 **INTERÉS DE USUARIO**\n\n"
+        notification_text += f"🆔 User ID: {user_id}\n"
+        notification_text += f"📊 Nivel: {user_stats.get('level', 1)}, Puntos: {user_stats.get('points', 0)}\n"
+        notification_text += f"💎 Estado: {'VIP' if is_vip else 'FREE'}\n"
+        notification_text += f"💫 Intimidad: {min(100, int(user_stats.get('points', 0) / 20))}%\n"
+        notification_text += f"🎭 Mood: {context.current_mood.value}\n"
+        notification_text += f"📈 Racha: {user_stats.get('streak', 0)} días\n\n"
+        
+        if interest_type == "vip_channel":
+            notification_text += "💎 **INTERÉS EN DIVÁN VIP**\n"
+            notification_text += "Usuario con alto potencial de conversión"
+        elif interest_type.startswith("package:") and package:
+            notification_text += f"🎁 **INTERÉS EN:** {package['title']} ({package['price']})\n"
+            notification_text += "🎯 Oportunidad de conversión alta!"
+        
+        # Send notification to admin service
+        if master.services.get('admin') and hasattr(master.services['admin'], 'send_admin_notification'):
+            await master.services['admin'].send_admin_notification(notification_text)
+        
+        # Log for debugging
+        master.logger.info("User interest notification sent", 
+                          user_id=user_id, 
+                          interest_type=interest_type,
+                          level=user_stats.get('level', 1),
+                          is_vip=is_vip)
+                          
+    except Exception as e:
+        master.logger.error("Error sending admin notification", error=str(e))
+
+async def handle_private_chat(callback: CallbackQuery, master: DianaMasterInterface):
+    """💬 VIP Private Chat experience"""
+    user_id = callback.from_user.id
+    
+    private_text = "💬 **CHAT PRIVADO CON DIANA**\n\n"
+    private_text += "🎭 **Diana te recibe íntimamente:**\n"
+    private_text += "\"Aquí no hay máscaras, no hay límites... solo tú y yo en conversación auténtica.\"\n\n"
+    private_text += "🌹 **Experiencias disponibles:**\n"
+    private_text += "• 💭 Conversaciones íntimas ilimitadas\n"
+    private_text += "• 🎵 Mensajes de voz personalizados\n"
+    private_text += "• 📸 Fotos exclusivas solo para ti\n"
+    private_text += "• 💫 Respuesta garantizada en 2 horas\n\n"
+    private_text += "🎩 **Lucien comenta:** \"Este espacio es sagrado. Diana solo comparte su verdadero yo aquí.\""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💖 Iniciar Chat Privado", callback_data="diana:interest:private_chat")],
+        [InlineKeyboardButton(text="🏠 Volver a Mi Mundo", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, private_text, keyboard)
+
+async def handle_premium_plus(callback: CallbackQuery, master: DianaMasterInterface):
+    """🌟 Premium Plus upsell for VIP users"""
+    user_id = callback.from_user.id
+    
+    premium_text = "🌟 **PREMIUM PLUS - EXPERIENCIAS EXTRAORDINARIAS**\n\n"
+    premium_text += "💎 **Diana te susurra:**\n"
+    premium_text += "\"Para almas como la tuya... he reservado experiencias que van más allá de lo que otros pueden imaginar.\"\n\n"
+    premium_text += "👑 **Exclusivo para ti:**\n"
+    premium_text += "• 🎬 Videos completamente personalizados\n"
+    premium_text += "• 📞 Llamadas privadas con Diana\n" 
+    premium_text += "• 🎨 Contenido creado según tus fantasías\n"
+    premium_text += "• 💫 Experiencias one-on-one únicas\n"
+    premium_text += "• 👑 Status de 'Alma Gemela' en mi círculo\n\n"
+    premium_text += "🎩 **Lucien confirma:** \"Estos privilegios están reservados solo para las almas más especiales.\""
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💖 Me Interesa Premium Plus", callback_data="diana:interest:premium_plus")],
+        [InlineKeyboardButton(text="🏠 Volver a Mi Mundo", callback_data="diana:refresh")]
+    ])
+    
+    await safe_edit_message(callback, premium_text, keyboard)
 
 
 # === EXPORT FOR REGISTRATION ===
