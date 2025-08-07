@@ -113,3 +113,33 @@ class AdminStatusChangedEvent(IEvent):
         self.is_admin = is_admin
         self.changed_by = changed_by
         self.timestamp = datetime.now().isoformat()
+
+@dataclass
+class UserCreatedEvent(IEvent):
+    """Evento lanzado cuando se crea un nuevo usuario."""
+    user_id: int
+    telegram_id: int
+    username: str
+    is_admin: bool = False
+    is_vip: bool = False
+    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    metadata: dict = field(default_factory=dict)
+
+@dataclass
+class UserProfileUpdatedEvent(IEvent):
+    """Evento lanzado cuando se actualiza el perfil de usuario."""
+    user_id: int
+    changed_fields: List[str]
+    old_values: dict
+    new_values: dict
+    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+
+@dataclass
+class UserRoleChangedEvent(IEvent):
+    """Evento lanzado cuando cambian roles de usuario."""
+    user_id: int
+    role_type: str  # 'admin' o 'vip'
+    old_value: bool
+    new_value: bool
+    changed_by: Optional[int] = None  # ID del admin que hizo el cambio
+    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())

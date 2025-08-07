@@ -95,41 +95,115 @@ class UserService(BaseService[User]):
     async def create_or_update_user(
         self, session: AsyncSession, user_id: int, user_data: Dict[str, Any]
     ) -> User:
-        """Crea o actualiza un usuario."""
+        """Crea o actualiza un usuario con validación completa y eventos.
+        
+        Args:
+            session: Sesión de base de datos
+            user_id: ID del usuario
+            user_data: Datos del usuario con:
+                - telegram_id (int): ID de Telegram (requerido)
+                - username (str): Nombre de usuario (requerido)
+                - first_name (str): Nombre real (opcional)
+                - last_name (str): Apellido (opcional)
+                - is_admin (bool): Si es admin (default False)
+                - is_vip (bool): Si es VIP (default False)
+                
+        Returns:
+            User: El usuario creado/actualizado
+            
+        Raises:
+            ValueError: Si faltan campos requeridos
+            SQLAlchemyError: Si hay error en la base de datos
+        """
         self.logger.debug("Creando o actualizando usuario", user_id=user_id)
         
+        # Validación extendida
+        required_fields = {'telegram_id': int, 'username': str}
+        for field, field_type in required_fields.items():
+            if field not in user_data:
+                raise ValueError(f"Campo requerido faltante: {field}")
+            if not isinstance(user_data[field], field_type):
+                raise ValueError(f"Tipo inválido para {field}, esperado {field_type.__name__}")
+
         user = await self.get_user(session, user_id)
         if user:
             # Actualizar usuario existente
             user = await self.update(session, user_id, user_data)
             self.logger.info("Usuario actualizado", user_id=user_id)
         else:
-            # Crear nuevo usuario
+            # Configuración inicial
+            user_data.setdefault('is_active', True)
+            user_data.setdefault('is_admin', False)
+            user_data.setdefault('is_vip', False)
             user_data["id"] = user_id
+            
+            # Crear nuevo usuario
             user = await self.create(session, user_data)
             
-            # Crear registro de puntos para el usuario
+            # Crear registro de puntos
             points_data = {
                 "user_id": user_id,
                 "current_points": 0.0,
                 "total_earned": 0.0,
             }
-            
             user_points = UserPoints(**points_data)
             session.add(user_points)
+            
+            # Publicar eventos
+            await self._publish_event(UserCreatedEvent(
+                user_id=user.id,
+                telegram_id=user.telegram_id,
+                username=user.username,
+                is_admin=user.is_admin,
+                is_vip=user.is_vip
+            ))
+            
+            await self._publish_event(UserActivityEvent(
+                user_id=user.id,
+                activity_type='account_creation',
+                metadata={
+                    'source': 'telegram',
+                    'initial_roles': {
+                        'admin': user.is_admin,
+                        'vip': user.is_vip
+                    }
+                }
+            ))
             
             self.logger.info("Nuevo usuario creado", user_id=user_id)
         
         return user
     
     async def set_vip_status(self, session: AsyncSession, user_id: int, is_vip: bool) -> Optional[User]:
-        """Establece el estado VIP de un usuario."""
+        """Establece el estado VIP de un usuario con manejo de eventos.
+        
+        Args:
+            session: Sesión de base de datos
+            user_id: ID del usuario
+            is_vip: Nuevo estado VIP
+            
+        Returns:
+            User actualizado o None si no existe
+            
+        Raises:
+            SQLAlchemyError: Si hay error en la base de datos
+        """
         self.logger.debug("Estableciendo estado VIP", user_id=user_id, is_vip=is_vip)
         
         user = await self.get_user(session, user_id)
         if user:
+            old_value = user.is_vip
             user.is_vip = is_vip
             await session.flush()
+            
+            # Publicar evento si hubo cambio
+            if old_value != is_vip:
+                await self._publish_event(UserRoleChangedEvent(
+                    user_id=user_id,
+                    role_type='vip',
+                    old_value=old_value,
+                    new_value=is_vip
+                ))
             
             self.logger.info("Estado VIP actualizado", user_id=user_id, is_vip=is_vip)
             return user
