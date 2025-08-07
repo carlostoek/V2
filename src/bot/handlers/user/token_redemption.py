@@ -2,7 +2,7 @@
 
 import logging
 from aiogram import types
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Regexp
 import re
 
 from src.modules.token.tokeneitor import Tokeneitor
@@ -86,7 +86,8 @@ async def handle_token_redemption(
 
 def register_token_handlers(dp, tokeneitor):
     """Registra los handlers para canje de tokens."""
+    # Solo capturar comandos /start que contengan tokens (formato: /start token_xxxxx)
     dp.message.register(
         lambda message, command: handle_token_redemption(message, command, tokeneitor),
-        CommandStart()
+        CommandStart(deep_link=True)  # Solo comandos /start con parámetros
     )

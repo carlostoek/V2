@@ -13,6 +13,10 @@ from .containers import ApplicationContainer
 from .handlers import setup_handlers
 from .errors import setup_error_handlers
 from .scheduler import setup_scheduler
+from .diana_master_system import register_diana_master_system
+from .diana_admin_master import register_diana_admin_master
+from src.modules.tariff.service import TariffService
+from src.modules.daily_rewards.service import DailyRewardsService
 
 logger = structlog.get_logger()
 
@@ -47,9 +51,45 @@ async def bootstrap():
     logger.info("Configurando middlewares")
     setup_middlewares(dp)
 
-    # Configurar manejadores
-    logger.info("Configurando manejadores")
-    setup_handlers(dp)
+    # Configurar manejadores - DESHABILITADO: Diana Master System maneja todo ahora
+    # logger.info("Configurando manejadores")
+    # setup_handlers(dp)
+    logger.info("Manejadores legacy DESHABILITADOS - Se requiere Diana Master System")
+    
+    # Registrar Diana Master System
+    logger.info("Registrando Diana Master System")
+    try:
+        # Inicializar servicios adicionales requeridos
+        event_bus = container.core.event_bus()
+        gamification_service = container.services.gamification_service()
+        tariff_service = TariffService(event_bus)
+        daily_rewards_service = DailyRewardsService(gamification_service)
+        
+        # Setup de servicios adicionales
+        await tariff_service.setup()
+        await daily_rewards_service.setup()
+        
+        # Preparar servicios necesarios para Diana Master System
+        services = {
+            'gamification': gamification_service,
+            'admin': container.services.admin_service(),
+            'narrative': container.services.narrative_service(),
+            'event_bus': event_bus,
+            'tariff': tariff_service,
+            'daily_rewards': daily_rewards_service
+        }
+        
+        # Registrar Diana Admin Master System
+        register_diana_admin_master(dp, services)
+        logger.info("✅ Diana Admin Master System registrado correctamente")
+        
+        # Registrar Diana Master System  
+        register_diana_master_system(dp, services)
+        logger.info("✅ Diana Master System registrado correctamente")
+        
+    except Exception as e:
+        logger.error("❌ Error registrando Diana Master System", error=str(e))
+        raise
 
     # Configurar programador de tareas
     logger.info("Configurando programador de tareas")
