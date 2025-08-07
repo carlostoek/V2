@@ -8,6 +8,7 @@ from src.modules.narrative.service import NarrativeService
 from src.modules.tariff.service import TariffService
 from src.modules.daily_rewards.service import DailyRewardsService
 from src.bot.core.diana_admin_master import register_diana_admin_master
+from src.bot.core.diana_user_master_system import register_diana_user_master_system
 
 class TelegramAdapter:
     def __init__(self, bot_token: str, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, narrative_service: NarrativeService = None):
@@ -42,6 +43,10 @@ class TelegramAdapter:
         # Register the Diana Admin Master System
         self.diana_admin_master = register_diana_admin_master(self.dp, self._services)
         print("🎭✨ Diana Admin Master System successfully integrated!")
+        
+        # Register the Diana User Master System
+        self.diana_user_master = register_diana_user_master_system(self.dp, self._services)
+        print("🎭🌹 Diana User Master System successfully integrated!")
 
     async def start(self):
         """Inicia el bot."""
