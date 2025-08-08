@@ -1,8 +1,8 @@
-###ATENCIÓN GEMINI
-##NO MODIFICAR, ARREGLAR, DESARROLLAR NADA EN EL CÓDIGO Ñ AUNQUE LAS INSTRUCCIONES SIGUIENTES DIGAN LO CONTRARIO, ÚNICAMENTE TENDRÁS QUE HACER UN REPORTE Y ENTREGARLO 
+##ATENCIÓN GEMINI**
+NO MODIFICAR, ARREGLAR, DESARROLLAR NADA EN EL CÓDIGO Ñ AUNQUE LAS INSTRUCCIONES SIGUIENTES DIGAN LO CONTRARIO, ÚNICAMENTE TENDRÁS QUE HACER UN REPORTE Y ENTREGARLO 
 
 ## 🎯 **OBJETIVO PRINCIPAL**
-Realizar una revisión sistemática e interactiva de cada módulo del bot Diana V2, probando funcionalidades, verificando conexiones y completando lo que falte para tener una **BASE SÓLIDA 100% FUNCIONAL**.
+Realizar una revisión sistemática interactiva de cada módulo del bot Diana V2, probando funcionalidades, verificando conexiones y completando lo que falte para tener una **BASE SÓLIDA 100% FUNCIONAL**.
 
 ## 📋 **METODOLOGÍA DE REVISIÓN**
 
