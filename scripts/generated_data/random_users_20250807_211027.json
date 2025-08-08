@@ -1,0 +1,290 @@
+[
+  {
+    "user_id": 1754622632211,
+    "first_name": "Camila",
+    "last_name": "Ramos",
+    "username": "camila127",
+    "level": 1,
+    "points": 273,
+    "is_vip": true,
+    "vip_level": "premium",
+    "consecutive_days": 1,
+    "narrative_progress": 27,
+    "narrative_chapter": 1,
+    "personality": "sophisticated",
+    "activity_pattern": "daily_consistent",
+    "total_interactions": 16,
+    "interactions_today": 3,
+    "join_date": "2025-03-15T21:10:27.887506",
+    "session_start": "2025-08-07T20:50:27.887534",
+    "achievements": [
+      "trivia_master"
+    ],
+    "narrative_interests": [
+      "historical",
+      "horror",
+      "thriller"
+    ],
+    "intimacy_level": 0.19818254964455895,
+    "conversion_signals": 4,
+    "last_content_type": "shop"
+  },
+  {
+    "user_id": 1754622629956,
+    "first_name": "Santiago",
+    "last_name": "Jiménez",
+    "username": "santiago375",
+    "level": 2,
+    "points": 793,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 0,
+    "narrative_progress": 25,
+    "narrative_chapter": 3,
+    "personality": "sophisticated",
+    "activity_pattern": "power_user",
+    "total_interactions": 18,
+    "interactions_today": 2,
+    "join_date": "2025-05-28T21:10:27.888077",
+    "session_start": "2025-08-07T19:19:27.888098",
+    "achievements": [
+      "vip_member"
+    ],
+    "narrative_interests": [
+      "historical"
+    ],
+    "intimacy_level": 0.44383666930915777,
+    "conversion_signals": 2,
+    "last_content_type": "mission"
+  },
+  {
+    "user_id": 1754622637503,
+    "first_name": "Ricardo",
+    "last_name": "Martínez",
+    "username": "ricardo858",
+    "level": 1,
+    "points": 271,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 1,
+    "narrative_progress": 20,
+    "narrative_chapter": 1,
+    "personality": "explorer",
+    "activity_pattern": "binge_user",
+    "total_interactions": 14,
+    "interactions_today": 0,
+    "join_date": "2025-03-13T21:10:27.888643",
+    "session_start": "2025-08-07T20:44:27.888679",
+    "achievements": [],
+    "narrative_interests": [
+      "thriller"
+    ],
+    "intimacy_level": 0.5372991012758044,
+    "conversion_signals": 10,
+    "last_content_type": "mission"
+  },
+  {
+    "user_id": 1754622629104,
+    "first_name": "Antonio",
+    "last_name": "Ortiz",
+    "username": "antonio374",
+    "level": 4,
+    "points": 1751,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 0,
+    "narrative_progress": 52,
+    "narrative_chapter": 3,
+    "personality": "yearning",
+    "activity_pattern": "night_owl",
+    "total_interactions": 73,
+    "interactions_today": 11,
+    "join_date": "2025-05-15T21:10:27.888991",
+    "session_start": "2025-08-07T19:48:27.889008",
+    "achievements": [
+      "vip_member"
+    ],
+    "narrative_interests": [
+      "sci-fi"
+    ],
+    "intimacy_level": 0.5897898944954991,
+    "conversion_signals": 3,
+    "last_content_type": "daily_reward"
+  },
+  {
+    "user_id": 1754622633857,
+    "first_name": "Antonio",
+    "last_name": "Silva",
+    "username": "antonio266",
+    "level": 4,
+    "points": 966,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 5,
+    "narrative_progress": 52,
+    "narrative_chapter": 4,
+    "personality": "yearning",
+    "activity_pattern": "daily_consistent",
+    "total_interactions": 28,
+    "interactions_today": 3,
+    "join_date": "2025-07-01T21:10:27.889250",
+    "session_start": "2025-08-07T20:07:27.889264",
+    "achievements": [
+      "social_butterfly",
+      "vip_member",
+      "loyal_friend",
+      "story_lover"
+    ],
+    "narrative_interests": [
+      "drama"
+    ],
+    "intimacy_level": 0.13010534316702962,
+    "conversion_signals": 5,
+    "last_content_type": "story"
+  },
+  {
+    "user_id": 1754622629935,
+    "first_name": "Gabriel",
+    "last_name": "Jiménez",
+    "username": "gabriel909",
+    "level": 7,
+    "points": 1681,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 0,
+    "narrative_progress": 100,
+    "narrative_chapter": 2,
+    "personality": "newcomer",
+    "activity_pattern": "daily_consistent",
+    "total_interactions": 114,
+    "interactions_today": 15,
+    "join_date": "2025-06-26T21:10:27.889513",
+    "session_start": "2025-08-07T19:31:27.889526",
+    "achievements": [
+      "loyal_friend",
+      "dedicated_user"
+    ],
+    "narrative_interests": [
+      "drama"
+    ],
+    "intimacy_level": 0.17789700504231878,
+    "conversion_signals": 1,
+    "last_content_type": "story"
+  },
+  {
+    "user_id": 1754622631713,
+    "first_name": "Miguel",
+    "last_name": "Silva",
+    "username": "miguel239",
+    "level": 3,
+    "points": 783,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 1,
+    "narrative_progress": 59,
+    "narrative_chapter": 2,
+    "personality": "newcomer",
+    "activity_pattern": "morning_person",
+    "total_interactions": 58,
+    "interactions_today": 2,
+    "join_date": "2025-07-09T21:10:27.889739",
+    "session_start": "2025-08-07T19:36:27.889745",
+    "achievements": [],
+    "narrative_interests": [
+      "romance"
+    ],
+    "intimacy_level": 0.17199724413306292,
+    "conversion_signals": 3,
+    "last_content_type": "daily_reward"
+  },
+  {
+    "user_id": 1754622634596,
+    "first_name": "Rafael",
+    "last_name": "Vargas",
+    "username": "rafael492",
+    "level": 2,
+    "points": 694,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 0,
+    "narrative_progress": 45,
+    "narrative_chapter": 3,
+    "personality": "achiever",
+    "activity_pattern": "weekend_warrior",
+    "total_interactions": 15,
+    "interactions_today": 3,
+    "join_date": "2025-04-08T21:10:27.889820",
+    "session_start": "2025-08-07T20:29:27.889825",
+    "achievements": [
+      "trivia_master",
+      "loyal_friend"
+    ],
+    "narrative_interests": [
+      "sci-fi"
+    ],
+    "intimacy_level": 0.4433324450058984,
+    "conversion_signals": 8,
+    "last_content_type": "mission"
+  },
+  {
+    "user_id": 1754622635473,
+    "first_name": "Estrella",
+    "last_name": "Medina",
+    "username": "estrella898",
+    "level": 2,
+    "points": 316,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 1,
+    "narrative_progress": 34,
+    "narrative_chapter": 2,
+    "personality": "sophisticated",
+    "activity_pattern": "weekend_warrior",
+    "total_interactions": 18,
+    "interactions_today": 0,
+    "join_date": "2025-02-27T21:10:27.889899",
+    "session_start": "2025-08-07T19:44:27.889904",
+    "achievements": [
+      "story_lover",
+      "dedicated_user",
+      "loyal_friend",
+      "first_steps"
+    ],
+    "narrative_interests": [
+      "drama",
+      "comedy",
+      "horror"
+    ],
+    "intimacy_level": 0.4256589788777011,
+    "conversion_signals": 0,
+    "last_content_type": "daily_reward"
+  },
+  {
+    "user_id": 1754622629470,
+    "first_name": "Diego",
+    "last_name": "López",
+    "username": "diego435",
+    "level": 1,
+    "points": 377,
+    "is_vip": false,
+    "vip_level": null,
+    "consecutive_days": 0,
+    "narrative_progress": 8,
+    "narrative_chapter": 1,
+    "personality": "devoted",
+    "activity_pattern": "daily_consistent",
+    "total_interactions": 18,
+    "interactions_today": 0,
+    "join_date": "2025-06-27T21:10:27.889982",
+    "session_start": "2025-08-07T20:10:27.889986",
+    "achievements": [],
+    "narrative_interests": [
+      "drama",
+      "adventure",
+      "comedy"
+    ],
+    "intimacy_level": 0.5091672463065114,
+    "conversion_signals": 10,
+    "last_content_type": "shop"
+  }
+]

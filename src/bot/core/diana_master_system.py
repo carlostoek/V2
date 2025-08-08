@@ -373,9 +373,11 @@ class DianaMasterInterface:
                 "🎛️ Control total de tu progreso"
             ],
             UserMoodState.NEWCOMER: [
-                "🌅 ¡Bienvenido al mundo de Diana!1",
-                "🗝️ Te voy a mostrar los secretos de este lugar1.1",
-                "👑 Tu aventura épica comienza ahora1.2"
+
+                "🌹 Diana te descubre...\n\nUna nueva presencia... interesante. Puedo sentir tu curiosidad desde aquí, esa mezcla de fascinación e inquietud que me resulta... encantadora.\n\n🎩 Lucien susurra: \"Diana rara vez presta atención a los recién llegados, pero contigo es diferente.\"",
+                "🎭 Diana se acerca...\n\nAh... cada alma que encuentra mi refugio trae consigo secretos únicos. Los tuyos... despiertan mi interés de una manera poco común.\n\n🎩 Lucien observa: \"Su aura es distintiva. Diana ya está calculando cuánto puede revelarte.\"",
+                "🌙 Diana te susurra suavemente...\n\nBienvenido a mi mundo... un lugar donde los límites entre la realidad y la fantasía se desvanecen. ¿Estás preparado para descubrir qué secretos guardo para ti?\n\n🎩 Lucien confirma: \"El viaje que está a punto de comenzar será... transformador.\""
+
             ],
             # 🎭 Diana Conversion & Upsell Templates
             UserMoodState.FREE_CONVERSION: [
@@ -401,17 +403,17 @@ class DianaMasterInterface:
             if hasattr(self.services['gamification'], 'get_user_stats'):
                 user_stats_raw = await self.services['gamification'].get_user_stats(context.user_id)
                 stats = {
-                    'level': user_stats_raw['level'],
-                    'points': user_stats_raw['points'],
-                    'streak': user_stats_raw['streak'],  # Will be updated from daily rewards
+                    'level': user_stats_raw.get('level', 1),
+                    'points': user_stats_raw.get('points', 0),
+                    'streak': user_stats_raw.get('streak', 0),  # Will be updated from daily rewards
                     'inventory': list(context.narrative_progress.get('narrative_items', {}).keys()) if context.narrative_progress else [],
-                    'achievements': user_stats_raw['achievements_count'],
+                    'achievements': user_stats_raw.get('achievements_count', 0),
                     'clues': context.narrative_progress.get('fragments_visited', 0) if context.narrative_progress else 0,
                     'fragments': context.narrative_progress.get('total_fragments', 0) if context.narrative_progress else 0,
-                    'efficiency_score': min(100, int(user_stats_raw['points'] / 10)),  # Dynamic calculation
+                    'efficiency_score': min(100, int(user_stats_raw.get('points', 0) / 10)),  # Dynamic calculation
                     'active_goals': 3,  # Placeholder 
-                    'active_missions': user_stats_raw['active_missions'],
-                    'engagement_level': user_stats_raw['points'] / 1000.0
+                    'active_missions': user_stats_raw.get('active_missions', 0),
+                    'engagement_level': user_stats_raw.get('points', 0) / 1000.0
                 }
             else:
                 # Fallback to mock stats
@@ -473,15 +475,41 @@ class DianaMasterInterface:
         else:  # Default/Explorer/Newcomer/Socializer
             active_missions = stats.get('active_missions', 0)
             missions_count = active_missions if isinstance(active_missions, int) else len(active_missions) if isinstance(active_missions, (list, tuple)) else 0
-            return f"🌟 **ESTADO DEL AVENTURERO2**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {missions_count} activas"
-    
+
+            
+            # 🎭 Seductive dashboard for newcomers and explorers
+            if context.current_mood == UserMoodState.NEWCOMER:
+                discovery_level = min(100, int(stats.get('points', 0) / 10))  # Discovery progress
+                return f"🌙 **LO QUE DIANA PERCIBE:**\n• Tu esencia: Nivel {stats.get('level', 1)} - Alma Nueva\n• Fragmentos de curiosidad: {stats.get('points', 0)} destellos\n• Nivel de descubrimiento: {discovery_level}% - {'🌱 Primera impresión' if discovery_level < 20 else '🎭 Interés creciente'}\n• Encuentros conmigo: {missions_count} momentos"
+            else:
+                return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {missions_count} activas"
+
     async def _generate_predictive_actions(self, context: UserContext) -> str:
         """🔮 AI-powered action predictions"""
         
         predictions = []
         
+        # 🎭 Diana Conversion & Seduction Predictions
+        if context.current_mood == UserMoodState.NEWCOMER:
+            predictions.extend([
+                "🌹 *Diana intuye: Tu curiosidad busca algo más profundo...*",
+                "🎩 *Lucien sugiere: \"Quizás sea momento de explorar los primeros secretos\"*"
+            ])
+        
+        elif context.current_mood == UserMoodState.FREE_CONVERSION:
+            predictions.extend([
+                "💫 *Diana percibe: Tu alma está lista para experiencias más íntimas*",
+                "🎭 *Lucien nota: \"La conexión se profundiza... momento perfecto para revelaciones\"*"
+            ])
+        
+        elif context.current_mood == UserMoodState.VIP_UPSELL:
+            predictions.extend([
+                "👑 *Diana reconoce: Tu devoción merece recompensas exclusivas*",
+                "💎 *Lucien confirma: \"Las experiencias premium aguardan a almas como la tuya\"*"
+            ])
+        
         # Analyze user patterns and predict next likely actions
-        if context.current_mood == UserMoodState.COLLECTOR:
+        elif context.current_mood == UserMoodState.COLLECTOR:
             try:
                 if hasattr(self.services['daily_rewards'], 'can_claim_daily_reward'):
                     daily_available = await self.services['daily_rewards'].can_claim_daily_reward(context.user_id)
@@ -864,7 +892,9 @@ def initialize_diana_master(services: Dict[str, Any]):
 
 @master_router.message(Command("start"))
 async def cmd_start(message: Message):
-    """🌟 The entry point to the Diana universe"""
+    """🌟 Unified entry point - routes to User or Admin interface based on permissions"""
+    print(f"🎭 Diana Master Router: /start for user {message.from_user.id}")
+    
     if not diana_master:
         await message.reply("🔧 Sistema inicializándose...")
         return
@@ -872,7 +902,7 @@ async def cmd_start(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username
     
-    # Publish UserStartedBotEvent (inherited from old handler functionality)
+    # Publish UserStartedBotEvent
     try:
         from src.modules.events import UserStartedBotEvent
         event = UserStartedBotEvent(user_id=user_id, username=username)
@@ -881,24 +911,42 @@ async def cmd_start(message: Message):
     except Exception as e:
         print(f"Warning: Could not publish UserStartedBotEvent: {e}")
     
-    # Generate the revolutionary adaptive interface
-    text, keyboard = await diana_master.create_adaptive_interface(user_id, "start")
+    # Route to appropriate specialized interface
+    # Import the specialized systems for delegation
+    from .diana_user_master_system import diana_user_system
     
-    await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
+    if diana_user_system:
+        # Use Diana User System's superior interface design
+        text, keyboard = await diana_user_system.create_user_main_interface(user_id)
+        await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
+    else:
+        # Fallback to basic interface
+        text, keyboard = await diana_master.create_adaptive_interface(user_id, "start")
+        await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 @master_router.message(Command("admin"))
 async def cmd_admin(message: Message):
-    """👑 Admin access point"""
+    """👑 Unified admin access - routes to professional admin interface"""
+    print(f"🏛️ Diana Master Router: /admin for user {message.from_user.id}")
+    
     if not diana_master:
         await message.reply("🔧 Sistema inicializándose...")
         return
     
-    # TODO: Check admin permissions
     user_id = message.from_user.id
-    text, keyboard = await diana_master.create_adaptive_interface(user_id, "admin")
     
-    await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
+    # Route to Diana Admin System's superior interface design
+    from .diana_admin_master import diana_admin_master
+    
+    if diana_admin_master:
+        # Use Diana Admin System's professional interface with Lucien's voice
+        text, keyboard = await diana_admin_master.create_admin_main_interface(user_id)
+        await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
+    else:
+        # Fallback to basic interface
+        text, keyboard = await diana_master.create_adaptive_interface(user_id, "admin")
+        await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 @master_router.callback_query(F.data.startswith("diana:"))
@@ -913,8 +961,15 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     
     # Route to specialized handlers based on action
     if action == "refresh":
-        text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
-        await safe_edit_message(callback, text, keyboard)
+        # Route to Diana User System for superior user interface
+        from .diana_user_master_system import diana_user_system
+        
+        if diana_user_system:
+            text, keyboard = await diana_user_system.create_user_main_interface(user_id)
+            await safe_edit_message(callback, text, keyboard, parse_mode="HTML")
+        else:
+            text, keyboard = await diana_master.create_adaptive_interface(user_id, "refresh")
+            await safe_edit_message(callback, text, keyboard)
         
     elif action.startswith("epic_shop"):
         await handle_epic_shop(callback, diana_master)
@@ -972,7 +1027,7 @@ async def handle_trivia_callbacks(callback: CallbackQuery):
     if not diana_master:
         await callback.answer("🔧 Sistema no disponible")
         return
-    
+   
     trivia_data = callback.data.replace("trivia:", "")
     user_id = callback.from_user.id
     

@@ -1058,27 +1058,8 @@ def initialize_diana_user_system(services: Dict[str, Any]):
     diana_user_system = DianaUserMasterSystem(services)
     return diana_user_system
 
-@user_router.message(Command("start"))
-async def cmd_start(message: Message):
-    """Start command - Diana's first encounter"""
-    if not diana_user_system:
-        await message.reply("🔧 Sistema no disponible")
-        return
-        
-    user_id = message.from_user.id
-    text, keyboard = await diana_user_system.create_user_main_interface(user_id)
-    await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
-
-@user_router.message(Command("menu"))
-async def cmd_menu(message: Message):
-    """Menu command - Return to Diana's world"""
-    if not diana_user_system:
-        await message.reply("🔧 Sistema no disponible")
-        return
-        
-    user_id = message.from_user.id
-    text, keyboard = await diana_user_system.create_user_main_interface(user_id)
-    await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
+# Command handlers removed - Diana Master System handles routing
+# This system now provides specialized interfaces only through callbacks
 
 @user_router.callback_query(F.data.startswith("diana_user:"))
 async def handle_user_callbacks(callback: CallbackQuery):

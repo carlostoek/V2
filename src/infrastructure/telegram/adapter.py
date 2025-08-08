@@ -9,6 +9,7 @@ from src.modules.tariff.service import TariffService
 from src.modules.daily_rewards.service import DailyRewardsService
 from src.bot.core.diana_admin_master import register_diana_admin_master
 from src.bot.core.diana_master_system import register_diana_master_system
+from src.bot.core.diana_user_master_system import register_diana_user_master_system
 
 class TelegramAdapter:
     def __init__(self, bot_token: str, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService, narrative_service: NarrativeService = None):
@@ -34,19 +35,28 @@ class TelegramAdapter:
         }
 
     def _register_handlers(self):
-        """🚀 Registra el sistema maestro Diana."""
+        """🚀 Unified Diana Systems Integration"""
         # Setup services
         import asyncio
         asyncio.create_task(self._tariff_service.setup())
         asyncio.create_task(self._daily_rewards_service.setup())
         
-        # Register the Diana Admin Master System  
-        self.diana_admin_master = register_diana_admin_master(self.dp, self._services)
-        print("🎭✨ Diana Admin Master System successfully integrated!")
+        print("🎭 Starting Diana Integration Specialists Activation...")
+        print("🌟 Unifying three Diana systems into one cohesive bot...")
         
-        # Register the Diana Master System (with integrated conversion templates)
+        # Register all three Diana systems with shared services
+        self.diana_admin_master = register_diana_admin_master(self.dp, self._services)
+        print("🏛️ Diana Admin Master System: Professional admin interface activated!")
+        
+        self.diana_user_system = register_diana_user_master_system(self.dp, self._services)
+        print("🎭 Diana User Master System: Sophisticated user interface activated!")
+        
+        # Register the unified Diana Master System (resolves command conflicts)
         self.diana_master_system = register_diana_master_system(self.dp, self._services) 
-        print("🎭🌹 Diana Master System with Conversion Templates successfully integrated!")
+        print("🎪 Diana Master System: Adaptive context engine activated!")
+        
+        print("✅ All three Diana systems successfully integrated as one!")
+        print("🚀 Bot ready with unified functionality and enhanced UI!")
 
     async def start(self):
         """Inicia el bot."""

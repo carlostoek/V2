@@ -344,7 +344,7 @@ class DianaAdminMaster:
         # Row 6: Navigation
         buttons.append([
             InlineKeyboardButton(text="🔄 Actualizar", callback_data="admin:refresh"),
-            InlineKeyboardButton(text="🏠 Inicio Usuario", callback_data="diana:refresh")
+            InlineKeyboardButton(text="🏠 Inicio Usuario", callback_data="admin:back_to_user")
         ])
         
         return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -670,16 +670,8 @@ def initialize_diana_admin_master(services: Dict[str, Any]):
     diana_admin_master = DianaAdminMaster(services)
     return diana_admin_master
 
-@admin_router.message(Command("admin"))
-async def cmd_admin(message: Message):
-    """Admin command handler"""
-    if not diana_admin_master:
-        await message.reply("🔧 Sistema de administración no disponible")
-        return
-        
-    user_id = message.from_user.id
-    text, keyboard = await diana_admin_master.create_admin_main_interface(user_id)
-    await message.reply(text, reply_markup=keyboard, parse_mode="HTML")
+# Command handlers removed - Diana Master System handles routing
+# This system now provides specialized admin interfaces only through callbacks
 
 @admin_router.callback_query(F.data.startswith("admin:"))
 async def handle_admin_callbacks(callback: CallbackQuery):
@@ -706,6 +698,24 @@ async def handle_admin_callbacks(callback: CallbackQuery):
                 text, keyboard = await diana_admin_master.create_subsection_interface(user_id, section_key, subsection_key)
             else:
                 text, keyboard = await diana_admin_master.create_admin_main_interface(user_id)
+                
+        elif data == "back_to_user":
+            # Route back to Diana User System via Diana Master System
+            from .diana_user_master_system import diana_user_system
+            
+            if diana_user_system:
+                text, keyboard = await diana_user_system.create_user_main_interface(user_id)
+                await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+                return
+            else:
+                # Fallback message
+                text = """<b>🎭 Regresando al Reino de Diana</b>
+                
+<i>Lucien te acompaña de vuelta al mundo de Diana...</i>
+
+Usa /start para regresar al menú principal."""
+                await callback.message.edit_text(text, parse_mode="HTML")
+                return
                 
         elif data.startswith("action:"):
             # Handle specific actions using services integration
