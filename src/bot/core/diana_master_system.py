@@ -373,9 +373,11 @@ class DianaMasterInterface:
                 "🎛️ Control total de tu progreso"
             ],
             UserMoodState.NEWCOMER: [
+
                 "🌹 Diana te descubre...\n\nUna nueva presencia... interesante. Puedo sentir tu curiosidad desde aquí, esa mezcla de fascinación e inquietud que me resulta... encantadora.\n\n🎩 Lucien susurra: \"Diana rara vez presta atención a los recién llegados, pero contigo es diferente.\"",
                 "🎭 Diana se acerca...\n\nAh... cada alma que encuentra mi refugio trae consigo secretos únicos. Los tuyos... despiertan mi interés de una manera poco común.\n\n🎩 Lucien observa: \"Su aura es distintiva. Diana ya está calculando cuánto puede revelarte.\"",
                 "🌙 Diana te susurra suavemente...\n\nBienvenido a mi mundo... un lugar donde los límites entre la realidad y la fantasía se desvanecen. ¿Estás preparado para descubrir qué secretos guardo para ti?\n\n🎩 Lucien confirma: \"El viaje que está a punto de comenzar será... transformador.\""
+
             ],
             # 🎭 Diana Conversion & Upsell Templates
             UserMoodState.FREE_CONVERSION: [
@@ -473,6 +475,7 @@ class DianaMasterInterface:
         else:  # Default/Explorer/Newcomer/Socializer
             active_missions = stats.get('active_missions', 0)
             missions_count = active_missions if isinstance(active_missions, int) else len(active_missions) if isinstance(active_missions, (list, tuple)) else 0
+
             
             # 🎭 Seductive dashboard for newcomers and explorers
             if context.current_mood == UserMoodState.NEWCOMER:
@@ -480,7 +483,7 @@ class DianaMasterInterface:
                 return f"🌙 **LO QUE DIANA PERCIBE:**\n• Tu esencia: Nivel {stats.get('level', 1)} - Alma Nueva\n• Fragmentos de curiosidad: {stats.get('points', 0)} destellos\n• Nivel de descubrimiento: {discovery_level}% - {'🌱 Primera impresión' if discovery_level < 20 else '🎭 Interés creciente'}\n• Encuentros conmigo: {missions_count} momentos"
             else:
                 return f"🌟 **ESTADO DEL AVENTURERO**\n⭐ Nivel: {stats.get('level', 1)} | 💰 Besitos: {stats.get('points', 0)}\n🎯 Misiones: {missions_count} activas"
-    
+
     async def _generate_predictive_actions(self, context: UserContext) -> str:
         """🔮 AI-powered action predictions"""
         
@@ -530,7 +533,7 @@ class DianaMasterInterface:
         if context.narrative_progress > 70:
             predictions.append("📖 *Recomendación: El final de tu historia se acerca...*")
             
-        return "\n".join(predictions) if predictions else "✨ *El sistema está analizando tus próximas oportunidades...*"
+        return "\n".join(predictions) if predictions else "✨ *El sistema está analizando tus próximas oportunidades...3*"
     
     async def _generate_smart_shortcuts(self, context: UserContext) -> List[Dict[str, str]]:
         """⚡ Intelligent shortcut generation"""
@@ -1024,7 +1027,7 @@ async def handle_trivia_callbacks(callback: CallbackQuery):
     if not diana_master:
         await callback.answer("🔧 Sistema no disponible")
         return
-    
+   
     trivia_data = callback.data.replace("trivia:", "")
     user_id = callback.from_user.id
     
