@@ -1,3 +1,18 @@
 node_modules/
 .env
 venv
+
+# Test files
+test_*.py
+*test*.py
+test/
+tests/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Development and debugging files
+*.log
+.DS_Store
+debug_*.py
