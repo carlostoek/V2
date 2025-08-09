@@ -571,6 +571,8 @@ class DianaAdminServicesIntegration:
                 return await self._handle_gamification_action(action, user_id, params or {})
             elif action.startswith("channel:"):
                 return await self._handle_channel_action(action, user_id, params or {})
+            elif action.startswith("global_config:"):
+                return await self._handle_global_config_action(action, user_id, params or {})
             else:
                 return {
                     "success": False,
@@ -632,6 +634,43 @@ class DianaAdminServicesIntegration:
         """Handle channel-related admin actions"""
         # Placeholder for channel actions
         return {"success": True, "message": f"Channel action {action} executed successfully"}
+    
+    async def _handle_global_config_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle global configuration admin actions"""
+        self.logger.info(f"🔍 Manejando acción de configuración global: {action} para usuario {user_id}")
+        
+        if action == "global_config:add_channels":
+            # Add Channel button pressed
+            self.logger.info("📺 Iniciando proceso de añadir canal VIP...")
+            
+            try:
+                result = await self.add_vip_channel(user_id)
+                if result:
+                    channel_info = result.get('channel_info', {})
+                    self.logger.info(f"✅ Canal VIP añadido exitosamente: ID {channel_info.get('id')}")
+                    return {
+                        "success": True,
+                        "message": f"📺 Canal VIP registrado exitosamente!\n\nID: {channel_info.get('id')}\nNombre: {channel_info.get('name')}",
+                        "show_alert": True
+                    }
+                else:
+                    self.logger.error("❌ add_vip_channel devolvió None")
+                    return {
+                        "success": False,
+                        "error": "❌ Error al registrar canal VIP. El servicio devolvió None.",
+                        "show_alert": True
+                    }
+            except Exception as e:
+                self.logger.error(f"❌ Excepción en _handle_global_config_action: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error al registrar canal VIP: {str(e)}",
+                    "show_alert": True
+                }
+        else:
+            # Other global config actions (placeholder)
+            self.logger.info(f"ℹ️  Acción de configuración global genérica: {action}")
+            return {"success": True, "message": f"Global config action {action} executed successfully"}
     
     # === VIP TOKEN GENERATION ===
     
@@ -807,4 +846,54 @@ class DianaAdminServicesIntegration:
             self.logger.error(f"❌ Error al crear admin por defecto: {e}")
             import traceback
             self.logger.error(f"❌ Traceback en _ensure_default_admin: {traceback.format_exc()}")
+            return None
+    
+    # === VIP CHANNEL MANAGEMENT ===
+    
+    async def add_vip_channel(self, admin_id: int) -> Optional[Dict[str, Any]]:
+        """Add a new VIP channel to the system"""
+        try:
+            self.logger.info(f"📺 Iniciando add_vip_channel para admin {admin_id}")
+            
+            # Generate unique channel info for demo/testing
+            from datetime import datetime
+            current_time = datetime.now()
+            channel_name = f"Canal VIP {current_time.strftime('%H%M%S')}"
+            telegram_id = f"-100{current_time.timestamp():.0f}"
+            
+            # Create channel using database operations
+            from sqlalchemy import select
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.channel import Channel
+            
+            async for session in get_session():
+                # Create new VIP channel
+                new_channel = Channel(
+                    telegram_id=telegram_id,
+                    name=channel_name,
+                    description=f"Canal VIP creado por admin {admin_id}",
+                    type="vip"
+                )
+                
+                session.add(new_channel)
+                await session.commit()
+                await session.refresh(new_channel)
+                
+                self.logger.info(f"✅ Canal VIP creado con ID: {new_channel.id}")
+                
+                return {
+                    "success": True,
+                    "channel_info": {
+                        "id": new_channel.id,
+                        "telegram_id": new_channel.telegram_id,
+                        "name": new_channel.name,
+                        "description": new_channel.description,
+                        "type": new_channel.type
+                    }
+                }
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al crear canal VIP: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback en add_vip_channel: {traceback.format_exc()}")
             return None

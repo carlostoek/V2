@@ -16,19 +16,19 @@ Esta guía documenta la **arquitectura correcta** para conectar servicios reales
 
 ### **Sistema de Administración Activo**
 
-**🎯 SISTEMA PRINCIPAL:** `DianaAdminMaster` (`src/bot/core/diana_admin_master.py`)
+**🎯 SISTEMA ÚNICO Y PRINCIPAL:** `diana_admin_master.py`
+- ✅ **Registrado en `adapter.py`** - Único sistema que se inicializa
 - ✅ **Define la estructura** del menú en `ADMIN_MENU_STRUCTURE`
-- ✅ **Maneja todos los callbacks** administrativos
+- ✅ **Maneja todos los callbacks** administrativos (`handle_admin_callbacks`)
+- ✅ **Genera toda la UI** - Textos, teclados, interfaces
 - ✅ **Rutea las acciones** a los servicios correspondientes
+- ✅ **Funcionalidad completa** - NO necesita otros sistemas
 
-**🎨 CAPA DE UI:** `DianaAdminElite` (`src/bot/core/diana_admin_elite.py`)  
-- ✅ **Proporciona UI/UX** avanzada basada en la estructura de `DianaAdminMaster`
-- ✅ **No define lógica** de negocio, solo presentación
-
-### **Sistemas Obsoletos (NO USAR)**
-- ❌ `diana_user_master_system.py` - Sistema de usuario anterior
-- ❌ `diana_admin_master.py` - Sistema de administración anterior
-- ❌ Cualquier archivo con patrón `*_master_system.py` que no sea el actual
+### **Archivos Obsoletos (PARA ELIMINAR)**
+- ❌ `diana_admin_elite.py` - **NO se registra**, código no utilizado
+- ❌ `diana_admin_elite_ui.py` - Dependencia del anterior, no utilizada
+- ❌ `diana_user_master_system.py` - Sistema de usuario anterior  
+- ❌ Cualquier otro archivo `diana_*` que no esté registrado en `adapter.py`
 
 ---
 
@@ -296,6 +296,47 @@ Usuario → UI Panel → Callback → DianaAdminMaster → ServicesIntegration �
 3. **Service Call:** Conexión directa con servicio real
 4. **Response:** JSON con `success`, `message`/`error`, `show_alert`
 5. **Output:** Popup/notificación al usuario en Telegram
+
+---
+
+## ⚠️ IMPORTANTE: PRINCIPIOS OBLIGATORIOS
+
+### **🔴 NO MODIFICAR (sistemas obsoletos):**
+- ❌ `diana_admin_elite.py` - NO utilizado, pendiente de eliminación
+- ❌ `diana_user_master_system.py` - Sistema obsoleto
+- ❌ Cualquier archivo no registrado en `adapter.py`
+
+### **✅ MODIFICAR ÚNICAMENTE:**
+- ✅ `diana_admin_master.py` - ÚNICO sistema administrativo activo
+- ✅ `diana_admin_services_integration.py` - Lógica de conexión
+- ✅ `adapter.py` - Registro de nuevos servicios
+- ✅ Servicios específicos si necesitan métodos adicionales
+
+### **📋 METODOLOGÍA OBLIGATORIA:**
+1. **Identificar** callback exacto del menú real
+2. **Implementar** handler en `_handle_<categoria>_action`
+3. **Conectar** con servicio real registrado
+4. **Probar** con logs detallados
+5. **Validar** funcionalidad completa
+6. **Documentar** antes de continuar
+
+---
+
+## ✅ LIMPIEZA DE ARCHIVOS COMPLETADA (2025-08-09)
+
+### **Archivos Eliminados Exitosamente:**
+- ✅ `diana_admin_elite.py` - Sistema no registrado, eliminado
+- ✅ `diana_admin_elite_ui.py` - Dependencia no utilizada, eliminado
+- ✅ `diana_admin_live_integration.py` - No utilizado, eliminado  
+- ✅ `diana_admin_power_features.py` - Importaba archivos eliminados, eliminado
+- ✅ `diana_admin_integration.py` - Solo auto-referenciado, eliminado
+
+### **Sistema Simplificado:**
+- ✅ **`diana_admin_master.py`** - ÚNICO sistema administrativo activo
+- ✅ **`diana_admin_services_integration.py`** - Capa de integración
+- ✅ **`diana_admin_callbacks.py`** - Sistema de callbacks
+- ✅ **`diana_admin_security.py`** - Sistema de seguridad
+- ✅ Sin confusiones entre sistemas múltiples
 
 ---
 

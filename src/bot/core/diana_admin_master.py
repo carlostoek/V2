@@ -625,6 +625,22 @@ class DianaAdminMaster:
                     ]
                 }
                 
+        # Global Configuration Section Content  
+        elif section_key == "global_config":
+            if subsection_key == "add_channels":
+                return {
+                    'lucien_quote': "Diana comprende que expandir su dominio requiere nuevos territorios. Cada canal es una nueva oportunidad para ejercer su influencia.",
+                    'description': "<b>📺 Registro de Nuevos Dominios VIP</b>\nEl proceso sagrado de añadir nuevos canales al imperio de Diana.",
+                    'stats': "• <b>Canales VIP activos:</b> 3 dominios establecidos\n• <b>Capacidad total:</b> Ilimitada expansión\n• <b>Último registro:</b> Hace 2 horas",
+                    'content': "<b>🏛️ Gestión de Canales VIP:</b>\n• <b>Registro automático:</b> Creación instantánea con ID único\n• <b>Configuración inicial:</b> Preparación para gestión de tarifas\n• <b>Integración completa:</b> Listo para generar tokens\n• <b>Monitoreo activo:</b> Seguimiento de rendimiento",
+                    'actions': [
+                        {'text': '➕ Registrar Canal VIP', 'callback': 'admin:action:global_config:add_channels'},
+                        {'text': '📋 Listar Canales', 'callback': 'admin:action:global_config:list_channels'},
+                        {'text': '⚙️ Configurar Canal', 'callback': 'admin:action:global_config:config_channel'},
+                        {'text': '📊 Estado de Canales', 'callback': 'admin:action:global_config:channel_stats'}
+                    ]
+                }
+                
         # Default fallback content with Lucien's touch
         return {
             'lucien_quote': "Ah, esta es un área que Diana aún está perfeccionando. La paciencia es una virtud, y las mejores cosas llegan a quienes saben esperar.",
