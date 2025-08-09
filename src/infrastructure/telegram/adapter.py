@@ -34,7 +34,8 @@ class TelegramAdapter:
             'tariff': self._tariff_service,
             'event_bus': event_bus,
             'daily_rewards': self._daily_rewards_service,
-            'tokeneitor': self._tokeneitor_service
+            'tokeneitor': self._tokeneitor_service,
+            'bot': self.bot  # Add bot instance to services for interactive flows
         }
 
     def _register_handlers(self):

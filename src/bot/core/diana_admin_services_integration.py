@@ -620,6 +620,34 @@ class DianaAdminServicesIntegration:
                     "error": f"❌ Error al forjar token: {str(e)}",
                     "show_alert": True
                 }
+        elif action == "vip:manage_tariffs":
+            # Manage Tariffs button pressed  
+            self.logger.info("🏷️ Iniciando gestión de tarifas...")
+            
+            try:
+                result = await self.manage_channel_tariffs(user_id)
+                if result:
+                    tariff_info = result.get('tariff_info', {})
+                    self.logger.info(f"✅ Tarifa gestionada exitosamente: ID {tariff_info.get('id')}")
+                    return {
+                        "success": True,
+                        "message": f"🏷️ Tarifa creada exitosamente!\n\nID: {tariff_info.get('id')}\nNombre: {tariff_info.get('name')}\nPrecio: ${tariff_info.get('price')}",
+                        "show_alert": True
+                    }
+                else:
+                    self.logger.error("❌ manage_channel_tariffs devolvió None")
+                    return {
+                        "success": False,
+                        "error": "❌ Error al gestionar tarifas. El servicio devolvió None.",
+                        "show_alert": True
+                    }
+            except Exception as e:
+                self.logger.error(f"❌ Excepción en gestión de tarifas: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error al gestionar tarifas: {str(e)}",
+                    "show_alert": True
+                }
         else:
             # Other VIP actions (placeholder)
             self.logger.info(f"ℹ️  Acción VIP genérica: {action}")
@@ -640,33 +668,37 @@ class DianaAdminServicesIntegration:
         self.logger.info(f"🔍 Manejando acción de configuración global: {action} para usuario {user_id}")
         
         if action == "global_config:add_channels":
-            # Add Channel button pressed
-            self.logger.info("📺 Iniciando proceso de añadir canal VIP...")
+            # Add Channel button pressed - Start interactive flow
+            self.logger.info("📺 Iniciando flujo interactivo de añadir canal VIP...")
             
             try:
-                result = await self.add_vip_channel(user_id)
-                if result:
-                    channel_info = result.get('channel_info', {})
-                    self.logger.info(f"✅ Canal VIP añadido exitosamente: ID {channel_info.get('id')}")
-                    return {
-                        "success": True,
-                        "message": f"📺 Canal VIP registrado exitosamente!\n\nID: {channel_info.get('id')}\nNombre: {channel_info.get('name')}",
-                        "show_alert": True
-                    }
-                else:
-                    self.logger.error("❌ add_vip_channel devolvió None")
-                    return {
-                        "success": False,
-                        "error": "❌ Error al registrar canal VIP. El servicio devolvió None.",
-                        "show_alert": True
-                    }
+                # Start interactive channel registration
+                await self.start_channel_registration_flow(user_id)
+                return {
+                    "success": True,
+                    "message": "📺 Proceso iniciado. Por favor, sigue las instrucciones que aparecerán.",
+                    "show_alert": False
+                }
             except Exception as e:
-                self.logger.error(f"❌ Excepción en _handle_global_config_action: {e}")
+                self.logger.error(f"❌ Excepción al iniciar flujo de registro: {e}")
                 return {
                     "success": False,
-                    "error": f"❌ Error al registrar canal VIP: {str(e)}",
+                    "error": f"❌ Error al iniciar el proceso: {str(e)}",
                     "show_alert": True
                 }
+        elif action == "global_config:cancel_add_channel":
+            # Cancel channel registration
+            self.logger.info("❌ Cancelando registro de canal...")
+            
+            # Remove from pending registrations
+            if hasattr(self, '_pending_channel_registrations'):
+                self._pending_channel_registrations.discard(user_id)
+                
+            return {
+                "success": True,
+                "message": "❌ Registro de canal cancelado.",
+                "show_alert": False
+            }
         else:
             # Other global config actions (placeholder)
             self.logger.info(f"ℹ️  Acción de configuración global genérica: {action}")
@@ -897,3 +929,262 @@ class DianaAdminServicesIntegration:
             import traceback
             self.logger.error(f"❌ Traceback en add_vip_channel: {traceback.format_exc()}")
             return None
+    
+    async def manage_channel_tariffs(self, admin_id: int) -> Optional[Dict[str, Any]]:
+        """Manage tariffs for VIP channels"""
+        try:
+            self.logger.info(f"🏷️ Iniciando manage_channel_tariffs para admin {admin_id}")
+            
+            # Get tokeneitor service
+            tokeneitor = self.services.get('tokeneitor')
+            if not tokeneitor:
+                self.logger.error("❌ Servicio Tokeneitor no disponible para gestión de tarifas")
+                return None
+                
+            # Get an available VIP channel (or create one if none exists)
+            from sqlalchemy import select
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.channel import Channel
+            
+            async for session in get_session():
+                # Find an existing VIP channel
+                channel_query = select(Channel).where(Channel.type == "vip").limit(1)
+                channel_result = await session.execute(channel_query)
+                channel = channel_result.scalars().first()
+                
+                if not channel:
+                    # Create a VIP channel first
+                    self.logger.info("📺 No se encontró canal VIP, creando uno...")
+                    channel_result = await self.add_vip_channel(admin_id)
+                    if not channel_result:
+                        return None
+                    channel_id = channel_result['channel_info']['id']
+                else:
+                    channel_id = channel.id
+                    
+                self.logger.info(f"✅ Usando canal ID: {channel_id}")
+                
+                # Create a tariff for this channel
+                from datetime import datetime
+                current_time = datetime.now()
+                tariff_name = f"VIP Premium {current_time.strftime('%H:%M')}"
+                
+                tariff_id = await tokeneitor.create_tariff(
+                    channel_id=channel_id,
+                    name=tariff_name,
+                    duration_days=30,
+                    price=29.99,
+                    admin_id=admin_id,
+                    token_validity_days=7,
+                    description="Tarifa VIP Premium con acceso completo"
+                )
+                
+                if tariff_id:
+                    self.logger.info(f"✅ Tarifa creada con ID: {tariff_id}")
+                    return {
+                        "success": True,
+                        "tariff_info": {
+                            "id": tariff_id,
+                            "channel_id": channel_id,
+                            "name": tariff_name,
+                            "price": 29.99,
+                            "duration_days": 30,
+                            "description": "Tarifa VIP Premium con acceso completo"
+                        }
+                    }
+                else:
+                    self.logger.error("❌ create_tariff devolvió None")
+                    return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al gestionar tarifas: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback en manage_channel_tariffs: {traceback.format_exc()}")
+            return None
+    
+    # === INTERACTIVE CHANNEL REGISTRATION FLOW ===
+    
+    async def start_channel_registration_flow(self, admin_id: int):
+        """Start interactive channel registration process"""
+        try:
+            self.logger.info(f"🎬 Iniciando flujo interactivo de registro para admin {admin_id}")
+            
+            # Get telegram adapter to send messages
+            from src.infrastructure.telegram.adapter import TelegramAdapter
+            
+            # Send interactive message asking for channel ID or forward
+            message_text = """<b>📺 Registro de Canal VIP</b>
+
+<i>Lucien aquí, listo para expandir el imperio de Diana...</i>
+
+Para registrar un nuevo canal VIP, puedes:
+
+<b>Opción 1:</b> Envíame el ID del canal
+<code>Ejemplo: -1001234567890</code>
+
+<b>Opción 2:</b> Reenvía un mensaje del canal
+<i>Esto es más fácil - simplemente reenvía cualquier mensaje del canal que quieres registrar</i>
+
+<b>🎯 ¿Cómo obtener el ID manualmente?</b>
+1. Abre el canal en Telegram Web
+2. El ID está en la URL: t.me/c/<code>1234567890</code>/123
+3. Agrega <code>-100</code> al inicio: <code>-1001234567890</code>
+
+<i>Esperando tus instrucciones...</i>"""
+
+            # Create keyboard with cancel option
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Cancelar Registro", callback_data="admin:action:global_config:cancel_add_channel")]
+            ])
+            
+            # Store the admin_id in a temporary state for message handlers
+            if not hasattr(self, '_pending_channel_registrations'):
+                self._pending_channel_registrations = set()
+            self._pending_channel_registrations.add(admin_id)
+            
+            # Send message using bot instance
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Mensaje interactivo enviado a admin {admin_id}")
+            else:
+                self.logger.warning("⚠️ Bot no disponible en services")
+                # In this case, the user will still be in pending state and can send messages
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error al iniciar flujo interactivo: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    async def process_channel_input(self, admin_id: int, input_data: str, message_type: str = "text") -> Dict[str, Any]:
+        """Process channel ID input or forwarded message"""
+        try:
+            self.logger.info(f"🔍 Procesando input de canal: {input_data[:50]}... (tipo: {message_type})")
+            
+            channel_id = None
+            channel_name = None
+            
+            if message_type == "forwarded":
+                # Extract channel info from forwarded message
+                # This would be handled by a message handler that checks forward_from_chat
+                self.logger.info("📨 Procesando mensaje reenviado...")
+                # For now, we'll simulate this
+                channel_id = input_data  # This would be extracted from forward_from_chat.id
+                channel_name = f"Canal desde mensaje reenviado"  # This would be forward_from_chat.title
+                
+            elif message_type == "text":
+                # Process text input - should be a channel ID
+                self.logger.info("💬 Procesando ID de texto...")
+                input_data = input_data.strip()
+                
+                # Validate channel ID format
+                if input_data.startswith('-100') and len(input_data) >= 13:
+                    channel_id = input_data
+                    channel_name = f"Canal {input_data[-6:]}"  # Use last 6 digits as identifier
+                else:
+                    return {
+                        "success": False,
+                        "error": "❌ Formato de ID inválido. Debe comenzar con -100 y tener al menos 13 caracteres.",
+                        "show_confirmation": False
+                    }
+            
+            if not channel_id:
+                return {
+                    "success": False,
+                    "error": "❌ No se pudo extraer la información del canal.",
+                    "show_confirmation": False
+                }
+            
+            # Return channel info for confirmation
+            return {
+                "success": True,
+                "show_confirmation": True,
+                "channel_info": {
+                    "telegram_id": channel_id,
+                    "name": channel_name,
+                    "type": "vip"
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error al procesar input de canal: {e}")
+            return {
+                "success": False,
+                "error": f"❌ Error al procesar la información: {str(e)}",
+                "show_confirmation": False
+            }
+    
+    async def confirm_channel_registration(self, admin_id: int, channel_info: Dict[str, Any], confirmed: bool) -> Dict[str, Any]:
+        """Confirm or cancel channel registration"""
+        try:
+            self.logger.info(f"{'✅' if confirmed else '❌'} Confirmación de registro: {confirmed} para admin {admin_id}")
+            
+            if not confirmed:
+                return {
+                    "success": True,
+                    "message": "❌ Registro de canal cancelado.",
+                    "show_alert": False
+                }
+            
+            # Create the channel in database
+            from sqlalchemy import select
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.channel import Channel
+            
+            async for session in get_session():
+                # Check if channel already exists
+                existing_query = select(Channel).where(Channel.telegram_id == channel_info['telegram_id'])
+                existing_result = await session.execute(existing_query)
+                existing_channel = existing_result.scalars().first()
+                
+                if existing_channel:
+                    return {
+                        "success": False,
+                        "message": f"⚠️ Canal ya registrado:\n\nID: {existing_channel.id}\nTelegram ID: {existing_channel.telegram_id}\nNombre: {existing_channel.name}",
+                        "show_alert": True,
+                        "show_navigation": True  # Add navigation for already registered channel
+                    }
+                
+                # Create new channel
+                new_channel = Channel(
+                    telegram_id=channel_info['telegram_id'],
+                    name=channel_info['name'],
+                    description=f"Canal VIP registrado por admin {admin_id}",
+                    type="vip"
+                )
+                
+                session.add(new_channel)
+                await session.commit()
+                await session.refresh(new_channel)
+                
+                self.logger.info(f"✅ Canal registrado con ID: {new_channel.id}")
+                
+                return {
+                    "success": True,
+                    "message": f"✅ Canal VIP registrado exitosamente!\n\n📺 <b>Información del Canal:</b>\n• <b>ID:</b> {new_channel.id}\n• <b>Telegram ID:</b> {new_channel.telegram_id}\n• <b>Nombre:</b> {new_channel.name}\n• <b>Tipo:</b> VIP\n\nYa puedes crear tarifas para este canal.",
+                    "show_alert": True,
+                    "show_navigation": True,  # Add navigation flag
+                    "channel_data": {
+                        "id": new_channel.id,
+                        "telegram_id": new_channel.telegram_id,
+                        "name": new_channel.name,
+                        "type": new_channel.type
+                    }
+                }
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al confirmar registro: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            return {
+                "success": False,
+                "message": f"❌ Error al registrar canal: {str(e)}",
+                "show_alert": True
+            }

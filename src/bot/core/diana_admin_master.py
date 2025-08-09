@@ -576,9 +576,9 @@ class DianaAdminMaster:
                     'stats': "• <b>Mensajes de seducción:</b> 5 variaciones maestras\n• <b>Recordatorios susurrantes:</b> 3 secuencias activas\n• <b>Plantillas de intimidad:</b> 8 diseños disponibles",
                     'content': "<b>⚙️ Herramientas de Personalización:</b>\n• <b>Mensajes de Bienvenida VIP:</b> La primera caricia verbal\n• <b>Recordatorios de Renovación:</b> Susurros de permanencia\n• <b>Flujos de Suscripción:</b> El camino hacia la intimidad\n• <b>Mensajes de Despedida:</b> La elegante retirada",
                     'actions': [
+                        {'text': '🏷️ Gestionar Tarifas', 'callback': 'admin:action:vip:manage_tariffs'},
                         {'text': '✏️ Editar Mensajes', 'callback': 'admin:action:vip:edit_messages'},
                         {'text': '⏰ Config Recordatorios', 'callback': 'admin:action:vip:config_reminders'},
-                        {'text': '🔄 Flujos Suscripción', 'callback': 'admin:action:vip:subscription_flows'},
                         {'text': '👋 Mensajes Despedida', 'callback': 'admin:action:vip:goodbye_messages'}
                     ]
                 }
@@ -686,8 +686,233 @@ def initialize_diana_admin_master(services: Dict[str, Any]):
     diana_admin_master = DianaAdminMaster(services)
     return diana_admin_master
 
-# Command handlers removed - Diana Master System handles routing
-# This system now provides specialized admin interfaces only through callbacks
+# Command handlers
+@admin_router.message(Command("admin"))
+async def handle_admin_command(message: Message):
+    """Handle /admin command"""
+    if not diana_admin_master:
+        await message.answer("🔧 Sistema administrativo no disponible")
+        return
+        
+    user_id = message.from_user.id
+    text, keyboard = await diana_admin_master.create_admin_main_interface(user_id)
+    await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+# Handle forwarded messages first (higher priority)
+@admin_router.message(F.forward_from_chat & F.chat.type == "private")
+async def handle_admin_forwarded_messages(message: Message):
+    """Handle forwarded messages from channels"""
+    if not diana_admin_master:
+        return
+        
+    user_id = message.from_user.id
+    
+    try:
+        # Check if user is in pending channel registration
+        if hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
+            if user_id in diana_admin_master.services_integration._pending_channel_registrations:
+                
+                # Extract channel info from forwarded message
+                forward_from_chat = message.forward_from_chat
+                if forward_from_chat and (forward_from_chat.type == "channel" or forward_from_chat.type == "supergroup"):
+                    
+                    channel_id = str(forward_from_chat.id)
+                    channel_name = forward_from_chat.title or f"Canal {channel_id[-6:]}"
+                    
+                    # Show confirmation message
+                    confirmation_text = f"""<b>📺 Confirmar Registro de Canal</b>
+
+<b>🔍 Información del mensaje reenviado:</b>
+• <b>Telegram ID:</b> <code>{channel_id}</code>
+• <b>Nombre:</b> {channel_name}
+• <b>Tipo:</b> VIP
+
+<b>¿Confirmas el registro de este canal?</b>"""
+
+                    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                    
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [
+                            InlineKeyboardButton(text="✅ Confirmar", 
+                                               callback_data=f"admin:channel_confirm:{channel_id}"),
+                            InlineKeyboardButton(text="❌ Cancelar", 
+                                               callback_data="admin:channel_cancel")
+                        ]
+                    ])
+                    
+                    await message.answer(confirmation_text, reply_markup=keyboard, parse_mode="HTML")
+                    
+                    # Store channel info temporarily
+                    if not hasattr(diana_admin_master.services_integration, '_temp_channel_data'):
+                        diana_admin_master.services_integration._temp_channel_data = {}
+                    diana_admin_master.services_integration._temp_channel_data[user_id] = {
+                        "telegram_id": channel_id,
+                        "name": channel_name,
+                        "type": "vip"
+                    }
+                else:
+                    await message.answer("❌ El mensaje debe ser reenviado desde un canal o supergrupo.")
+                
+                return
+        
+    except Exception as e:
+        structlog.get_logger().error("Error handling admin forwarded message", error=str(e))
+
+# Handle text messages (lower priority, after forwarded messages)
+@admin_router.message(F.text & F.chat.type == "private")
+async def handle_admin_text_messages(message: Message):
+    """Handle text messages for interactive flows"""
+    if not diana_admin_master:
+        return
+        
+    user_id = message.from_user.id
+    text = message.text.strip()
+    
+    # Skip if it's a command
+    if text.startswith('/'):
+        return
+    
+    try:
+        # Check if user is in pending channel registration
+        if hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
+            if user_id in diana_admin_master.services_integration._pending_channel_registrations:
+                
+                # Process the channel ID input
+                result = await diana_admin_master.services_integration.process_channel_input(
+                    user_id, text, "text"
+                )
+                
+                if result.get("success") and result.get("show_confirmation"):
+                    # Show confirmation message
+                    channel_info = result["channel_info"]
+                    confirmation_text = f"""<b>📺 Confirmar Registro de Canal</b>
+
+<b>🔍 Información detectada:</b>
+• <b>Telegram ID:</b> <code>{channel_info['telegram_id']}</code>
+• <b>Nombre:</b> {channel_info['name']}
+• <b>Tipo:</b> VIP
+
+<b>¿Confirmas el registro de este canal?</b>"""
+
+                    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                    
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [
+                            InlineKeyboardButton(text="✅ Confirmar", 
+                                               callback_data=f"admin:channel_confirm:{channel_info['telegram_id']}"),
+                            InlineKeyboardButton(text="❌ Cancelar", 
+                                               callback_data="admin:channel_cancel")
+                        ]
+                    ])
+                    
+                    await message.answer(confirmation_text, reply_markup=keyboard, parse_mode="HTML")
+                    
+                    # Store channel info temporarily
+                    if not hasattr(diana_admin_master.services_integration, '_temp_channel_data'):
+                        diana_admin_master.services_integration._temp_channel_data = {}
+                    diana_admin_master.services_integration._temp_channel_data[user_id] = channel_info
+                    
+                else:
+                    # Show error
+                    error_msg = result.get("error", "Error desconocido")
+                    await message.answer(f"❌ {error_msg}")
+                
+                return
+        
+    except Exception as e:
+        structlog.get_logger().error("Error handling admin text message", error=str(e))
+
+@admin_router.callback_query(F.data.startswith("admin:channel_"))
+async def handle_channel_confirmation_callbacks(callback: CallbackQuery):
+    """Handle channel registration confirmation callbacks"""
+    if not diana_admin_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+        
+    data = callback.data.replace("admin:channel_", "")
+    user_id = callback.from_user.id
+    
+    try:
+        if data.startswith("confirm:"):
+            # Confirm channel registration
+            channel_id = data.replace("confirm:", "")
+            
+            # Get stored channel info
+            if hasattr(diana_admin_master.services_integration, '_temp_channel_data'):
+                channel_info = diana_admin_master.services_integration._temp_channel_data.get(user_id)
+                if channel_info:
+                    # Confirm registration
+                    result = await diana_admin_master.services_integration.confirm_channel_registration(
+                        user_id, channel_info, True
+                    )
+                    
+                    if result.get("success"):
+                        message = result.get("message", "Canal registrado exitosamente")
+                        
+                        # Check if navigation should be shown
+                        if result.get("show_navigation"):
+                            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                            
+                            navigation_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                                [
+                                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main"),
+                                    InlineKeyboardButton(text="⚙ Configuración", callback_data="admin:section:global_config")
+                                ],
+                                [
+                                    InlineKeyboardButton(text="💎 Configurar VIP", callback_data="admin:section:vip"),
+                                    InlineKeyboardButton(text="🏷️ Crear Tarifas", callback_data="admin:subsection:vip:config")
+                                ]
+                            ])
+                            
+                            await callback.message.edit_text(message, reply_markup=navigation_keyboard, parse_mode="HTML")
+                        else:
+                            await callback.message.edit_text(message, parse_mode="HTML")
+                    else:
+                        error = result.get("message", "Error en el registro")
+                        
+                        # Check if navigation should be shown even for errors
+                        if result.get("show_navigation"):
+                            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                            
+                            navigation_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                                [
+                                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main"),
+                                    InlineKeyboardButton(text="⚙ Configuración", callback_data="admin:section:global_config")
+                                ],
+                                [
+                                    InlineKeyboardButton(text="💎 Configurar VIP", callback_data="admin:section:vip"),
+                                    InlineKeyboardButton(text="🏷️ Crear Tarifas", callback_data="admin:subsection:vip:config")
+                                ]
+                            ])
+                            
+                            await callback.message.edit_text(error, reply_markup=navigation_keyboard, parse_mode="HTML")
+                        else:
+                            await callback.message.edit_text(f"❌ {error}", parse_mode="HTML")
+                    
+                    # Cleanup
+                    del diana_admin_master.services_integration._temp_channel_data[user_id]
+                    if hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
+                        diana_admin_master.services_integration._pending_channel_registrations.discard(user_id)
+                else:
+                    await callback.answer("❌ No se encontró información del canal.")
+            else:
+                await callback.answer("❌ No se encontró información del canal.")
+                
+        elif data == "cancel":
+            # Cancel registration
+            await callback.message.edit_text("❌ Registro de canal cancelado.")
+            
+            # Cleanup
+            if hasattr(diana_admin_master.services_integration, '_temp_channel_data'):
+                diana_admin_master.services_integration._temp_channel_data.pop(user_id, None)
+            if hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
+                diana_admin_master.services_integration._pending_channel_registrations.discard(user_id)
+        
+    except Exception as e:
+        structlog.get_logger().error("Error in channel confirmation callback", error=str(e))
+        await callback.answer("❌ Error interno del sistema")
+    
+    await callback.answer()
 
 @admin_router.callback_query(F.data.startswith("admin:"))
 async def handle_admin_callbacks(callback: CallbackQuery):
