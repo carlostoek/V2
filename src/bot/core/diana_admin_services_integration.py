@@ -589,8 +589,39 @@ class DianaAdminServicesIntegration:
     
     async def _handle_vip_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle VIP-related admin actions"""
-        # Placeholder for VIP actions
-        return {"success": True, "message": f"VIP action {action} executed successfully"}
+        self.logger.info(f"🔍 Manejando acción VIP: {action} para usuario {user_id}")
+        
+        if action == "vip:generate_token":
+            # Forjar Token button pressed
+            self.logger.info("🎫 Iniciando proceso de forjar token...")
+            
+            try:
+                token_url = await self.generate_vip_token(user_id)
+                if token_url:
+                    self.logger.info(f"✅ Token generado exitosamente: {token_url[:50]}...")
+                    return {
+                        "success": True, 
+                        "message": f"🎫 Token forjado exitosamente!\n\n{token_url}",
+                        "show_alert": True
+                    }
+                else:
+                    self.logger.error("❌ generate_vip_token devolvió None")
+                    return {
+                        "success": False, 
+                        "error": "❌ Error al forjar token. El servicio devolvió None.",
+                        "show_alert": True
+                    }
+            except Exception as e:
+                self.logger.error(f"❌ Excepción en _handle_vip_action: {e}")
+                return {
+                    "success": False, 
+                    "error": f"❌ Error al forjar token: {str(e)}",
+                    "show_alert": True
+                }
+        else:
+            # Other VIP actions (placeholder)
+            self.logger.info(f"ℹ️  Acción VIP genérica: {action}")
+            return {"success": True, "message": f"VIP action {action} executed successfully"}
     
     async def _handle_gamification_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle gamification-related admin actions"""
@@ -607,53 +638,173 @@ class DianaAdminServicesIntegration:
     async def generate_vip_token(self, admin_id: int) -> Optional[str]:
         """Generate VIP token using Tokeneitor service"""
         try:
+            self.logger.info(f"🎫 Iniciando generate_vip_token para admin {admin_id}")
+            
             # First, ensure we have a default tariff or create one
+            self.logger.info("🔍 Verificando tarifa por defecto...")
             tariff_id = await self._ensure_default_tariff()
             if not tariff_id:
-                self.logger.error("No se pudo crear/obtener tarifa por defecto")
+                self.logger.error("❌ No se pudo crear/obtener tarifa por defecto")
                 return None
+            self.logger.info(f"✅ Tarifa por defecto obtenida: {tariff_id}")
             
             # Get tokeneitor service
+            self.logger.info("🔍 Obteniendo servicio Tokeneitor...")
             tokeneitor = self.services.get('tokeneitor')
             if not tokeneitor:
-                self.logger.error("Servicio Tokeneitor no disponible")
+                self.logger.error("❌ Servicio Tokeneitor no disponible en services")
+                self.logger.error(f"🔍 Servicios disponibles: {list(self.services.keys())}")
                 return None
+            self.logger.info(f"✅ Servicio Tokeneitor obtenido: {type(tokeneitor)}")
             
             # Generate token
+            self.logger.info(f"🎫 Llamando tokeneitor.generate_token({tariff_id}, {admin_id})")
             token_url = await tokeneitor.generate_token(tariff_id, admin_id)
             if token_url:
-                self.logger.info(f"Token VIP generado por admin {admin_id}")
+                self.logger.info(f"✅ Token VIP generado por admin {admin_id}: {token_url}")
                 return token_url
             else:
-                self.logger.error("Error al generar token VIP")
+                self.logger.error("❌ tokeneitor.generate_token devolvió None")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"Error en generate_vip_token: {e}")
+            self.logger.error(f"❌ Error en generate_vip_token: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback completo: {traceback.format_exc()}")
             return None
     
     async def _ensure_default_tariff(self) -> Optional[int]:
         """Ensure default tariff exists for testing"""
         try:
+            self.logger.info("🏷️  Iniciando _ensure_default_tariff")
+            
             tokeneitor = self.services.get('tokeneitor')
             if not tokeneitor:
+                self.logger.error("❌ Tokeneitor no disponible en _ensure_default_tariff")
                 return None
+            
+            self.logger.info("✅ Tokeneitor disponible en _ensure_default_tariff")
+            
+            # First, ensure we have a default channel
+            channel_id = await self._ensure_default_channel()
+            if not channel_id:
+                self.logger.error("❌ No se pudo crear/obtener canal por defecto")
+                return None
+            
+            self.logger.info(f"✅ Canal por defecto disponible: {channel_id}")
+            
+            # Ensure we have a default admin user
+            admin_id = await self._ensure_default_admin()
+            if not admin_id:
+                self.logger.error("❌ No se pudo crear/obtener admin por defecto")
+                return None
+            
+            self.logger.info(f"✅ Admin por defecto disponible: {admin_id}")
                 
-            # For now, create a default tariff if needed
-            # This should be configurable in production
-            default_channel_id = 1  # Assuming channel ID 1 exists
+            # Now create the tariff
+            self.logger.info(f"🏷️  Creando tarifa para canal {channel_id}")
+            
             tariff_id = await tokeneitor.create_tariff(
-                channel_id=default_channel_id,
+                channel_id=channel_id,
                 name="VIP Acceso - Prueba",
                 duration_days=30,
                 price=0.0,  # Free for testing
-                admin_id=1,  # Default admin
+                admin_id=admin_id,
                 token_validity_days=7,
                 description="Tarifa de prueba para desarrollo"
             )
             
+            if tariff_id:
+                self.logger.info(f"✅ Tarifa creada exitosamente con ID: {tariff_id}")
+            else:
+                self.logger.error("❌ create_tariff devolvió None")
+            
             return tariff_id
             
         except Exception as e:
-            self.logger.error(f"Error al crear tarifa por defecto: {e}")
+            self.logger.error(f"❌ Error al crear tarifa por defecto: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback en _ensure_default_tariff: {traceback.format_exc()}")
+            return None
+    
+    async def _ensure_default_channel(self) -> Optional[int]:
+        """Ensure a default channel exists for testing"""
+        try:
+            from sqlalchemy import select
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.channel import Channel
+            
+            self.logger.info("📺 Verificando canal por defecto...")
+            
+            async for session in get_session():
+                # Check if any channel exists
+                channel_query = select(Channel).limit(1)
+                channel_result = await session.execute(channel_query)
+                existing_channel = channel_result.scalars().first()
+                
+                if existing_channel:
+                    self.logger.info(f"✅ Canal existente encontrado: {existing_channel.id}")
+                    return existing_channel.id
+                
+                # Create a default test channel
+                self.logger.info("📺 Creando canal de prueba...")
+                new_channel = Channel(
+                    telegram_id="-1001234567890",  # Fake telegram ID for testing
+                    name="Canal VIP Prueba",
+                    description="Canal VIP de prueba para desarrollo",
+                    type="vip"
+                )
+                
+                session.add(new_channel)
+                await session.commit()
+                await session.refresh(new_channel)
+                
+                self.logger.info(f"✅ Canal de prueba creado con ID: {new_channel.id}")
+                return new_channel.id
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al crear canal por defecto: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback en _ensure_default_channel: {traceback.format_exc()}")
+            return None
+    
+    async def _ensure_default_admin(self) -> Optional[int]:
+        """Ensure a default admin user exists for testing"""
+        try:
+            from sqlalchemy import select
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.user import User
+            
+            self.logger.info("👤 Verificando admin por defecto...")
+            
+            async for session in get_session():
+                # Check if any admin user exists
+                admin_query = select(User).where(User.is_admin == True).limit(1)
+                admin_result = await session.execute(admin_query)
+                existing_admin = admin_result.scalars().first()
+                
+                if existing_admin:
+                    self.logger.info(f"✅ Admin existente encontrado: {existing_admin.id}")
+                    return existing_admin.id
+                
+                # Create a default admin user
+                self.logger.info("👤 Creando admin de prueba...")
+                new_admin = User(
+                    id=1,  # Fixed ID for testing
+                    username="admin_prueba",
+                    first_name="Admin",
+                    last_name="Prueba",
+                    is_admin=True
+                )
+                
+                await session.merge(new_admin)  # Use merge in case ID 1 already exists
+                await session.commit()
+                
+                self.logger.info(f"✅ Admin de prueba creado/actualizado con ID: 1")
+                return 1
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al crear admin por defecto: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback en _ensure_default_admin: {traceback.format_exc()}")
             return None

@@ -738,9 +738,13 @@ Usa /start para regresar al menú principal."""
             )
             
             if result.get("success"):
-                await callback.answer(f"✅ {result.get('message', 'Acción ejecutada')}")
+                message = result.get('message', 'Acción ejecutada')
+                show_alert = result.get('show_alert', False)
+                await callback.answer(f"✅ {message}", show_alert=show_alert)
             else:
-                await callback.answer(f"❌ {result.get('error', 'Error ejecutando acción')}")
+                error_msg = result.get('error', 'Error ejecutando acción')
+                show_alert = result.get('show_alert', False)
+                await callback.answer(f"❌ {error_msg}", show_alert=show_alert)
             return
             
         else:
