@@ -773,6 +773,12 @@ async def handle_admin_text_messages(message: Message):
         return
     
     try:
+        # Check if user is in pending tariff creation
+        if hasattr(diana_admin_master.services_integration, '_pending_tariff_creation'):
+            if user_id in diana_admin_master.services_integration._pending_tariff_creation:
+                await handle_tariff_creation_input(message, user_id, text)
+                return
+        
         # Check if user is in pending channel registration
         if hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
             if user_id in diana_admin_master.services_integration._pending_channel_registrations:
@@ -821,6 +827,159 @@ async def handle_admin_text_messages(message: Message):
         
     except Exception as e:
         structlog.get_logger().error("Error handling admin text message", error=str(e))
+
+async def handle_tariff_creation_input(message: Message, user_id: int, text: str):
+    """Handle input during tariff creation flow"""
+    try:
+        tariff_data = diana_admin_master.services_integration._pending_tariff_creation[user_id]
+        current_step = tariff_data['step']
+        
+        if current_step == 'price':
+            # Validate price input
+            try:
+                price = float(text)
+                if price < 0:
+                    await message.answer("❌ El precio no puede ser negativo. Intenta de nuevo:")
+                    return
+                    
+                # Store price and move to duration step
+                tariff_data['data']['price'] = price
+                tariff_data['step'] = 'duration'
+                
+                # Ask for duration with buttons
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="1 día", callback_data="admin:tariff_duration:1"),
+                        InlineKeyboardButton(text="1 semana", callback_data="admin:tariff_duration:7")
+                    ],
+                    [
+                        InlineKeyboardButton(text="2 semanas", callback_data="admin:tariff_duration:14"), 
+                        InlineKeyboardButton(text="1 mes", callback_data="admin:tariff_duration:30")
+                    ],
+                    [InlineKeyboardButton(text="❌ Cancelar", callback_data="admin:action:vip:tariff_cancel")]
+                ])
+                
+                await message.answer(
+                    f"""<b>⏰ Paso 2 de 3: Duración</b>
+
+<b>Precio configurado:</b> ${price:.2f}
+
+Selecciona la <b>duración del acceso VIP</b> que tendrán los usuarios con esta tarifa:
+
+<i>¿Cuánto tiempo durará el acceso?</i>""",
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                
+            except ValueError:
+                await message.answer("❌ Precio inválido. Debe ser un número (ej: 29.99). Intenta de nuevo:")
+                
+        elif current_step == 'name':
+            # Validate and store name
+            name = text.strip()
+            if len(name) < 3:
+                await message.answer("❌ El nombre debe tener al menos 3 caracteres. Intenta de nuevo:")
+                return
+            if len(name) > 50:
+                await message.answer("❌ El nombre no puede exceder 50 caracteres. Intenta de nuevo:")
+                return
+                
+            tariff_data['data']['name'] = name
+            
+            # Create the tariff
+            result = await diana_admin_master.services_integration.create_tariff_from_flow_data(user_id)
+            
+            if result and result.get('success'):
+                tariff_info = result.get('tariff_info', {})
+                success_text = f"""✅ <b>Tarifa creada exitosamente!</b>
+
+<b>📋 Detalles de la Tarifa:</b>
+• <b>ID:</b> {tariff_info.get('id')}
+• <b>Nombre:</b> {tariff_info.get('name')}
+• <b>Precio:</b> ${tariff_info.get('price', 0):.2f}
+• <b>Duración:</b> {diana_admin_master.services_integration._format_duration_days(tariff_info.get('duration_days', 0))}
+
+<i>Ya puedes usar esta tarifa para generar tokens VIP!</i>"""
+
+                # Create navigation keyboard
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🏷️ Ver Tarifas", callback_data="admin:action:vip:manage_tariffs"),
+                        InlineKeyboardButton(text="🎫 Generar Token", callback_data="admin:subsection:vip:invite")
+                    ],
+                    [
+                        InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                        InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                    ]
+                ])
+                
+                await message.answer(success_text, reply_markup=keyboard, parse_mode="HTML")
+            else:
+                error_msg = result.get('error', 'Error desconocido') if result else 'Error al crear tarifa'
+                await message.answer(f"❌ {error_msg}")
+            
+            # Cleanup
+            del diana_admin_master.services_integration._pending_tariff_creation[user_id]
+            
+    except Exception as e:
+        structlog.get_logger().error("Error handling tariff creation input", error=str(e))
+        await message.answer("❌ Error procesando la información. Intenta de nuevo.")
+
+@admin_router.callback_query(F.data.startswith("admin:tariff_"))
+async def handle_tariff_flow_callbacks(callback: CallbackQuery):
+    """Handle tariff creation flow callbacks"""
+    if not diana_admin_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+        
+    data = callback.data.replace("admin:tariff_", "")
+    user_id = callback.from_user.id
+    
+    try:
+        if data.startswith("duration:"):
+            # Handle duration selection
+            duration_days = int(data.replace("duration:", ""))
+            
+            if hasattr(diana_admin_master.services_integration, '_pending_tariff_creation'):
+                if user_id in diana_admin_master.services_integration._pending_tariff_creation:
+                    tariff_data = diana_admin_master.services_integration._pending_tariff_creation[user_id]
+                    tariff_data['data']['duration_days'] = duration_days
+                    tariff_data['step'] = 'name'
+                    
+                    duration_text = diana_admin_master.services_integration._format_duration_days(duration_days)
+                    price = tariff_data['data']['price']
+                    
+                    await callback.message.edit_text(
+                        f"""<b>📝 Paso 3 de 3: Nombre</b>
+
+<b>Configuración actual:</b>
+• <b>Precio:</b> ${price:.2f}
+• <b>Duración:</b> {duration_text}
+
+Envía el <b>nombre de la tarifa</b>.
+
+<b>📝 Ejemplos:</b>
+• <code>VIP Premium</code>
+• <code>Acceso Mensual</code>
+• <code>Plan Básico</code>
+
+<i>¿Cómo se llamará esta tarifa?</i>""",
+                        parse_mode="HTML"
+                    )
+                else:
+                    await callback.answer("❌ Sesión expirada. Inicia el proceso de nuevo.")
+            else:
+                await callback.answer("❌ No hay proceso activo.")
+                
+    except Exception as e:
+        structlog.get_logger().error("Error in tariff flow callback", error=str(e))
+        await callback.answer("❌ Error procesando selección")
+    
+    await callback.answer()
 
 @admin_router.callback_query(F.data.startswith("admin:channel_"))
 async def handle_channel_confirmation_callbacks(callback: CallbackQuery):

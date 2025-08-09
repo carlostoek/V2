@@ -6,6 +6,7 @@ from src.modules.gamification.service import GamificationService
 from src.modules.admin.service import AdminService
 from src.modules.narrative.service import NarrativeService
 from src.modules.tariff.service import TariffService
+from src.modules.channel.service import ChannelService
 from src.modules.daily_rewards.service import DailyRewardsService
 from src.modules.token.tokeneitor import Tokeneitor
 from src.bot.core.diana_admin_master import register_diana_admin_master
@@ -23,6 +24,7 @@ class TelegramAdapter:
         
         # Initialize additional services
         self._tariff_service = TariffService(event_bus)
+        self._channel_service = ChannelService(event_bus)
         self._daily_rewards_service = DailyRewardsService(gamification_service)
         self._tokeneitor_service = Tokeneitor(event_bus)
         
@@ -32,6 +34,7 @@ class TelegramAdapter:
             'admin': admin_service,
             'narrative': narrative_service,
             'tariff': self._tariff_service,
+            'channel': self._channel_service,
             'event_bus': event_bus,
             'daily_rewards': self._daily_rewards_service,
             'tokeneitor': self._tokeneitor_service,
@@ -43,6 +46,7 @@ class TelegramAdapter:
         # Setup services
         import asyncio
         asyncio.create_task(self._tariff_service.setup())
+        asyncio.create_task(self._channel_service.setup())
         asyncio.create_task(self._daily_rewards_service.setup())
         asyncio.create_task(self._tokeneitor_service.setup())
         

@@ -621,33 +621,27 @@ class DianaAdminServicesIntegration:
                     "show_alert": True
                 }
         elif action == "vip:manage_tariffs":
-            # Manage Tariffs button pressed  
-            self.logger.info("🏷️ Iniciando gestión de tarifas...")
+            # Show tariffs management interface
+            self.logger.info("🏷️ Mostrando interfaz de gestión de tarifas...")
             
             try:
-                result = await self.manage_channel_tariffs(user_id)
-                if result:
-                    tariff_info = result.get('tariff_info', {})
-                    self.logger.info(f"✅ Tarifa gestionada exitosamente: ID {tariff_info.get('id')}")
-                    return {
-                        "success": True,
-                        "message": f"🏷️ Tarifa creada exitosamente!\n\nID: {tariff_info.get('id')}\nNombre: {tariff_info.get('name')}\nPrecio: ${tariff_info.get('price')}",
-                        "show_alert": True
-                    }
-                else:
-                    self.logger.error("❌ manage_channel_tariffs devolvió None")
-                    return {
-                        "success": False,
-                        "error": "❌ Error al gestionar tarifas. El servicio devolvió None.",
-                        "show_alert": True
-                    }
+                await self.show_tariffs_management_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "🏷️ Interfaz de tarifas desplegada correctamente.",
+                    "show_alert": False
+                }
             except Exception as e:
-                self.logger.error(f"❌ Excepción en gestión de tarifas: {e}")
+                self.logger.error(f"❌ Error al mostrar interfaz de tarifas: {e}")
                 return {
                     "success": False,
-                    "error": f"❌ Error al gestionar tarifas: {str(e)}",
+                    "error": f"❌ Error al mostrar tarifas: {str(e)}",
                     "show_alert": True
                 }
+        elif action.startswith("vip:tariff_"):
+            # Handle specific tariff actions
+            tariff_action = action.replace("vip:tariff_", "")
+            return await self._handle_tariff_action(tariff_action, user_id, params)
         else:
             # Other VIP actions (placeholder)
             self.logger.info(f"ℹ️  Acción VIP genérica: {action}")
@@ -882,53 +876,472 @@ class DianaAdminServicesIntegration:
     
     # === VIP CHANNEL MANAGEMENT ===
     
-    async def add_vip_channel(self, admin_id: int) -> Optional[Dict[str, Any]]:
-        """Add a new VIP channel to the system"""
+    async def add_vip_channel(self, admin_id: int, telegram_id: str, name: str, description: str = None) -> Optional[Dict[str, Any]]:
+        """Add a new VIP channel using ChannelService"""
         try:
-            self.logger.info(f"📺 Iniciando add_vip_channel para admin {admin_id}")
+            self.logger.info(f"📺 Creando canal VIP con ChannelService para admin {admin_id}")
             
-            # Generate unique channel info for demo/testing
-            from datetime import datetime
-            current_time = datetime.now()
-            channel_name = f"Canal VIP {current_time.strftime('%H%M%S')}"
-            telegram_id = f"-100{current_time.timestamp():.0f}"
+            # Get channel service
+            channel_service = self.services.get('channel')
+            if not channel_service:
+                self.logger.error("❌ ChannelService no disponible")
+                return None
             
-            # Create channel using database operations
-            from sqlalchemy import select
-            from src.bot.database.engine import get_session
-            from src.bot.database.models.channel import Channel
+            # Use default values if not provided
+            if not description:
+                description = f"Canal VIP registrado por admin {admin_id}"
             
-            async for session in get_session():
-                # Create new VIP channel
-                new_channel = Channel(
-                    telegram_id=telegram_id,
-                    name=channel_name,
-                    description=f"Canal VIP creado por admin {admin_id}",
-                    type="vip"
-                )
+            # Create channel using ChannelService
+            new_channel_id = await channel_service.create_channel(
+                telegram_id=telegram_id,
+                name=name,
+                description=description,
+                channel_type="vip"
+            )
+            
+            if new_channel_id:
+                self.logger.info(f"✅ Canal VIP creado con ID: {new_channel_id}")
                 
-                session.add(new_channel)
-                await session.commit()
-                await session.refresh(new_channel)
-                
-                self.logger.info(f"✅ Canal VIP creado con ID: {new_channel.id}")
+                # Get the created channel details
+                channel_info = await channel_service.get_channel(new_channel_id)
                 
                 return {
                     "success": True,
                     "channel_info": {
-                        "id": new_channel.id,
-                        "telegram_id": new_channel.telegram_id,
-                        "name": new_channel.name,
-                        "description": new_channel.description,
-                        "type": new_channel.type
+                        "id": new_channel_id,
+                        "telegram_id": telegram_id,
+                        "name": name,
+                        "description": description,
+                        "type": "vip"
                     }
+                }
+            else:
+                self.logger.error("❌ ChannelService.create_channel devolvió None")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al crear canal VIP con ChannelService: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            return None
+    
+    # === TARIFFS VISUAL MANAGEMENT ===
+    
+    async def show_tariffs_management_interface(self, admin_id: int):
+        """Show visual tariffs management interface"""
+        try:
+            self.logger.info(f"📋 Mostrando interfaz de tarifas para admin {admin_id}")
+            
+            # Get all existing tariffs
+            tariffs = await self.get_all_tariffs()
+            
+            # Build the message
+            if tariffs:
+                message_text = f"""<b>🏷️ Gestión de Tarifas VIP</b>
+
+<i>Lucien presenta las tarifas disponibles en el imperio de Diana...</i>
+
+<b>📋 Tarifas Registradas ({len(tariffs)}):</b>
+"""
+                
+                for tariff in tariffs:
+                    duration_text = self._format_duration_days(tariff['duration_days'])
+                    message_text += f"""
+🏷️ <b>{tariff['name']}</b>
+   • <b>Precio:</b> ${tariff['price']:.2f}
+   • <b>Duración:</b> {duration_text}  
+   • <b>Canal:</b> {tariff.get('channel_name', f"ID {tariff['channel_id']}")}
+   • <b>Estado:</b> {'✅ Activa' if tariff['is_active'] else '❌ Inactiva'}"""
+                
+                message_text += f"\n\n<i>Selecciona una acción para continuar...</i>"
+            else:
+                message_text = """<b>🏷️ Gestión de Tarifas VIP</b>
+
+<i>Lucien observa que aún no hay tarifas establecidas...</i>
+
+<b>📋 Sin Tarifas Registradas</b>
+
+Para comenzar a generar tokens VIP, primero debes crear al menos una tarifa. Cada tarifa define:
+• <b>Precio de suscripción</b>
+• <b>Duración del acceso</b>  
+• <b>Canal VIP asociado</b>
+
+<i>¿Deseas crear la primera tarifa?</i>"""
+            
+            # Build keyboard
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard_buttons = []
+            
+            # Add action buttons for each tariff
+            if tariffs:
+                for tariff in tariffs[:5]:  # Limit to first 5 tariffs for UI space
+                    keyboard_buttons.append([
+                        InlineKeyboardButton(
+                            text=f"✏️ {tariff['name'][:15]}...",
+                            callback_data=f"admin:action:vip:tariff_edit:{tariff['id']}"
+                        ),
+                        InlineKeyboardButton(
+                            text="❌",
+                            callback_data=f"admin:action:vip:tariff_delete:{tariff['id']}"
+                        )
+                    ])
+                
+                # Show more button if there are more than 5 tariffs
+                if len(tariffs) > 5:
+                    keyboard_buttons.append([
+                        InlineKeyboardButton(text="📄 Ver Todas", callback_data="admin:action:vip:tariff_list_all")
+                    ])
+            
+            # Add main action buttons
+            keyboard_buttons.extend([
+                [InlineKeyboardButton(text="➕ Crear Nueva Tarifa", callback_data="admin:action:vip:tariff_create")],
+                [
+                    InlineKeyboardButton(text="🔄 Actualizar", callback_data="admin:action:vip:manage_tariffs"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ],
+                [InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip")]
+            ])
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+            
+            # Send message using bot
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Interfaz de tarifas enviada a admin {admin_id}")
+            else:
+                self.logger.error("❌ Bot no disponible para enviar interfaz")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al mostrar interfaz de tarifas: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    async def get_all_tariffs(self) -> List[Dict[str, Any]]:
+        """Get all tariffs using TariffService"""
+        try:
+            # Get tariff service
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                self.logger.error("❌ TariffService no disponible")
+                return []
+            
+            # Get all tariffs using the service
+            tariffs_raw = await tariff_service.get_all_tariffs()
+            
+            # Convert to dictionary format for compatibility
+            tariffs = []
+            for tariff in tariffs_raw:
+                tariffs.append({
+                    'id': tariff.id,
+                    'name': tariff.name,
+                    'price': tariff.price,
+                    'duration_days': tariff.duration_days,
+                    'description': tariff.description,
+                    'is_active': tariff.is_active,
+                    'created_at': tariff.created_at
+                })
+            
+            self.logger.info(f"📋 Obtenidas {len(tariffs)} tarifas usando TariffService")
+            return tariffs
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al obtener tarifas con TariffService: {e}")
+            return []
+    
+    def _format_duration_days(self, days: int) -> str:
+        """Format duration days to human readable format"""
+        if days == 1:
+            return "1 día"
+        elif days == 7:
+            return "1 semana"
+        elif days == 14:
+            return "2 semanas"
+        elif days == 30:
+            return "1 mes"
+        elif days == 365:
+            return "1 año"
+        else:
+            return f"{days} días"
+    
+    async def _handle_tariff_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle specific tariff actions"""
+        self.logger.info(f"🏷️ Manejando acción de tarifa: {action} para usuario {user_id}")
+        
+        try:
+            if action == "create":
+                # Start interactive tariff creation
+                await self.start_tariff_creation_flow(user_id)
+                return {
+                    "success": True,
+                    "message": "🏷️ Proceso de creación iniciado. Sigue las instrucciones.",
+                    "show_alert": False
+                }
+            elif action.startswith("edit:"):
+                # Edit existing tariff
+                tariff_id = int(action.split(":")[1])
+                return await self.edit_tariff(user_id, tariff_id)
+            elif action.startswith("delete:"):
+                # Delete existing tariff
+                tariff_id = int(action.split(":")[1])
+                return await self.delete_tariff(user_id, tariff_id)
+            elif action == "list_all":
+                # Show all tariffs
+                await self.show_all_tariffs(user_id)
+                return {
+                    "success": True,
+                    "message": "📋 Lista completa de tarifas mostrada.",
+                    "show_alert": False
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Acción de tarifa desconocida: {action}"
                 }
                 
         except Exception as e:
-            self.logger.error(f"❌ Error al crear canal VIP: {e}")
+            self.logger.error(f"❌ Error en acción de tarifa: {e}")
+            return {
+                "success": False,
+                "error": f"Error al procesar acción: {str(e)}"
+            }
+    
+    async def start_tariff_creation_flow(self, admin_id: int):
+        """Start interactive tariff creation flow"""
+        try:
+            self.logger.info(f"🎬 Iniciando flujo de creación de tarifa para admin {admin_id}")
+            
+            # Store admin in pending tariff creation
+            if not hasattr(self, '_pending_tariff_creation'):
+                self._pending_tariff_creation = {}
+            
+            self._pending_tariff_creation[admin_id] = {
+                'step': 'price',
+                'data': {}
+            }
+            
+            message_text = """<b>💰 Crear Nueva Tarifa VIP</b>
+
+<i>Lucien te guiará en la creación de una nueva tarifa...</i>
+
+<b>Paso 1 de 3: Precio</b>
+
+Envía el <b>precio de la tarifa</b> en dólares (USD).
+
+<b>📝 Ejemplos válidos:</b>
+• <code>29.99</code> - Para $29.99
+• <code>15</code> - Para $15.00
+• <code>0</code> - Tarifa gratuita
+
+<i>¿Cuál será el precio de esta tarifa?</i>"""
+
+            # Create keyboard with cancel option
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Cancelar Creación", callback_data="admin:action:vip:tariff_cancel")]
+            ])
+            
+            # Send message using bot
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Flujo de creación de tarifa iniciado para admin {admin_id}")
+            else:
+                self.logger.error("❌ Bot no disponible para enviar mensaje")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al iniciar flujo de creación: {e}")
             import traceback
-            self.logger.error(f"❌ Traceback en add_vip_channel: {traceback.format_exc()}")
-            return None
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    async def create_tariff_from_flow_data(self, admin_id: int, flow_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create tariff using TariffService from interactive flow data"""
+        try:
+            self.logger.info(f"🏷️ Creando tarifa con TariffService para admin {admin_id}")
+            self.logger.info(f"📋 Datos del flujo: {flow_data}")
+            
+            # Get tariff service
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                return {
+                    "success": False,
+                    "message": "❌ TariffService no disponible"
+                }
+            
+            # Create tariff using TariffService
+            result = await tariff_service.create_tariff(
+                name=flow_data.get('name', 'Tarifa VIP'),
+                price=float(flow_data.get('price', 0)),
+                duration_days=int(flow_data.get('duration_days', 30)),
+                description=flow_data.get('description', f"Tarifa creada por admin {admin_id}")
+            )
+            
+            if result['success']:
+                self.logger.info(f"✅ Tarifa creada exitosamente: {result['tariff'].id}")
+                return {
+                    "success": True,
+                    "message": f"✅ Tarifa '{result['tariff'].name}' creada exitosamente",
+                    "tariff_info": {
+                        "id": result['tariff'].id,
+                        "name": result['tariff'].name,
+                        "price": result['tariff'].price,
+                        "duration_days": result['tariff'].duration_days,
+                        "description": result['tariff'].description
+                    }
+                }
+            else:
+                self.logger.error(f"❌ Error del TariffService: {result['message']}")
+                return {
+                    "success": False,
+                    "message": f"❌ Error al crear tarifa: {result['message']}"
+                }
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al crear tarifa con TariffService: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            return {
+                "success": False,
+                "message": f"❌ Error inesperado: {str(e)}"
+            }
+    
+    async def edit_tariff(self, admin_id: int, tariff_id: int) -> Dict[str, Any]:
+        """Edit existing tariff using TariffService"""
+        try:
+            self.logger.info(f"✏️ Editando tarifa {tariff_id} para admin {admin_id}")
+            
+            # Get tariff service
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                return {
+                    "success": False,
+                    "message": "❌ TariffService no disponible"
+                }
+            
+            # Get tariff details first
+            tariff = await tariff_service.get_tariff_by_id(tariff_id)
+            if not tariff:
+                return {
+                    "success": False,
+                    "message": "❌ Tarifa no encontrada"
+                }
+            
+            # For now, just show tariff info and return success
+            # Full edit implementation would require interactive flow
+            return {
+                "success": True,
+                "message": f"📝 Editando tarifa '{tariff.name}':\n• Precio: ${tariff.price}\n• Duración: {tariff.duration_days} días\n\n(Funcionalidad completa pendiente)"
+            }
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al editar tarifa: {e}")
+            return {
+                "success": False,
+                "message": f"❌ Error al editar tarifa: {str(e)}"
+            }
+    
+    async def delete_tariff(self, admin_id: int, tariff_id: int) -> Dict[str, Any]:
+        """Delete tariff using TariffService"""
+        try:
+            self.logger.info(f"🗑️ Eliminando tarifa {tariff_id} para admin {admin_id}")
+            
+            # Get tariff service
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                return {
+                    "success": False,
+                    "message": "❌ TariffService no disponible"
+                }
+            
+            # Delete tariff using TariffService
+            result = await tariff_service.delete_tariff(tariff_id)
+            
+            if result['success']:
+                self.logger.info(f"✅ Tarifa {tariff_id} eliminada exitosamente")
+                return {
+                    "success": True,
+                    "message": f"✅ {result['message']}"
+                }
+            else:
+                self.logger.error(f"❌ Error del TariffService: {result['message']}")
+                return {
+                    "success": False,
+                    "message": f"❌ {result['message']}"
+                }
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al eliminar tarifa: {e}")
+            return {
+                "success": False,
+                "message": f"❌ Error al eliminar tarifa: {str(e)}"
+            }
+    
+    async def show_all_tariffs(self, admin_id: int):
+        """Show complete list of all tariffs"""
+        try:
+            self.logger.info(f"📋 Mostrando lista completa de tarifas para admin {admin_id}")
+            
+            # Get all tariffs
+            tariffs = await self.get_all_tariffs()
+            
+            if not tariffs:
+                message_text = """<b>📋 Lista Completa de Tarifas</b>
+
+<i>No hay tarifas registradas en el sistema...</i>
+
+Para comenzar, crea tu primera tarifa usando el botón "Crear Nueva Tarifa"."""
+            else:
+                message_text = f"""<b>📋 Lista Completa de Tarifas ({len(tariffs)})</b>
+
+<i>Todas las tarifas registradas en Diana:</i>
+
+"""
+                for i, tariff in enumerate(tariffs, 1):
+                    duration_text = self._format_duration_days(tariff['duration_days'])
+                    status = '✅ Activa' if tariff['is_active'] else '❌ Inactiva'
+                    
+                    message_text += f"""<b>{i}. {tariff['name']}</b>
+• Precio: ${tariff['price']:.2f}
+• Duración: {duration_text}
+• Estado: {status}
+• ID: {tariff['id']}
+
+"""
+            
+            # Create keyboard
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🏷️ Gestión Tarifas", callback_data="admin:action:vip:manage_tariffs")]
+            ])
+            
+            # Send message using bot
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Lista completa de tarifas enviada a admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al mostrar lista completa de tarifas: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
     
     async def manage_channel_tariffs(self, admin_id: int) -> Optional[Dict[str, Any]]:
         """Manage tariffs for VIP channels"""
@@ -1133,50 +1546,31 @@ Para registrar un nuevo canal VIP, puedes:
                     "show_alert": False
                 }
             
-            # Create the channel in database
-            from sqlalchemy import select
-            from src.bot.database.engine import get_session
-            from src.bot.database.models.channel import Channel
+            # Create the channel using ChannelService
+            result = await self.add_vip_channel(
+                admin_id=admin_id,
+                telegram_id=channel_info['telegram_id'],
+                name=channel_info['name'],
+                description=f"Canal VIP registrado por admin {admin_id}"
+            )
             
-            async for session in get_session():
-                # Check if channel already exists
-                existing_query = select(Channel).where(Channel.telegram_id == channel_info['telegram_id'])
-                existing_result = await session.execute(existing_query)
-                existing_channel = existing_result.scalars().first()
-                
-                if existing_channel:
-                    return {
-                        "success": False,
-                        "message": f"⚠️ Canal ya registrado:\n\nID: {existing_channel.id}\nTelegram ID: {existing_channel.telegram_id}\nNombre: {existing_channel.name}",
-                        "show_alert": True,
-                        "show_navigation": True  # Add navigation for already registered channel
-                    }
-                
-                # Create new channel
-                new_channel = Channel(
-                    telegram_id=channel_info['telegram_id'],
-                    name=channel_info['name'],
-                    description=f"Canal VIP registrado por admin {admin_id}",
-                    type="vip"
-                )
-                
-                session.add(new_channel)
-                await session.commit()
-                await session.refresh(new_channel)
-                
-                self.logger.info(f"✅ Canal registrado con ID: {new_channel.id}")
+            if result and result['success']:
+                channel_data = result['channel_info']
+                self.logger.info(f"✅ Canal registrado con ID: {channel_data['id']}")
                 
                 return {
                     "success": True,
-                    "message": f"✅ Canal VIP registrado exitosamente!\n\n📺 <b>Información del Canal:</b>\n• <b>ID:</b> {new_channel.id}\n• <b>Telegram ID:</b> {new_channel.telegram_id}\n• <b>Nombre:</b> {new_channel.name}\n• <b>Tipo:</b> VIP\n\nYa puedes crear tarifas para este canal.",
+                    "message": f"✅ Canal VIP registrado exitosamente!\n\n📺 <b>Información del Canal:</b>\n• <b>ID:</b> {channel_data['id']}\n• <b>Telegram ID:</b> {channel_data['telegram_id']}\n• <b>Nombre:</b> {channel_data['name']}\n• <b>Tipo:</b> VIP\n\nYa puedes crear tarifas para este canal.",
                     "show_alert": True,
                     "show_navigation": True,  # Add navigation flag
-                    "channel_data": {
-                        "id": new_channel.id,
-                        "telegram_id": new_channel.telegram_id,
-                        "name": new_channel.name,
-                        "type": new_channel.type
-                    }
+                    "channel_data": channel_data
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "❌ Error al registrar el canal. Es posible que ya exista o hubo un problema técnico.",
+                    "show_alert": True,
+                    "show_navigation": True
                 }
                 
         except Exception as e:

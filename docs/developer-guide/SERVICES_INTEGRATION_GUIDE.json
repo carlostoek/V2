@@ -1,0 +1,204 @@
+{
+  "title": "Diana Bot V2 - Services Integration Architecture",
+  "version": "2.0",
+  "last_updated": "2025-08-09",
+  "overview": {
+    "description": "Complete guide for connecting admin UI to real services",
+    "pattern": "UI → Diana Admin Services Integration → Real Services → Database",
+    "principle": "NEVER duplicate code. Always use existing services."
+  },
+  
+  "architecture": {
+    "layers": {
+      "1_ui_layer": {
+        "files": ["src/bot/core/diana_admin_master.py"],
+        "responsibility": "Handle user interactions, callbacks, messages",
+        "connects_to": "diana_admin_services_integration"
+      },
+      "2_integration_layer": {
+        "files": ["src/bot/core/diana_admin_services_integration.py"],
+        "responsibility": "Bridge between UI and services, handle business logic routing",
+        "connects_to": "real_services"
+      },
+      "3_service_layer": {
+        "files": [
+          "src/modules/channel/service.py",
+          "src/modules/tariff/service.py", 
+          "src/modules/token/tokeneitor.py"
+        ],
+        "responsibility": "Business logic, data validation, database operations",
+        "connects_to": "database"
+      },
+      "4_data_layer": {
+        "files": ["src/bot/database/models/"],
+        "responsibility": "Data persistence and models"
+      }
+    }
+  },
+
+  "services_registration": {
+    "file": "src/infrastructure/telegram/adapter.py",
+    "pattern": {
+      "1_import": "from src.modules.{module}.service import {Service}",
+      "2_initialize": "self._{service}_service = {Service}(event_bus)",
+      "3_register": "'{service}': self._{service}_service",
+      "4_setup": "asyncio.create_task(self._{service}_service.setup())"
+    },
+    "registered_services": {
+      "channel": {
+        "class": "ChannelService", 
+        "key": "channel",
+        "methods": ["create_channel", "get_channel", "update_channel", "delete_channel"]
+      },
+      "tariff": {
+        "class": "TariffService",
+        "key": "tariff", 
+        "methods": ["create_tariff", "get_all_tariffs", "update_tariff", "delete_tariff"]
+      },
+      "tokeneitor": {
+        "class": "Tokeneitor",
+        "key": "tokeneitor",
+        "methods": ["generate_token", "create_tariff", "get_user_tokens"]
+      }
+    }
+  },
+
+  "integration_patterns": {
+    "service_access": {
+      "pattern": "service = self.services.get('{service_name}')",
+      "validation": "if not service: return error_response",
+      "usage": "result = await service.method_name(params)"
+    },
+    
+    "error_handling": {
+      "pattern": "try/except with logging",
+      "log_format": "self.logger.info/error with emojis",
+      "return_format": "{'success': bool, 'message': str, 'data': optional}"
+    },
+
+    "data_conversion": {
+      "from_service": "Convert SQLAlchemy models to dictionaries",
+      "to_ui": "Format for Telegram markup and display",
+      "example": "tariff.name → {'name': tariff.name, 'id': tariff.id}"
+    }
+  },
+
+  "implementation_examples": {
+    "tariff_management": {
+      "get_all_tariffs": {
+        "service": "tariff", 
+        "method": "get_all_tariffs()",
+        "conversion": "Convert models to dict with id, name, price, duration_days, is_active",
+        "ui_usage": "Display in keyboard buttons and formatted messages"
+      },
+      
+      "create_tariff": {
+        "service": "tariff",
+        "method": "create_tariff(name, price, duration_days, description)",
+        "flow": "Interactive: price → duration → name → confirmation",
+        "validation": "Service handles validation and returns success/error"
+      },
+      
+      "delete_tariff": {
+        "service": "tariff", 
+        "method": "delete_tariff(tariff_id)",
+        "behavior": "Soft delete (sets is_active=False)",
+        "response": "Service returns success message"
+      }
+    },
+
+    "channel_management": {
+      "create_channel": {
+        "service": "channel",
+        "method": "create_channel(telegram_id, name, description, channel_type)",
+        "flow": "Interactive: channel_id/forward → confirmation → creation",
+        "validation": "Service checks for duplicates"
+      },
+      
+      "get_channel": {
+        "service": "channel",
+        "method": "get_channel(channel_id)", 
+        "returns": "Full channel info with members count and settings"
+      }
+    },
+
+    "token_generation": {
+      "service": "tokeneitor",
+      "method": "generate_token(tariff_id, admin_id)",
+      "integration": "Uses tariff service data for token creation",
+      "return": "URL string for token access"
+    }
+  },
+
+  "callback_routing": {
+    "pattern": "admin:action:category:action_name[:params]",
+    "examples": {
+      "admin:action:vip:manage_tariffs": "Show tariffs management interface",
+      "admin:action:vip:tariff_create": "Start tariff creation flow", 
+      "admin:action:vip:tariff_delete:123": "Delete tariff with ID 123",
+      "admin:action:global_config:add_channels": "Start channel registration flow"
+    },
+    "routing_file": "src/bot/core/diana_admin_master.py",
+    "integration_call": "services_integration.handle_admin_action(action, user_id, params)"
+  },
+
+  "interactive_flows": {
+    "tariff_creation": {
+      "steps": ["price", "duration", "name"],
+      "storage": "_pending_tariff_creation[user_id]",
+      "handler": "handle_tariff_creation_input() in diana_admin_master.py",
+      "completion": "create_tariff_from_flow_data() in services_integration"
+    },
+    
+    "channel_registration": {
+      "steps": ["channel_input", "confirmation"],
+      "storage": "_pending_channel_registrations.add(user_id)",
+      "handler": "handle_channel_input() in diana_admin_master.py", 
+      "completion": "confirm_channel_registration() in services_integration"
+    }
+  },
+
+  "key_principles": {
+    "1_no_duplication": "Always check if functionality exists before implementing",
+    "2_service_first": "Services contain business logic, integration layer routes calls",
+    "3_error_handling": "Services return structured responses, UI handles display",
+    "4_logging": "Comprehensive logging with emojis for easy debugging",
+    "5_validation": "Services validate data, integration layer handles UI feedback"
+  },
+
+  "debugging_tips": {
+    "service_availability": "Check self.services.keys() to see registered services",
+    "method_existence": "Use hasattr(service, 'method_name') before calling",
+    "data_flow": "Log inputs/outputs at each layer for tracing",
+    "error_patterns": "Services return {'success': False, 'message': 'error'} on failure"
+  },
+
+  "future_integrations": {
+    "pattern_to_follow": {
+      "1_identify_service": "Find existing service in src/modules/",
+      "2_register_service": "Add to adapter.py if not already registered", 
+      "3_create_integration_method": "Add method to diana_admin_services_integration.py",
+      "4_connect_ui": "Route callback/handler to integration method",
+      "5_test_flow": "Verify end-to-end functionality"
+    },
+    
+    "common_services": {
+      "user_management": "src/modules/user/ (if exists)",
+      "gamification": "Already registered as 'gamification'",
+      "narrative": "Already registered as 'narrative'", 
+      "daily_rewards": "Already registered as 'daily_rewards'"
+    }
+  },
+
+  "current_status": {
+    "completed_integrations": [
+      "Channel registration with ChannelService",
+      "Tariff management with TariffService", 
+      "Token generation with Tokeneitor",
+      "Interactive flows for creation processes"
+    ],
+    "architecture_health": "✅ Clean separation of concerns",
+    "code_duplication": "✅ Eliminated - using existing services",
+    "maintainability": "✅ High - changes in services automatically reflected"
+  }
+}
