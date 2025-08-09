@@ -442,6 +442,14 @@ class ActionHandler(CallbackHandler):
             health_info = await self.admin_system.services_integration.get_system_overview()
             await callback_query.answer(f"🟢 Sistema: {health_info['overview']['status']}")
             
+        elif data.action == AdminAction.VIP_GENERATE_TOKEN:
+            # Generate VIP token using Tokeneitor service
+            result = await self.admin_system.services_integration.generate_vip_token(user_id)
+            if result:
+                await callback_query.answer(f"✅ Token generado: {result}", show_alert=True)
+            else:
+                await callback_query.answer("❌ Error al generar token", show_alert=True)
+            
         else:
             # Other actions...
             await callback_query.answer(f"⚡ Acción: {data.action.value}")

@@ -601,3 +601,59 @@ class DianaAdminServicesIntegration:
         """Handle channel-related admin actions"""
         # Placeholder for channel actions
         return {"success": True, "message": f"Channel action {action} executed successfully"}
+    
+    # === VIP TOKEN GENERATION ===
+    
+    async def generate_vip_token(self, admin_id: int) -> Optional[str]:
+        """Generate VIP token using Tokeneitor service"""
+        try:
+            # First, ensure we have a default tariff or create one
+            tariff_id = await self._ensure_default_tariff()
+            if not tariff_id:
+                self.logger.error("No se pudo crear/obtener tarifa por defecto")
+                return None
+            
+            # Get tokeneitor service
+            tokeneitor = self.services.get('tokeneitor')
+            if not tokeneitor:
+                self.logger.error("Servicio Tokeneitor no disponible")
+                return None
+            
+            # Generate token
+            token_url = await tokeneitor.generate_token(tariff_id, admin_id)
+            if token_url:
+                self.logger.info(f"Token VIP generado por admin {admin_id}")
+                return token_url
+            else:
+                self.logger.error("Error al generar token VIP")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error en generate_vip_token: {e}")
+            return None
+    
+    async def _ensure_default_tariff(self) -> Optional[int]:
+        """Ensure default tariff exists for testing"""
+        try:
+            tokeneitor = self.services.get('tokeneitor')
+            if not tokeneitor:
+                return None
+                
+            # For now, create a default tariff if needed
+            # This should be configurable in production
+            default_channel_id = 1  # Assuming channel ID 1 exists
+            tariff_id = await tokeneitor.create_tariff(
+                channel_id=default_channel_id,
+                name="VIP Acceso - Prueba",
+                duration_days=30,
+                price=0.0,  # Free for testing
+                admin_id=1,  # Default admin
+                token_validity_days=7,
+                description="Tarifa de prueba para desarrollo"
+            )
+            
+            return tariff_id
+            
+        except Exception as e:
+            self.logger.error(f"Error al crear tarifa por defecto: {e}")
+            return None
