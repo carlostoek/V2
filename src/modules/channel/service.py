@@ -108,7 +108,7 @@ class ChannelService(ICoreService):
                     and_(
                         ChannelMembership.user_id == event.user_id,
                         ChannelMembership.channel_id == event.channel_id,
-                        ChannelMembership.is_active == True
+                        ChannelMembership.status == "active"
                     )
                 )
                 membership_result = await session.execute(membership_query)
@@ -125,35 +125,34 @@ class ChannelService(ICoreService):
                 
                 if channel.type == "vip" and access_rules:
                     # Verificar nivel mínimo si está configurado
-                    if access_rules.min_level and user.level < access_rules.min_level:
+                    if access_rules.level_required and user.level < access_rules.level_required:
                         can_join = False
-                        rejection_reason = f"Se requiere nivel {access_rules.min_level} para unirse a este canal."
+                        rejection_reason = f"Se requiere nivel {access_rules.level_required} para unirse a este canal."
                     
                     # Verificar requisitos VIP si están configurados
-                    if access_rules.requires_vip and not user.is_vip:
+                    if access_rules.is_vip_only and not user.is_vip:
                         can_join = False
                         rejection_reason = "Este canal requiere membresía VIP."
                     
-                    # Verificar tokens requeridos si están configurados
-                    if access_rules.tokens_required > 0:
-                        # Aquí iría la verificación de tokens disponibles del usuario
-                        # Por ahora asumimos que no tiene suficientes tokens
+                    # Verificar progreso narrativo si está configurado
+                    if access_rules.narrative_progress_required:
+                        # Verificar si el usuario tiene el progreso narrativo requerido
+                        # Por ahora asumimos que no tiene el progreso requerido
                         can_join = False
-                        rejection_reason = f"Se requieren {access_rules.tokens_required} tokens para unirse a este canal."
+                        rejection_reason = f"Se requiere progreso narrativo '{access_rules.narrative_progress_required}' para unirse a este canal."
                 
                 if can_join:
                     # Crear membresía
                     expires_at = None
-                    if channel.type == "vip" and access_rules and access_rules.duration_days:
-                        expires_at = datetime.now() + timedelta(days=access_rules.duration_days)
+                    wait_time = timedelta(minutes=access_rules.wait_time_minutes) if access_rules.wait_time_minutes > 0 else None
                     
                     new_membership = ChannelMembership(
                         user_id=event.user_id,
                         channel_id=event.channel_id,
-                        is_active=True,
-                        join_date=datetime.now(),
+                        status="active",
+                        joined_at=datetime.now(),
                         expires_at=expires_at,
-                        role="member"
+                        user_metadata={"joined_from": "request_handler"}
                     )
                     
                     session.add(new_membership)
@@ -459,7 +458,7 @@ class ChannelService(ICoreService):
                 ).where(
                     and_(
                         ChannelMembership.user_id == user_id,
-                        ChannelMembership.is_active == True
+                        ChannelMembership.status == "active"
                     )
                 )
                 query_result = await session.execute(query)
@@ -471,8 +470,8 @@ class ChannelService(ICoreService):
                     
                     # Verificar si ha expirado
                     if membership.expires_at and membership.expires_at < datetime.now():
-                        # Marcar como inactiva
-                        membership.is_active = False
+                        # Marcar como expirada
+                        membership.status = "expired"
                         await session.commit()
                         
                         # Publicar evento de expiración
@@ -489,9 +488,9 @@ class ChannelService(ICoreService):
                         "telegram_id": channel.telegram_id,
                         "name": channel.name,
                         "description": channel.description,
-                        "joined_at": membership.join_date.isoformat(),
+                        "joined_at": membership.joined_at.isoformat(),
                         "expires_at": membership.expires_at.isoformat() if membership.expires_at else None,
-                        "role": membership.role
+                        "status": membership.status
                     }
                     
                     if channel.type == "free":
