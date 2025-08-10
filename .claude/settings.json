@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "subagents": {
+    "technical-pm-orchestrator": {
+      "path": "./agents/technical-pm-orchestrator.md"
+    },
+    "gamification-architect": {
+      "path": "./agents/gamification-architect.md"
+    },
+    "diana-integration-architect": {
+      "path": "./agents/diana-integration-architect.md"
+    },
+    "project-initializer": {
+      "path": "./agents/project-initializer.md"
+    },
+    "ui-component-builder": {
+      "path": "./agents/ui-component-builder.md"
+    }
+  }
+}
