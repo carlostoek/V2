@@ -25,6 +25,12 @@ from aiogram.filters import Command
 
 import structlog
 
+# UX Enhancement Imports
+from .diana_user_ux_enhancer import create_diana_ux_enhancer
+from .diana_personality_engine import create_diana_personality_engine
+from .diana_conversion_optimizer import create_diana_conversion_optimizer
+from ..utils.enhanced_error_handler import create_diana_error_handler
+
 # === USER SYSTEM CONFIGURATION ===
 
 class UserTier(Enum):
@@ -272,6 +278,15 @@ class DianaUserMasterSystem:
         # User context management
         self.user_contexts: Dict[int, DianaUserContext] = {}
         
+        # UX Enhancement Systems
+        self.ux_enhancer = create_diana_ux_enhancer(services)
+        self.personality_engine = create_diana_personality_engine(services)
+        self.conversion_optimizer = create_diana_conversion_optimizer(services)
+        self.error_handler = create_diana_error_handler(services)
+        
+        self.logger.info("Diana UX Enhancement Systems initialized",
+                        systems=['UX Enhancer', 'Personality Engine', 'Conversion Optimizer', 'Error Handler'])
+        
         # Narrative progression tracking
         self.narrative_states = {
             1: "Primera mirada curiosa",
@@ -378,24 +393,55 @@ class DianaUserMasterSystem:
     # === MAIN INTERFACE CREATION ===
     
     async def create_user_main_interface(self, user_id: int) -> Tuple[str, InlineKeyboardMarkup]:
-        """Create the main user interface with Diana's personality"""
-        context = await self.get_user_context(user_id)
-        
-        # Get real-time stats for Diana's observations
-        user_stats = await self._get_user_stats(user_id)
-        
-        # Diana's personalized greeting based on context
-        greeting = self._get_diana_greeting(context, user_stats)
-        
-        # Main interface text with Diana's voice
-        text = f"""{greeting}
+        """Create the main user interface with Diana's personality and UX enhancements"""
+        try:
+            context = await self.get_user_context(user_id)
+            
+            # Get real-time stats for Diana's observations
+            user_stats = await self._get_user_stats(user_id)
+            
+            # UX Enhancement: Analyze user preferences for optimal experience
+            ux_preferences = await self.ux_enhancer.analyze_user_ux_preferences(user_id)
+            
+            # Personality Enhancement: Generate contextual Diana greeting
+            personality_context = await self.personality_engine.get_personality_context(user_id)
+            greeting = self.personality_engine.generate_diana_message(user_id, "greetings", context_data=user_stats)
+            
+            # Conversion Enhancement: Analyze conversion opportunity
+            conversion_opportunity = await self.conversion_optimizer.analyze_conversion_readiness(user_id)
+            
+            # Main interface text with enhanced Diana's voice
+            text = f"""{greeting}
 
 {self._get_status_section(context, user_stats)}
 
 {self._get_navigation_intro(context)}"""
-
-        keyboard = self._create_main_user_keyboard(context)
-        return text, keyboard
+            
+            # Add contextual help if user needs guidance
+            contextual_help = self.ux_enhancer.get_contextual_help_message("main", ux_preferences)
+            if contextual_help:
+                text += f"\n\n{contextual_help}"
+            
+            # Enhanced keyboard with UX optimizations
+            keyboard = self.ux_enhancer.enhance_main_keyboard(
+                original_keyboard=None,
+                user_id=user_id, 
+                tier=context.tier.value,
+                ux_preferences=ux_preferences
+            )
+            
+            return text, keyboard
+            
+        except Exception as e:
+            self.logger.error("Error creating main interface", error=str(e))
+            # Use error handler for graceful recovery
+            error_message, error_keyboard = await self.error_handler.handle_error(
+                error=e,
+                user_id=user_id,
+                user_action="main_interface",
+                context_data={'section': 'main'}
+            )
+            return error_message, error_keyboard
     
     def _get_diana_greeting(self, context: DianaUserContext, stats: Dict[str, Any]) -> str:
         """Diana's personalized greeting based on user context"""

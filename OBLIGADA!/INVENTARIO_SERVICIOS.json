@@ -1,0 +1,16 @@
+{
+    "servicios": [
+        {
+            "id": "1",
+            "nombre": "Servicio A",
+            "descripcion": "Descripción del Servicio A",
+            "endpoint": "http://endpoint.servicioa.com"
+        },
+        {
+            "id": "2",
+            "nombre": "Servicio B",
+            "descripcion": "Descripción del Servicio B",
+            "endpoint": "http://endpoint.serviciob.com"
+        }
+    ]
+}

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from ..gamification.service import GamificationService
 from ...core.interfaces.ICoreService import ICoreService
+from ...core.interfaces.IEventBus import IEventBus
 
 logger = structlog.get_logger()
 
@@ -28,10 +29,15 @@ class ShopItem:
 class ShopService(ICoreService):
     """Servicio para gestionar la tienda de besitos."""
     
-    def __init__(self, gamification_service: GamificationService):
+    def __init__(self, event_bus: IEventBus, gamification_service: GamificationService = None):
+        self._event_bus = event_bus
         self.gamification_service = gamification_service
         self._items = self._initialize_shop_items()
         self._user_purchases = {}  # Tracking de compras por usuario
+    
+    async def setup(self):
+        """Configura el servicio de tienda."""
+        logger.info("ShopService inicializado correctamente")
         
     def _initialize_shop_items(self) -> Dict[str, ShopItem]:
         """Inicializa los artículos de la tienda."""

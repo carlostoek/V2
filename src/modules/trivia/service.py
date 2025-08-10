@@ -10,6 +10,7 @@ from enum import Enum
 
 from ..gamification.service import GamificationService
 from ...core.interfaces.ICoreService import ICoreService
+from ...core.interfaces.IEventBus import IEventBus
 
 logger = structlog.get_logger()
 
@@ -56,12 +57,17 @@ class TriviaSession:
 class TriviaService(ICoreService):
     """Servicio para gestionar trivias diarias y especiales."""
     
-    def __init__(self, gamification_service: GamificationService):
+    def __init__(self, event_bus: IEventBus, gamification_service: GamificationService = None):
+        self._event_bus = event_bus
         self.gamification_service = gamification_service
         self._questions = self._initialize_questions()
         self._active_sessions = {}  # user_id -> TriviaSession
         self._daily_completions = {}  # user_id -> date
         self._user_stats = {}  # user_id -> stats dict
+    
+    async def setup(self):
+        """Configura el servicio de trivia."""
+        logger.info("TriviaService inicializado correctamente")
         
     def _initialize_questions(self) -> Dict[str, TriviaQuestion]:
         """Inicializa el banco de preguntas de trivia."""
