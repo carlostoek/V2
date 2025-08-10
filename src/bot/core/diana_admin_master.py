@@ -1455,6 +1455,37 @@ Usa el menú de configuración para registrar canales."""
                     
             except ValueError:
                 await callback.answer("❌ ID de canal inválido")
+                
+        elif data == "add_channels":
+            # Start channel registration flow
+            if not hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
+                diana_admin_master.services_integration._pending_channel_registrations = set()
+            
+            diana_admin_master.services_integration._pending_channel_registrations.add(user_id)
+            
+            instructions_text = """📺 **Registro de Canal VIP**
+
+🔧 **Opciones para registrar el canal:**
+
+**1️⃣ Método recomendado - Reenviar mensaje:**
+• Ve al canal que quieres registrar
+• Reenvía cualquier mensaje de ese canal a este chat
+• El sistema detectará automáticamente la información
+
+**2️⃣ Método manual - Escribir ID:**
+• Escribe el ID del canal (ej: -1001234567890)
+• O el username del canal (ej: @mi_canal_vip)
+
+⏰ **Tienes 10 minutos para completar el proceso.**"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Cancelar Registro", callback_data="admin:channel_cancel")]
+            ])
+            
+            await callback.message.edit_text(instructions_text, reply_markup=keyboard, parse_mode="Markdown")
+            await callback.answer("📺 Proceso de registro iniciado")
         
         else:
             await callback.answer("❌ Acción desconocida")
