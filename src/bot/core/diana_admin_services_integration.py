@@ -696,6 +696,42 @@ class DianaAdminServicesIntegration:
                     "error": f"❌ Error al iniciar el proceso: {str(e)}",
                     "show_alert": True
                 }
+        elif action == "global_config:list_registered_channels":
+            # Show list of registered channels with management options
+            self.logger.info("📋 Mostrando canales registrados...")
+            
+            try:
+                await self.show_registered_channels_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "📋 Lista de canales mostrada",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error mostrando canales: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error al mostrar canales: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "global_config:check_channels_status":
+            # Check status of all registered channels
+            self.logger.info("🔍 Verificando estado de canales...")
+            
+            try:
+                await self.show_channels_status(user_id)
+                return {
+                    "success": True,
+                    "message": "🔍 Estado de canales verificado",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error verificando estado: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error al verificar estado: {str(e)}",
+                    "show_alert": True
+                }
         elif action == "global_config:cancel_add_channel":
             # Cancel channel registration
             self.logger.info("❌ Cancelando registro de canal...")
@@ -2099,3 +2135,123 @@ Envía el nuevo {field_names[field]} para esta tarifa.
         except Exception as e:
             self.logger.error(f"❌ Error procesando edición de campo: {e}")
             return {"success": False, "message": f"❌ Error: {str(e)}"}
+
+    # ==========================================
+    # GESTIÓN DE CANALES - GLOBAL CONFIG
+    # ==========================================
+
+    async def get_registered_channels_data(self) -> Dict[str, Any]:
+        """
+        Obtiene los datos de los canales registrados.
+        """
+        try:
+            from src.bot.database.engine import get_session
+            
+            channel_service = self.services.get('channel')
+            if not channel_service:
+                return {
+                    "success": False,
+                    "error": "ChannelService no disponible",
+                    "channels": []
+                }
+
+            # Obtener todos los canales registrados
+            async for session in get_session():
+                # Obtener canales activos de la base de datos
+                from src.bot.database.models.channel import Channel
+                from sqlalchemy import select
+                
+                query = select(Channel).where(Channel.is_active == True)
+                result = await session.execute(query)
+                channels = result.scalars().all()
+                
+                channels_data = []
+                for channel in channels:
+                    channels_data.append({
+                        "id": channel.id,
+                        "name": channel.name,
+                        "type": channel.type,
+                        "telegram_id": channel.telegram_id,
+                        "description": channel.description,
+                        "is_active": channel.is_active
+                    })
+                
+                return {
+                    "success": True,
+                    "channels": channels_data,
+                    "total": len(channels_data)
+                }
+
+        except Exception as e:
+            self.logger.error(f"Error obteniendo canales registrados: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "channels": []
+            }
+
+    async def get_channels_status_data(self) -> Dict[str, Any]:
+        """
+        Obtiene el estado detallado de todos los canales registrados.
+        """
+        try:
+            from src.bot.database.engine import get_session
+            
+            channel_service = self.services.get('channel')
+            if not channel_service:
+                return {
+                    "success": False,
+                    "error": "ChannelService no disponible",
+                    "channels": []
+                }
+
+            async for session in get_session():
+                from src.bot.database.models.channel import Channel, ChannelMembership
+                from src.bot.database.models.tariff import Tariff
+                from sqlalchemy import select, func
+                from sqlalchemy.orm import selectinload
+                
+                # Obtener canales con estadísticas
+                query = select(Channel).options(
+                    selectinload(Channel.tariffs)
+                ).where(Channel.is_active == True)
+                result = await session.execute(query)
+                channels = result.scalars().all()
+                
+                channels_status = []
+                for channel in channels:
+                    # Contar miembros activos
+                    members_query = select(func.count(ChannelMembership.id)).where(
+                        ChannelMembership.channel_id == channel.id,
+                        ChannelMembership.status == "active"
+                    )
+                    members_result = await session.execute(members_query)
+                    members_count = members_result.scalar() or 0
+                    
+                    # Contar tarifas activas
+                    tariffs_count = len([t for t in channel.tariffs if t.is_active])
+                    
+                    channels_status.append({
+                        "id": channel.id,
+                        "name": channel.name,
+                        "type": channel.type,
+                        "telegram_id": channel.telegram_id,
+                        "description": channel.description,
+                        "is_active": channel.is_active,
+                        "members_count": members_count,
+                        "tariffs_count": tariffs_count
+                    })
+                
+                return {
+                    "success": True,
+                    "channels": channels_status,
+                    "total": len(channels_status)
+                }
+
+        except Exception as e:
+            self.logger.error(f"Error obteniendo estado de canales: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "channels": []
+            }

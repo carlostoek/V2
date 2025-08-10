@@ -640,6 +640,18 @@ class DianaAdminMaster:
                         {'text': '📊 Estado de Canales', 'callback': 'admin:action:global_config:channel_stats'}
                     ]
                 }
+            elif subsection_key == "manage":
+                return {
+                    'lucien_quote': "Diana comprende que cada dominio debe ser vigilado y, cuando sea necesario, renovado. Aquí residen los territorios bajo su control.",
+                    'description': "<b>🎚 Administración de Canales Registrados</b>\nControl total sobre los dominios establecidos de Diana.",
+                    'stats': "• <b>Canales activos:</b> Bajo vigilancia constante\n• <b>Última verificación:</b> En tiempo real\n• <b>Estado del sistema:</b> Operacional",
+                    'content': "<b>🏛️ Gestión de Dominios Existentes:</b>\n• <b>Visualización completa:</b> Lista de todos los canales registrados\n• <b>Control de acceso:</b> Eliminar canales cuando sea necesario\n• <b>Renovación de territorios:</b> Reemplazar canales obsoletos\n• <b>Monitoreo continuo:</b> Estado y rendimiento en tiempo real",
+                    'actions': [
+                        {'text': '📋 Ver Canales Registrados', 'callback': 'admin:action:global_config:list_registered_channels'},
+                        {'text': '🔍 Verificar Estado', 'callback': 'admin:action:global_config:check_channels_status'},
+                        {'text': '➕ Agregar Nuevo Canal', 'callback': 'admin:action:global_config:add_channels'}
+                    ]
+                }
                 
         # Default fallback content with Lucien's touch
         return {
@@ -1187,6 +1199,269 @@ Usa /start para regresar al menú principal."""
         await callback.answer("❌ Error interno del sistema")
     
     await callback.answer()
+
+@admin_router.callback_query(F.data.startswith("admin:action:global_config:"))
+async def handle_global_config_actions(callback: CallbackQuery):
+    """Handle global config specific actions"""
+    if not diana_admin_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+    
+    data = callback.data.replace("admin:action:global_config:", "")
+    user_id = callback.from_user.id
+    
+    try:
+        if data == "list_registered_channels":
+            # Get registered channels data and show interface
+            channels_data = await diana_admin_master.services_integration.get_registered_channels_data()
+            
+            if not channels_data["success"]:
+                error_text = f"❌ **Error al cargar canales**\n\n{channels_data['error']}\n\nIntenta de nuevo o contacta al administrador."
+                
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⬅️ Volver", callback_data="admin:section:global_config")]
+                ])
+                
+                await callback.message.edit_text(error_text, reply_markup=keyboard, parse_mode="Markdown")
+                return
+            
+            channels = channels_data["channels"]
+            
+            if not channels:
+                no_channels_text = """📋 **Canales Registrados**
+
+❌ No hay canales registrados actualmente.
+
+Usa el menú de configuración para registrar canales."""
+                
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⬅️ Volver", callback_data="admin:section:global_config")]
+                ])
+                
+                await callback.message.edit_text(no_channels_text, reply_markup=keyboard, parse_mode="Markdown")
+                return
+            
+            # Construir mensaje con lista de canales
+            message = "📋 **Canales Registrados**\n\n"
+            buttons = []
+            
+            for channel in channels:
+                channel_type_icon = "💎" if channel["type"] == "vip" else "🆓"
+                message += f"{channel_type_icon} **{channel['name']}**\n"
+                message += f"   • Tipo: {channel['type'].upper()}\n"
+                message += f"   • ID: `{channel['telegram_id']}`\n"
+                if channel["description"]:
+                    message += f"   • {channel['description']}\n"
+                message += "\n"
+                
+                # Agregar botón para eliminar cada canal
+                buttons.append([{
+                    "text": f"🗑️ Eliminar {channel['name']}",
+                    "callback_data": f"admin:action:global_config:delete_channel:{channel['id']}"
+                }])
+            
+            # Botones adicionales
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            additional_buttons = [
+                [InlineKeyboardButton(text="🔄 Actualizar Lista", callback_data="admin:action:global_config:list_registered_channels")],
+                [InlineKeyboardButton(text="📊 Estado de Canales", callback_data="admin:action:global_config:check_channels_status")],
+                [InlineKeyboardButton(text="⬅️ Volver", callback_data="admin:section:global_config")]
+            ]
+            
+            # Convertir buttons dict a InlineKeyboardButton
+            inline_buttons = []
+            for button_row in buttons:
+                row = []
+                for btn in button_row:
+                    row.append(InlineKeyboardButton(text=btn["text"], callback_data=btn["callback_data"]))
+                inline_buttons.append(row)
+            
+            # Agregar botones adicionales
+            inline_buttons.extend(additional_buttons)
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=inline_buttons)
+            await callback.message.edit_text(message, reply_markup=keyboard, parse_mode="Markdown")
+            
+        elif data == "check_channels_status":
+            # Get channels status data and show interface
+            status_data = await diana_admin_master.services_integration.get_channels_status_data()
+            
+            if not status_data["success"]:
+                error_text = f"❌ **Error al verificar estado**\n\n{status_data['error']}\n\nIntenta de nuevo o contacta al administrador."
+                
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⬅️ Volver", callback_data="admin:section:global_config")]
+                ])
+                
+                await callback.message.edit_text(error_text, reply_markup=keyboard, parse_mode="Markdown")
+                return
+            
+            channels = status_data["channels"]
+            
+            if not channels:
+                no_channels_text = """📊 **Estado de Canales**
+
+❌ No hay canales registrados para mostrar estado."""
+                
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⬅️ Volver", callback_data="admin:section:global_config")]
+                ])
+                
+                await callback.message.edit_text(no_channels_text, reply_markup=keyboard, parse_mode="Markdown")
+                return
+            
+            message = "📊 **Estado de Canales**\n\n"
+            
+            for channel in channels:
+                channel_type_icon = "💎" if channel["type"] == "vip" else "🆓"
+                message += f"{channel_type_icon} **{channel['name']}** ({channel['type'].upper()})\n"
+                message += f"   👥 Miembros: {channel['members_count']}\n"
+                message += f"   💰 Tarifas activas: {channel['tariffs_count']}\n"
+                message += f"   🆔 ID Telegram: `{channel['telegram_id']}`\n"
+                message += f"   ✅ Estado: {'Activo' if channel['is_active'] else 'Inactivo'}\n"
+                
+                if channel["description"]:
+                    message += f"   📝 {channel['description']}\n"
+                
+                message += "\n"
+            
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Actualizar Estado", callback_data="admin:action:global_config:check_channels_status")],
+                [InlineKeyboardButton(text="📋 Ver Lista Canales", callback_data="admin:action:global_config:list_registered_channels")],
+                [InlineKeyboardButton(text="⬅️ Volver", callback_data="admin:section:global_config")]
+            ])
+            
+            await callback.message.edit_text(message, reply_markup=keyboard, parse_mode="Markdown")
+            
+        elif data.startswith("delete_channel:"):
+            # Extract channel ID and delete channel
+            channel_id_str = data.replace("delete_channel:", "")
+            
+            try:
+                channel_id = int(channel_id_str)
+                
+                # Confirm deletion first
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                # Get channel info first
+                channel_service = diana_admin_master.services_integration.services.get('channel')
+                if not channel_service:
+                    await callback.answer("❌ ChannelService no disponible")
+                    return
+                
+                channel_info = await channel_service.get_channel(channel_id)
+                if not channel_info:
+                    await callback.answer("❌ Canal no encontrado")
+                    return
+                
+                confirmation_text = f"""🗑️ **Confirmar Eliminación de Canal**
+
+⚠️ **ATENCIÓN:** Esta acción eliminará permanentemente:
+
+📺 **Canal:** {channel_info['name']}
+🆔 **ID:** `{channel_info['telegram_id']}`
+🏷️ **Tipo:** {channel_info['type'].upper()}
+👥 **Miembros:** {channel_info.get('members_count', 0)}
+
+**¿Estás seguro de que deseas continuar?**
+
+*Esta acción no se puede deshacer.*"""
+
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="✅ Sí, Eliminar", 
+                            callback_data=f"admin:action:global_config:confirm_delete_channel:{channel_id}"
+                        ),
+                        InlineKeyboardButton(
+                            text="❌ Cancelar", 
+                            callback_data="admin:action:global_config:list_registered_channels"
+                        )
+                    ]
+                ])
+                
+                await callback.message.edit_text(
+                    confirmation_text, 
+                    reply_markup=keyboard, 
+                    parse_mode="Markdown"
+                )
+                
+            except ValueError:
+                await callback.answer("❌ ID de canal inválido")
+                
+        elif data.startswith("confirm_delete_channel:"):
+            # Actually delete the channel
+            channel_id_str = data.replace("confirm_delete_channel:", "")
+            
+            try:
+                channel_id = int(channel_id_str)
+                
+                channel_service = diana_admin_master.services_integration.services.get('channel')
+                if not channel_service:
+                    await callback.answer("❌ ChannelService no disponible")
+                    return
+                
+                # Get channel name before deletion for confirmation message
+                channel_info = await channel_service.get_channel(channel_id)
+                channel_name = channel_info['name'] if channel_info else f"Canal #{channel_id}"
+                
+                # Perform deletion (soft delete)
+                success = await channel_service.delete_channel(channel_id)
+                
+                if success:
+                    # Show success message and return to channel list
+                    success_text = f"""✅ **Canal Eliminado Exitosamente**
+
+🗑️ El canal **{channel_name}** ha sido eliminado del sistema.
+
+• Los datos se han marcado como inactivos
+• Las membresías han sido desactivadas
+• El canal ya no aparecerá en las listas
+
+**Regresando a la lista de canales...**"""
+
+                    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                    
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(
+                            text="📋 Ver Canales Restantes", 
+                            callback_data="admin:action:global_config:list_registered_channels"
+                        )],
+                        [InlineKeyboardButton(
+                            text="⬅️ Configuración", 
+                            callback_data="admin:section:global_config"
+                        )]
+                    ])
+                    
+                    await callback.message.edit_text(
+                        success_text, 
+                        reply_markup=keyboard, 
+                        parse_mode="Markdown"
+                    )
+                    
+                    # Show brief success alert
+                    await callback.answer(f"✅ Canal {channel_name} eliminado", show_alert=False)
+                    
+                else:
+                    await callback.answer("❌ Error al eliminar canal")
+                    await diana_admin_master.services_integration.show_registered_channels_interface(user_id)
+                    
+            except ValueError:
+                await callback.answer("❌ ID de canal inválido")
+        
+        else:
+            await callback.answer("❌ Acción desconocida")
+            
+    except Exception as e:
+        structlog.get_logger().error(f"Error in global_config action: {e}")
+        await callback.answer("❌ Error procesando acción")
 
 # === EXPORT FUNCTION ===
 
