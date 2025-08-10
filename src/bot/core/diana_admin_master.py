@@ -75,12 +75,14 @@ ADMIN_MENU_STRUCTURE = {
         title="Narrativa",
         icon="📖",
         subsections={
-            "progress": "📊 Progreso",
-            "fragments": "🧩 Fragmentos", 
-            "choices": "🔄 Decisiones",
-            "lore": "📜 Lore"
+            "progress": "📊 Progreso General",
+            "fragments": "🧩 Fragmentos de Historia", 
+            "choices": "🔄 Decisiones Narrativas",
+            "lore": "📜 Piezas de Lore",
+            "triggers": "⚡ Disparadores",
+            "archetypes": "🎭 Arquetipos"
         },
-        description="Gestión del sistema de narrativa y progreso"
+        description="Gestión completa del sistema narrativo de Diana"
     ),
     "free_channel": AdminMenuSection(
         key="free_channel",
@@ -398,13 +400,15 @@ class DianaAdminMaster:
 
 <i>Lucien custodia los secretos de la narrativa...</i>
 
-<b>📊 Progreso General:</b>
-• Fragmentos desbloqueados: {narrative_stats.get('unlocked_fragments', 0)}
+<b>📊 Estado Actual del Sistema:</b>
+• Fragmentos desbloqueados: {narrative_stats.get('unlocked_fragments', 0)}/{narrative_stats.get('total_fragments', 0)}
 • Decisiones registradas: {narrative_stats.get('recorded_choices', 0)}
-• Lore descubierto: {narrative_stats.get('discovered_lore', 0)}
+• Piezas de lore descubiertas: {narrative_stats.get('discovered_lore', 0)}/{narrative_stats.get('total_lore', 0)}
+• Arquetipos detectados: {narrative_stats.get('detected_archetypes', 0)}
+• Disparadores activos: {narrative_stats.get('active_triggers', 0)}
 
 <b>⚙️ Herramientas de Narrativa:</b>
-<i>Selecciona una opción para gestionar la narrativa</i>"""
+<i>Selecciona una opción para gestionar el sistema narrativo</i>"""
 
         buttons = [
             [
@@ -414,6 +418,10 @@ class DianaAdminMaster:
             [
                 InlineKeyboardButton(text="🔄 Decisiones", callback_data="admin:subsection:narrative:choices"),
                 InlineKeyboardButton(text="📜 Lore", callback_data="admin:subsection:narrative:lore")
+            ],
+            [
+                InlineKeyboardButton(text="⚡ Disparadores", callback_data="admin:subsection:narrative:triggers"),
+                InlineKeyboardButton(text="🎭 Arquetipos", callback_data="admin:subsection:narrative:archetypes")
             ],
             [
                 InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main"),

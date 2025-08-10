@@ -696,6 +696,54 @@ class DianaAdminServicesIntegration:
         """Handle gamification-related admin actions"""
         # Placeholder for gamification actions  
         return {"success": True, "message": f"Gamification action {action} executed successfully"}
+
+    async def _handle_narrative_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle narrative-related admin actions"""
+        try:
+            if action.startswith("narrative:"):
+                action = action.replace("narrative:", "")
+                
+                if action == "get_fragments":
+                    fragment_type = params.get("type")
+                    fragments = await self.get_narrative_fragments(fragment_type)
+                    return {
+                        "success": True,
+                        "fragments": fragments,
+                        "count": len(fragments)
+                    }
+                    
+                elif action == "get_archetypes":
+                    archetype_data = await self.get_archetype_data()
+                    return {
+                        "success": True,
+                        "archetypes": archetype_data.get("archetypes", []),
+                        "stats": archetype_data.get("stats", {})
+                    }
+                    
+                elif action == "get_triggers":
+                    emotional_service = self.services.get('emotional')
+                    if emotional_service and hasattr(emotional_service, 'get_triggers'):
+                        triggers = await emotional_service.get_triggers()
+                        return {
+                            "success": True,
+                            "triggers": triggers
+                        }
+                    return {
+                        "success": False,
+                        "error": "EmotionalService no disponible"
+                    }
+                    
+            return {
+                "success": False,
+                "error": f"Acción de narrativa desconocida: {action}"
+            }
+            
+        except Exception as e:
+            self.logger.error("Error en acción de narrativa", error=str(e))
+            return {
+                "success": False,
+                "error": str(e)
+            }
     
     async def _handle_channel_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle channel-related admin actions"""
