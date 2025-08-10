@@ -47,13 +47,36 @@ ADMIN_MENU_STRUCTURE = {
         title="VIP",
         icon="💎",
         subsections={
-            "config": "🛠 Configuración VIP (Mensajes/Recordatorios/Suscripciones/Despedidas)",
-            "invite": "🏷 Generar Invitación", 
-            "stats": "📊 Estadísticas VIP",
-            "subscribers": "📊 Suscriptores (CRUD)",
-            "post": "📢 Enviar Post"
+            "config": "⚙️ Configuración VIP",
+            "tokens": "🔑 Gestión de Tokens",
+            "stats": "📊 Estadísticas",
+            "subscribers": "👥 Suscriptores",
+            "tariffs": "💰 Tarifas"
         },
-        description="Gestión completa del sistema VIP"
+        description="Gestión del sistema VIP y suscripciones"
+    ),
+    "gamification": AdminMenuSection(
+        key="gamification",
+        title="Gamificación",
+        icon="🎮",
+        subsections={
+            "points": "✨ Sistema de Puntos",
+            "missions": "📜 Misiones",
+            "achievements": "🏆 Logros",
+            "rewards": "🎁 Recompensas"
+        },
+        description="Gestión del sistema de gamificación"
+    ),
+    "content": AdminMenuSection(
+        key="content",
+        title="Contenido",
+        icon="📚",
+        subsections={
+            "narrative": "📖 Narrativa",
+            "trivia": "❓ Trivias",
+            "channels": "📺 Canales"
+        },
+        description="Gestión de contenido y narrativa"
     ),
     "free_channel": AdminMenuSection(
         key="free_channel",

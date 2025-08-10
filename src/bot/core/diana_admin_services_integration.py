@@ -240,11 +240,40 @@ class DianaAdminServicesIntegration:
     # === VIP/ADMIN INTEGRATION ===
     
     async def get_vip_system_stats(self) -> Dict[str, Any]:
-        """Get VIP system statistics with fallback"""
+        """Get VIP system statistics with service integration"""
         
         cache_key = "vip_stats"
         if self._is_cache_valid(cache_key):
             return self._stats_cache[cache_key]
+            
+        try:
+            # Try to get stats from TariffService first
+            tariff_service = self.services.get('tariff')
+            if tariff_service and hasattr(tariff_service, 'get_system_stats'):
+                stats = await tariff_service.get_system_stats()
+                if stats:
+                    self._cache_stats(cache_key, stats, minutes=5)
+                    return stats
+            
+            # Fallback to Tokeneitor if available
+            tokeneitor = self.services.get('tokeneitor')
+            if tokeneitor and hasattr(tokeneitor, 'get_token_stats'):
+                token_stats = await tokeneitor.get_token_stats()
+                if token_stats:
+                    stats = {
+                        'active_subscriptions': token_stats.get('active', 0),
+                        'pending_tokens': token_stats.get('pending', 0),
+                        'revenue_today': token_stats.get('revenue_day', 0),
+                        'revenue_month': token_stats.get('revenue_month', 0)
+                    }
+                    self._cache_stats(cache_key, stats, minutes=5)
+                    return stats
+            
+            return self._get_fallback_vip_stats()
+            
+        except Exception as e:
+            self.logger.error("Error getting VIP stats from services", error=str(e))
+            return self._get_fallback_vip_stats()
             
         try:
             if "admin" not in self.services:
