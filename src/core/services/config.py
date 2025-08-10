@@ -14,7 +14,7 @@ logger = structlog.get_logger()
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    bot_token: str = "default-token"  # Provide default for tests
+    bot_token: str = "7570619877:AAHJMc_PNgZT9rpjUzpp19FMo7WlmHfA5Ms"  # Provide default for tests
 
 # Only initialize if not in test environment
 settings = None
