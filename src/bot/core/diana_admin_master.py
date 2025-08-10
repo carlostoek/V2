@@ -589,9 +589,9 @@ class DianaAdminMaster:
                     'stats': "• <b>Llaves en circulación:</b> 12 invitaciones activas\n• <b>Accesos otorgados hoy:</b> 3 almas elevadas\n• <b>Llaves expiradas:</b> 2 oportunidades perdidas",
                     'content': "<b>🎫 Taller de Invitaciones Especiales:</b>\n• <b>Forjar nuevas llaves:</b> Crear tokens únicos\n• <b>Duración del encanto:</b> Configurar vigencia\n• <b>Asignación de privilegios:</b> Vincular a niveles VIP\n• <b>Vigilancia de uso:</b> Monitorear activaciones",
                     'actions': [
-                        {'text': '➕ Forjar Token', 'callback': 'admin:action:vip:generate_token'},
-                        {'text': '📋 Llaves Activas', 'callback': 'admin:action:vip:list_tokens'},
-                        {'text': '⚙️ Configurar Llaves', 'callback': 'admin:action:vip:config_tokens'},
+                        {'text': '🎫 Generar Token', 'callback': 'admin:action:vip:generate_token'},
+                        {'text': '📋 Tokens Activos', 'callback': 'admin:action:vip:list_tokens'},
+                        {'text': '⚙️ Configurar Tokens', 'callback': 'admin:action:vip:config_tokens'},
                         {'text': '📊 Registro de Uso', 'callback': 'admin:action:vip:token_stats'}
                     ]
                 }
@@ -779,6 +779,18 @@ async def handle_admin_text_messages(message: Message):
                 await handle_tariff_creation_input(message, user_id, text)
                 return
         
+        # Check if user is in pending tariff field edit
+        if hasattr(diana_admin_master.services_integration, '_pending_tariff_edits'):
+            if user_id in diana_admin_master.services_integration._pending_tariff_edits:
+                result = await diana_admin_master.services_integration.process_tariff_field_edit(user_id, text)
+                if result.get('success'):
+                    # Field updated successfully, interface already updated
+                    pass
+                else:
+                    # Show error message
+                    await message.answer(result.get('message', 'Error desconocido'))
+                return
+        
         # Check if user is in pending channel registration
         if hasattr(diana_admin_master.services_integration, '_pending_channel_registrations'):
             if user_id in diana_admin_master.services_integration._pending_channel_registrations:
@@ -831,8 +843,22 @@ async def handle_admin_text_messages(message: Message):
 async def handle_tariff_creation_input(message: Message, user_id: int, text: str):
     """Handle input during tariff creation flow"""
     try:
+        structlog.get_logger().info(f"📝 Procesando input de tarifa para usuario {user_id}: {text[:50]}...")
+        
+        if not hasattr(diana_admin_master.services_integration, '_pending_tariff_creation'):
+            structlog.get_logger().error("❌ No hay _pending_tariff_creation")
+            await message.answer("❌ No hay proceso de creación activo.")
+            return
+            
+        if user_id not in diana_admin_master.services_integration._pending_tariff_creation:
+            structlog.get_logger().error(f"❌ Usuario {user_id} no está en _pending_tariff_creation")
+            await message.answer("❌ No hay proceso de creación activo para tu usuario.")
+            return
+            
         tariff_data = diana_admin_master.services_integration._pending_tariff_creation[user_id]
         current_step = tariff_data['step']
+        
+        structlog.get_logger().info(f"📝 Paso actual: {current_step}, datos: {tariff_data}")
         
         if current_step == 'price':
             # Validate price input
@@ -888,8 +914,12 @@ Selecciona la <b>duración del acceso VIP</b> que tendrán los usuarios con esta
                 
             tariff_data['data']['name'] = name
             
+            structlog.get_logger().info(f"📝 Datos finales para crear tarifa: {tariff_data['data']}")
+            
             # Create the tariff
-            result = await diana_admin_master.services_integration.create_tariff_from_flow_data(user_id)
+            structlog.get_logger().info("📝 Llamando a create_tariff_from_flow_data...")
+            result = await diana_admin_master.services_integration.create_tariff_from_flow_data(user_id, tariff_data['data'])
+            structlog.get_logger().info(f"📝 Resultado de creación: {result}")
             
             if result and result.get('success'):
                 tariff_info = result.get('tariff_info', {})

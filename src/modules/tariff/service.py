@@ -26,15 +26,22 @@ class TariffService(ICoreService):
     async def setup(self) -> None:
         """Inicializa el servicio."""
         from src.bot.database.engine import async_session
-        self._session = async_session()
+        self._session = async_session
 
     # ==========================================
     # GESTIÓN DE TARIFAS
     # ==========================================
 
-    async def create_tariff(self, name: str, price: float, duration_days: int, description: str = "") -> Dict:
+    async def create_tariff(self, name: str, price: float, duration_days: int, channel_id: int, description: str = "") -> Dict:
         """
         Crea una nueva tarifa VIP.
+        
+        Args:
+            name: Nombre de la tarifa
+            price: Precio de la tarifa
+            duration_days: Duración en días
+            channel_id: ID del canal al que pertenece la tarifa
+            description: Descripción opcional
         
         Returns:
             dict: {"success": bool, "tariff": Tariff, "message": str}
@@ -44,6 +51,7 @@ class TariffService(ICoreService):
                 name=name, 
                 price=price, 
                 duration_days=duration_days,
+                channel_id=channel_id,
                 description=description,
                 created_at=datetime.now()
             )

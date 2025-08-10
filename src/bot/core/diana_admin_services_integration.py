@@ -594,30 +594,21 @@ class DianaAdminServicesIntegration:
         self.logger.info(f"🔍 Manejando acción VIP: {action} para usuario {user_id}")
         
         if action == "vip:generate_token":
-            # Forjar Token button pressed
-            self.logger.info("🎫 Iniciando proceso de forjar token...")
+            # Generate Token button pressed - Show tariff selection
+            self.logger.info("🎫 Mostrando selección de tarifas para generar token...")
             
             try:
-                token_url = await self.generate_vip_token(user_id)
-                if token_url:
-                    self.logger.info(f"✅ Token generado exitosamente: {token_url[:50]}...")
-                    return {
-                        "success": True, 
-                        "message": f"🎫 Token forjado exitosamente!\n\n{token_url}",
-                        "show_alert": True
-                    }
-                else:
-                    self.logger.error("❌ generate_vip_token devolvió None")
-                    return {
-                        "success": False, 
-                        "error": "❌ Error al forjar token. El servicio devolvió None.",
-                        "show_alert": True
-                    }
+                await self.show_tariff_selection_for_token(user_id)
+                return {
+                    "success": True, 
+                    "message": "🎫 Selecciona una tarifa para generar el token",
+                    "show_alert": False
+                }
             except Exception as e:
-                self.logger.error(f"❌ Excepción en _handle_vip_action: {e}")
+                self.logger.error(f"❌ Excepción mostrando selección de tarifas: {e}")
                 return {
                     "success": False, 
-                    "error": f"❌ Error al forjar token: {str(e)}",
+                    "error": f"❌ Error al mostrar tarifas: {str(e)}",
                     "show_alert": True
                 }
         elif action == "vip:manage_tariffs":
@@ -636,6 +627,31 @@ class DianaAdminServicesIntegration:
                 return {
                     "success": False,
                     "error": f"❌ Error al mostrar tarifas: {str(e)}",
+                    "show_alert": True
+                }
+        elif action.startswith("vip:token_generate:"):
+            # Handle token generation for specific tariff
+            tariff_id = int(action.replace("vip:token_generate:", ""))
+            self.logger.info(f"🎫 Generando token para tarifa {tariff_id}...")
+            
+            try:
+                result = await self.generate_token_for_tariff(user_id, tariff_id)
+                if result["success"]:
+                    return {
+                        "success": True,
+                        "message": f"🎫 Token generado exitosamente!\n\n{result['token_url']}",
+                        "show_alert": True
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Error generando token: {result['error']}",
+                        "show_alert": True
+                    }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Error procesando token: {str(e)}",
                     "show_alert": True
                 }
         elif action.startswith("vip:tariff_"):
@@ -1045,6 +1061,7 @@ Para comenzar a generar tokens VIP, primero debes crear al menos una tarifa. Cad
                     'duration_days': tariff.duration_days,
                     'description': tariff.description,
                     'is_active': tariff.is_active,
+                    'channel_id': tariff.channel_id,
                     'created_at': tariff.created_at
                 })
             
@@ -1099,6 +1116,38 @@ Para comenzar a generar tokens VIP, primero debes crear al menos una tarifa. Cad
                     "message": "📋 Lista completa de tarifas mostrada.",
                     "show_alert": False
                 }
+            elif action == "cancel":
+                # Cancel tariff creation flow
+                if hasattr(self, '_pending_tariff_creation') and user_id in self._pending_tariff_creation:
+                    del self._pending_tariff_creation[user_id]
+                
+                # Send updated interface
+                await self.show_tariffs_management_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "❌ Creación de tarifa cancelada.",
+                    "show_alert": False
+                }
+            elif action.startswith("edit_price:"):
+                # Edit tariff price
+                tariff_id = int(action.split(":")[1])
+                return await self._start_edit_tariff_field(user_id, tariff_id, "price")
+            elif action.startswith("edit_duration:"):
+                # Edit tariff duration
+                tariff_id = int(action.split(":")[1])
+                return await self._start_edit_tariff_field(user_id, tariff_id, "duration")
+            elif action.startswith("edit_name:"):
+                # Edit tariff name
+                tariff_id = int(action.split(":")[1])
+                return await self._start_edit_tariff_field(user_id, tariff_id, "name")
+            elif action.startswith("edit_desc:"):
+                # Edit tariff description
+                tariff_id = int(action.split(":")[1])
+                return await self._start_edit_tariff_field(user_id, tariff_id, "description")
+            elif action.startswith("edit_cancel:"):
+                # Cancel tariff field editing
+                tariff_id = int(action.split(":")[1])
+                return await self._cancel_edit_tariff_field(user_id, tariff_id)
             else:
                 return {
                     "success": False,
@@ -1180,11 +1229,20 @@ Envía el <b>precio de la tarifa</b> en dólares (USD).
                     "message": "❌ TariffService no disponible"
                 }
             
+            # Get the VIP channel (should be only one)
+            vip_channel = await self._get_vip_channel()
+            if not vip_channel:
+                return {
+                    "success": False,
+                    "message": "❌ No hay canal VIP registrado. Registra un canal VIP primero en Configuración Global → Añadir Canales."
+                }
+            
             # Create tariff using TariffService
             result = await tariff_service.create_tariff(
                 name=flow_data.get('name', 'Tarifa VIP'),
                 price=float(flow_data.get('price', 0)),
                 duration_days=int(flow_data.get('duration_days', 30)),
+                channel_id=vip_channel['id'],
                 description=flow_data.get('description', f"Tarifa creada por admin {admin_id}")
             )
             
@@ -1238,11 +1296,12 @@ Envía el <b>precio de la tarifa</b> en dólares (USD).
                     "message": "❌ Tarifa no encontrada"
                 }
             
-            # For now, just show tariff info and return success
-            # Full edit implementation would require interactive flow
+            # Show detailed tariff information with edit interface
+            await self._show_tariff_edit_interface(admin_id, tariff)
             return {
                 "success": True,
-                "message": f"📝 Editando tarifa '{tariff.name}':\n• Precio: ${tariff.price}\n• Duración: {tariff.duration_days} días\n\n(Funcionalidad completa pendiente)"
+                "message": f"📝 Mostrando detalles de tarifa '{tariff.name}'",
+                "show_alert": False
             }
                 
         except Exception as e:
@@ -1270,9 +1329,14 @@ Envía el <b>precio de la tarifa</b> en dólares (USD).
             
             if result['success']:
                 self.logger.info(f"✅ Tarifa {tariff_id} eliminada exitosamente")
+                
+                # Update interface in real time
+                await self.show_tariffs_management_interface(admin_id)
+                
                 return {
                     "success": True,
-                    "message": f"✅ {result['message']}"
+                    "message": f"✅ {result['message']}",
+                    "show_alert": False
                 }
             else:
                 self.logger.error(f"❌ Error del TariffService: {result['message']}")
@@ -1582,3 +1646,456 @@ Para registrar un nuevo canal VIP, puedes:
                 "message": f"❌ Error al registrar canal: {str(e)}",
                 "show_alert": True
             }
+    
+    # === TOKEN GENERATION WITH TARIFF SELECTION ===
+    
+    async def show_tariff_selection_for_token(self, admin_id: int):
+        """Show tariff selection interface for token generation"""
+        try:
+            self.logger.info(f"🎫 Mostrando selección de tarifas para admin {admin_id}")
+            
+            # Get available tariffs
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                raise Exception("Servicio de tarifas no disponible")
+            
+            tariffs_result = await tariff_service.get_all_tariffs()
+            if not tariffs_result or not tariffs_result.get('success'):
+                raise Exception("No se pudieron obtener las tarifas")
+            
+            tariffs = tariffs_result.get('tariffs', [])
+            
+            if not tariffs:
+                # No tariffs available - suggest creating one
+                message_text = """<b>🎫 Generar Token VIP</b>
+
+<i>Lucien observa que no hay tarifas disponibles...</i>
+
+Para generar tokens VIP, primero necesitas crear tarifas que definan:
+• <b>Precio:</b> Cuánto costará la suscripción
+• <b>Duración:</b> Tiempo de acceso VIP 
+• <b>Nombre:</b> Identificación de la tarifa
+
+<b>¿Deseas crear una tarifa ahora?</b>"""
+
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🏷️ Crear Tarifa", callback_data="admin:action:vip:tariff_create")],
+                    [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:subsection:vip:invite")]
+                ])
+            else:
+                # Show tariffs for selection
+                message_text = f"""<b>🎫 Generar Token VIP</b>
+
+<i>Lucien presenta las tarifas disponibles...</i>
+
+Selecciona la <b>tarifa</b> para la cual deseas generar un token de acceso:
+
+<b>📋 Tarifas Disponibles:</b>"""
+
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                buttons = []
+                for tariff in tariffs:
+                    tariff_text = f"💎 {tariff['name']} - ${tariff['price']} ({self._format_duration_days(tariff['duration_days'])})"
+                    buttons.append([
+                        InlineKeyboardButton(
+                            text=tariff_text,
+                            callback_data=f"admin:action:vip:token_generate:{tariff['id']}"
+                        )
+                    ])
+                
+                # Add navigation buttons
+                buttons.extend([
+                    [InlineKeyboardButton(text="🏷️ Gestionar Tarifas", callback_data="admin:action:vip:manage_tariffs")],
+                    [InlineKeyboardButton(text="🔙 Volver", callback_data="admin:subsection:vip:invite")]
+                ])
+                
+                keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            
+            # Send message using bot instance
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Interfaz de selección de tarifas enviada a admin {admin_id}")
+            else:
+                self.logger.warning("⚠️ Bot no disponible en services")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error mostrando selección de tarifas: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            
+            # Send error message
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=f"❌ <b>Error al cargar tarifas</b>\n\n{str(e)}",
+                    parse_mode="HTML"
+                )
+    
+    async def generate_token_for_tariff(self, admin_id: int, tariff_id: int) -> Dict[str, Any]:
+        """Generate token for specific tariff"""
+        try:
+            self.logger.info(f"🎫 Generando token para tarifa {tariff_id} por admin {admin_id}")
+            
+            # Get tokeneitor service
+            tokeneitor = self.services.get('tokeneitor')
+            if not tokeneitor:
+                raise Exception("Servicio Tokeneitor no disponible")
+            
+            # Generate token
+            token_url = await tokeneitor.generate_token(tariff_id, admin_id)
+            if not token_url:
+                raise Exception("No se pudo generar el token")
+            
+            self.logger.info(f"✅ Token generado exitosamente: {token_url[:50]}...")
+            
+            return {
+                "success": True,
+                "token_url": token_url,
+                "tariff_id": tariff_id,
+                "admin_id": admin_id
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error generando token: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    async def _get_vip_channel(self) -> Optional[Dict[str, Any]]:
+        """Get the single VIP channel from database"""
+        try:
+            # Use database session directly to get VIP channel
+            from src.bot.database.engine import get_session
+            from src.bot.database.models.channel import Channel
+            from sqlalchemy import select
+            
+            async for session in get_session():
+                # Look for VIP channel first
+                query = select(Channel).where(
+                    Channel.is_active == True,
+                    Channel.type == 'vip'
+                )
+                result = await session.execute(query)
+                vip_channel = result.scalars().first()
+                
+                # If no VIP channel found, take the first active channel
+                if not vip_channel:
+                    query = select(Channel).where(Channel.is_active == True)
+                    result = await session.execute(query)
+                    vip_channel = result.scalars().first()
+                
+                if vip_channel:
+                    return {
+                        'id': vip_channel.id,
+                        'telegram_id': vip_channel.telegram_id,
+                        'name': vip_channel.name,
+                        'type': vip_channel.type
+                    }
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error obteniendo canal VIP: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            return None
+    
+    async def _show_tariff_edit_interface(self, admin_id: int, tariff):
+        """Show detailed edit interface for a tariff"""
+        try:
+            duration_text = self._format_duration_days(tariff.duration_days)
+            
+            message_text = f"""<b>📝 Detalles de Tarifa</b>
+
+<i>Lucien presenta los detalles de esta tarifa...</i>
+
+<b>🏷️ {tariff.name}</b>
+
+<b>📋 Información Actual:</b>
+• <b>ID:</b> {tariff.id}
+• <b>Precio:</b> ${tariff.price:.2f}
+• <b>Duración:</b> {duration_text}
+• <b>Estado:</b> {'✅ Activa' if tariff.is_active else '❌ Inactiva'}
+• <b>Creada:</b> {tariff.created_at.strftime('%d/%m/%Y %H:%M')}
+
+<b>📝 Descripción:</b>
+{tariff.description or 'Sin descripción'}
+
+<b>⚙️ ¿Qué deseas hacer?</b>"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="✏️ Editar Precio", callback_data=f"admin:action:vip:tariff_edit_price:{tariff.id}"),
+                    InlineKeyboardButton(text="⏰ Editar Duración", callback_data=f"admin:action:vip:tariff_edit_duration:{tariff.id}")
+                ],
+                [
+                    InlineKeyboardButton(text="📝 Editar Nombre", callback_data=f"admin:action:vip:tariff_edit_name:{tariff.id}"),
+                    InlineKeyboardButton(text="📄 Editar Descripción", callback_data=f"admin:action:vip:tariff_edit_desc:{tariff.id}")
+                ],
+                [
+                    InlineKeyboardButton(text="🗑️ Eliminar Tarifa", callback_data=f"admin:action:vip:tariff_delete:{tariff.id}")
+                ],
+                [
+                    InlineKeyboardButton(text="🔙 Volver a Tarifas", callback_data="admin:action:vip:manage_tariffs")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            
+            # Send message using bot instance
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Interfaz de edición de tarifa enviada a admin {admin_id}")
+            else:
+                self.logger.warning("⚠️ Bot no disponible en services")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error mostrando interfaz de edición: {e}")
+            import traceback
+            self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    async def _start_edit_tariff_field(self, admin_id: int, tariff_id: int, field: str) -> Dict[str, Any]:
+        """Start interactive editing of a specific tariff field"""
+        try:
+            self.logger.info(f"✏️ Iniciando edición de {field} para tarifa {tariff_id}")
+            
+            # Get tariff service to retrieve current data
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                return {
+                    "success": False,
+                    "message": "❌ TariffService no disponible"
+                }
+            
+            # Get current tariff data
+            tariff = await tariff_service.get_tariff_by_id(tariff_id)
+            if not tariff:
+                return {
+                    "success": False,
+                    "message": "❌ Tarifa no encontrada"
+                }
+            
+            # Store pending edit in session
+            if not hasattr(self, '_pending_tariff_edits'):
+                self._pending_tariff_edits = {}
+            
+            # Map field names to actual attribute names
+            field_map = {
+                'duration': 'duration_days',
+                'price': 'price',
+                'name': 'name', 
+                'description': 'description'
+            }
+            
+            actual_field = field_map.get(field, field)
+            
+            self._pending_tariff_edits[admin_id] = {
+                'tariff_id': tariff_id,
+                'field': actual_field,
+                'current_value': getattr(tariff, actual_field)
+            }
+            
+            # Send appropriate prompt based on field
+            await self._send_field_edit_prompt(admin_id, tariff, field)
+            
+            return {
+                "success": True,
+                "message": f"✏️ Iniciando edición de {field}",
+                "show_alert": False
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error iniciando edición: {e}")
+            return {
+                "success": False,
+                "message": f"❌ Error: {str(e)}"
+            }
+    
+    async def _send_field_edit_prompt(self, admin_id: int, tariff, field: str):
+        """Send appropriate prompt for editing a specific field"""
+        try:
+            # Map field names to actual attribute names
+            field_map = {
+                'duration': 'duration_days',
+                'price': 'price',
+                'name': 'name', 
+                'description': 'description'
+            }
+            
+            actual_field = field_map.get(field, field)
+            current_value = getattr(tariff, actual_field)
+            
+            field_names = {
+                'price': 'precio',
+                'duration_days': 'duración',
+                'name': 'nombre',
+                'description': 'descripción'
+            }
+            
+            field_examples = {
+                'price': 'Ejemplos: 29.99, 15.50, 100.00',
+                'duration_days': 'Ejemplos: 30 (días), 7 (días), 365 (días)',
+                'name': 'Ejemplos: "VIP Premium", "Plan Básico", "Acceso Mensual"',
+                'description': 'Ejemplo: "Acceso completo a contenido VIP por 30 días"'
+            }
+            
+            current_display = current_value
+            if field == 'price':
+                current_display = f"${current_value:.2f}"
+            elif field == 'duration_days':
+                current_display = f"{current_value} días"
+            
+            message_text = f"""<b>✏️ Editar {field_names[field].title()}</b>
+
+<i>Lucien está listo para actualizar esta información...</i>
+
+<b>🏷️ Tarifa:</b> {tariff.name}
+
+<b>📋 Valor Actual:</b>
+{current_display}
+
+<b>📝 Nuevo Valor:</b>
+Envía el nuevo {field_names[field]} para esta tarifa.
+
+<b>💡 {field_examples[field]}</b>
+
+<i>Envía el nuevo valor o usa los botones para cancelar...</i>"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Cancelar Edición", callback_data=f"admin:action:vip:tariff_edit_cancel:{tariff.id}")]
+            ])
+            
+            # Send message using bot instance
+            bot = self.services.get('bot')
+            if bot:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=message_text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+                self.logger.info(f"✅ Prompt de edición de {field} enviado a admin {admin_id}")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error enviando prompt de edición: {e}")
+    
+    async def _cancel_edit_tariff_field(self, admin_id: int, tariff_id: int) -> Dict[str, Any]:
+        """Cancel tariff field editing and return to tariff details"""
+        try:
+            # Clean up pending edit
+            if hasattr(self, '_pending_tariff_edits') and admin_id in self._pending_tariff_edits:
+                del self._pending_tariff_edits[admin_id]
+            
+            # Get tariff and show edit interface again
+            tariff_service = self.services.get('tariff')
+            if tariff_service:
+                tariff = await tariff_service.get_tariff_by_id(tariff_id)
+                if tariff:
+                    await self._show_tariff_edit_interface(admin_id, tariff)
+            
+            return {
+                "success": True,
+                "message": "❌ Edición cancelada",
+                "show_alert": False
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error cancelando edición: {e}")
+            return {
+                "success": False,
+                "message": "❌ Error cancelando edición"
+            }
+    
+    async def process_tariff_field_edit(self, admin_id: int, text: str) -> Dict[str, Any]:
+        """Process text input for tariff field editing"""
+        try:
+            if not hasattr(self, '_pending_tariff_edits') or admin_id not in self._pending_tariff_edits:
+                return {"success": False, "message": "No hay edición pendiente"}
+            
+            edit_data = self._pending_tariff_edits[admin_id]
+            tariff_id = edit_data['tariff_id']
+            field = edit_data['field']
+            
+            self.logger.info(f"📝 Procesando edición de {field} para tarifa {tariff_id}: {text}")
+            
+            # Validate and convert input based on field type
+            new_value = None
+            if field == 'price':
+                try:
+                    new_value = float(text.replace('$', '').replace(',', ''))
+                    if new_value < 0:
+                        return {"success": False, "message": "❌ El precio no puede ser negativo"}
+                except ValueError:
+                    return {"success": False, "message": "❌ Precio inválido. Usa formato: 29.99"}
+            
+            elif field == 'duration_days':
+                try:
+                    new_value = int(text.replace('días', '').replace('dia', '').strip())
+                    if new_value < 1:
+                        return {"success": False, "message": "❌ La duración debe ser al menos 1 día"}
+                except ValueError:
+                    return {"success": False, "message": "❌ Duración inválida. Usa números: 30"}
+            
+            elif field == 'name':
+                new_value = text.strip()
+                if len(new_value) < 3:
+                    return {"success": False, "message": "❌ El nombre debe tener al menos 3 caracteres"}
+                if len(new_value) > 100:
+                    return {"success": False, "message": "❌ El nombre no puede exceder 100 caracteres"}
+            
+            elif field == 'description':
+                new_value = text.strip()
+                if len(new_value) > 500:
+                    return {"success": False, "message": "❌ La descripción no puede exceder 500 caracteres"}
+            
+            # Update tariff using TariffService
+            tariff_service = self.services.get('tariff')
+            if not tariff_service:
+                return {"success": False, "message": "❌ TariffService no disponible"}
+            
+            # Prepare update data
+            update_data = {field: new_value}
+            result = await tariff_service.update_tariff(tariff_id, **update_data)
+            
+            if result['success']:
+                # Clean up pending edit
+                del self._pending_tariff_edits[admin_id]
+                
+                # Show updated tariff interface
+                updated_tariff = await tariff_service.get_tariff_by_id(tariff_id)
+                if updated_tariff:
+                    await self._show_tariff_edit_interface(admin_id, updated_tariff)
+                
+                field_names = {'price': 'precio', 'duration_days': 'duración', 'name': 'nombre', 'description': 'descripción'}
+                return {
+                    "success": True,
+                    "message": f"✅ {field_names[field].title()} actualizado exitosamente",
+                    "show_alert": False
+                }
+            else:
+                return {"success": False, "message": f"❌ Error actualizando tarifa: {result['message']}"}
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error procesando edición de campo: {e}")
+            return {"success": False, "message": f"❌ Error: {str(e)}"}
