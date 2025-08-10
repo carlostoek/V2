@@ -3,12 +3,12 @@
 import enum
 from sqlalchemy import (
     Column, Integer, String, Text, ForeignKey, BigInteger, JSON, Float,
-    DateTime, Boolean, Index, UniqueConstraint, Enum, ARRAY
+    DateTime, Boolean, Index, UniqueConstraint, Enum
 )
 from sqlalchemy.orm import relationship as orm_relationship
 from sqlalchemy.sql import func
 
-from ..base import Base, TimestampMixin
+from ..base import Base, TimestampMixin, make_array_column
 
 class RelationshipStatusEnum(str, enum.Enum):
     """Estados posibles de relación entre usuario y personaje."""
@@ -131,7 +131,7 @@ class EmotionalMemory(Base, TimestampMixin):
     summary = Column(String(255), nullable=False)
     details = Column(Text)
     emotional_context = Column(JSON, default={})
-    related_interaction_ids = Column(ARRAY(Integer), default=[])
+    related_interaction_ids = Column(make_array_column(Integer), default=[])
     
     importance_score = Column(Float, default=1.0)
     last_recalled_at = Column(DateTime(timezone=True), nullable=True)
@@ -169,7 +169,7 @@ class PersonalityAdaptation(Base, TimestampMixin):
     # Preferencias de comunicación
     communication_preferences = Column(JSON, default={})
     topic_preferences = Column(JSON, default={})
-    taboo_topics = Column(ARRAY(String), default=[])
+    taboo_topics = Column(make_array_column(String), default=[])
     
     # Confianza en las adaptaciones
     confidence_score = Column(Float, default=0.5)

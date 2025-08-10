@@ -12,9 +12,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = structlog.get_logger()
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra fields to prevent validation errors
+    )
 
+    # Bot configuration
     bot_token: str = "7570619877:AAHJMc_PNgZT9rpjUzpp19FMo7WlmHfA5Ms"  # Provide default for tests
+    
+    # Database configuration - adding missing fields that are being passed
+    database_url: str = "sqlite+aiosqlite:///:memory:"
+    use_sqlite: bool = True
+    create_tables: bool = True
+    
+    # Additional configuration fields that might be passed
+    admin_user_ids: str = ""
+    vip_channel_id: Optional[int] = None
+    free_channel_id: Optional[int] = None
+    enable_emotional_system: bool = True
+    enable_background_tasks: bool = True
 
 # Only initialize if not in test environment
 settings = None

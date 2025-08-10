@@ -133,6 +133,11 @@ class KeyboardFactory:
                 {"text": "🏆 Perfil", "callback_data": "main_menu:profile"},
                 {"text": "🎯 Misiones", "callback_data": "main_menu:missions"}
             ],
+            [{"text": "🎮 Gamificación", "callback_data": "gamification:main"}],
+            [
+                {"text": "🎁 Regalo Diario", "callback_data": "gamification:daily_reward"}, 
+                {"text": "🛍️ Tienda", "callback_data": "shop:main"}
+            ],
             [{"text": "🎒 Mochila", "callback_data": "main_menu:inventory"}],
             [{"text": "❓ Ayuda", "callback_data": "main_menu:help"}]
         ]

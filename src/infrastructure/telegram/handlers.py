@@ -2,11 +2,17 @@ from aiogram import types, F, Dispatcher
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from typing import Optional
 
 from src.core.interfaces.IEventBus import IEventBus
 from src.modules.events import UserStartedBotEvent
 from src.modules.gamification.service import GamificationService
 from src.modules.admin.service import AdminService
+from src.modules.emotional.service import EmotionalService
+from src.modules.narrative.service import NarrativeService
+from src.modules.channel.service import ChannelService
+from src.modules.user.service import UserService
+from src.modules.token.tokeneitor import Tokeneitor
 from src.infrastructure.telegram.keyboards import (
     get_main_menu_keyboard, get_admin_menu_keyboard, get_free_channel_admin_kb, 
     get_wait_time_selection_kb, get_post_confirmation_kb, get_vip_admin_menu_kb,
@@ -23,29 +29,90 @@ class AdminStates(StatesGroup):
     waiting_for_tariff_duration = State()
 
 class Handlers:
-    def __init__(self, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
+    def __init__(
+        self, 
+        event_bus: IEventBus, 
+        gamification_service: GamificationService, 
+        admin_service: AdminService,
+        emotional_service: Optional[EmotionalService] = None,
+        narrative_service: Optional[NarrativeService] = None,
+        channel_service: Optional[ChannelService] = None,
+        user_service: Optional[UserService] = None,
+        token_service: Optional[Tokeneitor] = None
+    ):
         self._event_bus = event_bus
         self._gamification_service = gamification_service
         self._admin_service = admin_service
+        self._emotional_service = emotional_service
+        self._narrative_service = narrative_service
+        self._channel_service = channel_service
+        self._user_service = user_service
+        self._token_service = token_service
 
     async def handle_start(self, message: types.Message, command: types.BotCommand):
         token = command.args
         user_id = message.from_user.id
+        username = message.from_user.username
 
         if token:
-            validated_token = self._admin_service.validate_token(token, user_id)
-            if validated_token:
-                tariff = self._admin_service.get_tariff(validated_token['tariff_id'])
-                await message.answer(f"¡Felicidades! Has canjeado un token para la tarifa '{tariff['name']}'.\nDisfruta de tu acceso VIP por {tariff['duration_days']} días.")
+            # Token redemption flow with Diana Master System integration
+            if self._token_service:
+                validated_token = await self._token_service.redeem_token(token, user_id)
+                if validated_token:
+                    await message.answer(f"¡Felicidades! Has canjeado un token exitosamente.\nDisfruta de tu nuevo acceso.")
+                else:
+                    await message.answer("El token que has usado no es válido o ya ha been canjeado.")
             else:
-                await message.answer("El token que has usado no es válido o ya ha sido canjeado.")
+                # Fallback to admin service
+                validated_token = self._admin_service.validate_token(token, user_id)
+                if validated_token:
+                    tariff = self._admin_service.get_tariff(validated_token['tariff_id'])
+                    await message.answer(f"¡Felicidades! Has canjeado un token para la tarifa '{tariff['name']}'.\nDisfruta de tu acceso VIP por {tariff['duration_days']} días.")
+                else:
+                    await message.answer("El token que has usado no es válido o ya ha sido canjeado.")
         else:
-            event = UserStartedBotEvent(user_id=user_id, username=message.from_user.username)
+            # Standard welcome flow with Diana Master System integration
+            # Publish user started event
+            event = UserStartedBotEvent(user_id=user_id, username=username)
             await self._event_bus.publish(event)
-            await message.answer(
-                "¡Bienvenido a Diana V2! ¿Qué te gustaría hacer hoy?",
-                reply_markup=get_main_menu_keyboard()
-            )
+            
+            # Initialize emotional state if emotional service is available
+            if self._emotional_service:
+                await self._emotional_service.get_or_create_state_machine(user_id)
+                # Get personalized greeting based on emotional state
+                response_modifiers = await self._emotional_service.get_response_modifiers(user_id)
+                greeting = self._generate_emotional_greeting(username, response_modifiers)
+            else:
+                greeting = f"¡Bienvenido a Diana V2, {username or 'usuario'}! ¿Qué te gustaría hacer hoy?"
+            
+            await message.answer(greeting, reply_markup=get_main_menu_keyboard())
+    
+    def _generate_emotional_greeting(self, username: str, modifiers: dict) -> str:
+        """Generate a personalized greeting based on emotional state modifiers."""
+        tone = modifiers.get('tone', 'neutral')
+        use_emojis = modifiers.get('use_emojis', True)
+        keywords = modifiers.get('keywords', [])
+        
+        name = username or 'usuario'
+        
+        if tone == 'mysterious':
+            base = f"Hola {name}... me pregunto qué aventuras nos esperan hoy"
+            if use_emojis:
+                base += " 🌙✨"
+        elif tone == 'playful':
+            base = f"¡Hola {name}! Lista para algo divertido"
+            if use_emojis:
+                base += " 😏"
+        elif tone == 'gentle':
+            base = f"Hola {name}, es un placer verte. ¿Cómo te sientes hoy?"
+            if use_emojis:
+                base += " 💙"
+        elif tone == 'analytical':
+            base = f"Saludos {name}. Analicemos qué podemos hacer juntos hoy"
+        else:
+            base = f"¡Hola {name}! ¿Qué te gustaría explorar?"
+        
+        return base
 
     async def handle_admin_command(self, message: types.Message):
         # Aquí iría la lógica para verificar si el usuario es admin
@@ -219,7 +286,26 @@ class Handlers:
         else:
             await query.answer("Tarifa no encontrada.", show_alert=True)
 
-def setup_handlers(dp: Dispatcher, event_bus: IEventBus, gamification_service: GamificationService, admin_service: AdminService):
+def setup_handlers(
+    dp: Dispatcher, 
+    event_bus: IEventBus, 
+    gamification_service: GamificationService, 
+    admin_service: AdminService,
+    emotional_service: Optional[EmotionalService] = None,
+    narrative_service: Optional[NarrativeService] = None,
+    channel_service: Optional[ChannelService] = None,
+    user_service: Optional[UserService] = None,
+    token_service: Optional[Tokeneitor] = None
+):
     """Configura todos los handlers de la aplicación."""
-    handler_instance = Handlers(event_bus, gamification_service, admin_service)
+    handler_instance = Handlers(
+        event_bus, 
+        gamification_service, 
+        admin_service,
+        emotional_service,
+        narrative_service,
+        channel_service,
+        user_service,
+        token_service
+    )
     handler_instance.register(dp)

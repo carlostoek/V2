@@ -2,11 +2,11 @@
 
 from sqlalchemy import (
     Column, Integer, String, Text, ForeignKey, BigInteger, JSON, Float,
-    Boolean, Index, UniqueConstraint, ARRAY
+    Boolean, Index, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 
-from ..base import Base, TimestampMixin
+from ..base import Base, TimestampMixin, make_array_column
 
 class StoryFragment(Base, TimestampMixin):
     """Fragmentos de historia para el sistema narrativo."""
@@ -20,14 +20,14 @@ class StoryFragment(Base, TimestampMixin):
     text = Column(Text, nullable=False)
     
     # Metadatos del fragmento
-    tags = Column(ARRAY(String), default=[])
+    tags = Column(make_array_column(String), default=[])
     level_required = Column(Integer, default=1)
     is_vip_only = Column(Boolean, default=False)
     
     # Recompensas
     reward_besitos = Column(Float, default=0.0)
     reward_items = Column(JSON, default={})
-    unlock_achievements = Column(ARRAY(String), default=[])
+    unlock_achievements = Column(make_array_column(String), default=[])
     
     # Relaciones
     choices = relationship(
@@ -89,7 +89,7 @@ class UserNarrativeState(Base, TimestampMixin):
     current_fragment_key = Column(String(50), ForeignKey("story_fragments.key", ondelete="SET NULL"), nullable=True)
     
     # Progreso narrativo
-    visited_fragments = Column(ARRAY(String), default=[])
+    visited_fragments = Column(make_array_column(String), default=[])
     decisions_made = Column(JSON, default={})
     narrative_items = Column(JSON, default={})
     narrative_variables = Column(JSON, default={})

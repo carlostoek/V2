@@ -3,12 +3,12 @@
 import enum
 from sqlalchemy import (
     Column, Integer, String, Text, ForeignKey, BigInteger, JSON, Float,
-    DateTime, Boolean, Index, UniqueConstraint, Enum, ARRAY
+    DateTime, Boolean, Index, UniqueConstraint, Enum
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from ..base import Base, TimestampMixin
+from ..base import Base, TimestampMixin, make_array_column
 
 class MissionTypeEnum(str, enum.Enum):
     """Tipos de misiones disponibles."""
