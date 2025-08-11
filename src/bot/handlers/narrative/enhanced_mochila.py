@@ -628,49 +628,5 @@ class EnhancedMochilaSystem:
         return source_mapping.get(source, source.title())
 
 
-# Registro de handlers
-@router.message(Command("mochila"))
-async def handle_mochila_command(message: Message, 
-                               narrative_service: NarrativeService,
-                               emotional_service: EmotionalService,
-                               diana_system: DianaContextualResponseSystem):
-    """Handler mejorado para el comando /mochila."""
-    mochila_system = EnhancedMochilaSystem(narrative_service, emotional_service, diana_system)
-    await mochila_system.show_mochila_hub(message)
-
-
-@router.callback_query(lambda c: c.data.startswith("mochila:"))
-async def handle_mochila_callbacks(callback: CallbackQuery,
-                                 narrative_service: NarrativeService,
-                                 emotional_service: EmotionalService,
-                                 diana_system: DianaContextualResponseSystem):
-    """Handler para callbacks de mochila."""
-    
-    mochila_system = EnhancedMochilaSystem(narrative_service, emotional_service, diana_system)
-    
-    action_parts = callback.data.split(":")
-    action = action_parts[1]
-    
-    if action == "category" and len(action_parts) > 2:
-        category_key = action_parts[2]
-        await mochila_system.show_category_view(callback, category_key)
-    
-    elif action == "piece" and len(action_parts) > 2:
-        piece_key = action_parts[2]
-        await mochila_system.show_piece_detail(callback, piece_key)
-    
-    elif action == "find_connections":
-        await mochila_system.find_connections(callback)
-    
-    elif action == "back_to_hub":
-        # Recrear el hub de mochila
-        await mochila_system.show_mochila_hub(callback.message)
-        await callback.answer()
-    
-    else:
-        await callback.answer("Función en desarrollo...", show_alert=True)
-
-
-def register_enhanced_mochila_handlers(dp, narrative_service, emotional_service, diana_system):
-    """Registra los handlers mejorados de mochila."""
-    dp.include_router(router)
+# Los handlers están integrados en el sistema principal
+# No necesitamos registro separado

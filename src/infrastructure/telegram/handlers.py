@@ -3,6 +3,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from typing import Optional
+import logging
 
 from src.core.interfaces.IEventBus import IEventBus
 from src.modules.events import UserStartedBotEvent
@@ -18,6 +19,12 @@ from src.infrastructure.telegram.keyboards import (
     get_wait_time_selection_kb, get_post_confirmation_kb, get_vip_admin_menu_kb,
     get_tariff_view_kb
 )
+# Importar handlers narrativos
+from src.bot.handlers.narrative.story_navigation import StoryNavigationSystem
+from src.bot.handlers.narrative.enhanced_mochila import EnhancedMochilaSystem
+from src.bot.handlers.narrative.contextual_responses import DianaContextualResponseSystem
+
+logger = logging.getLogger(__name__)
 
 class AdminStates(StatesGroup):
     waiting_for_channel_id = State()
@@ -48,6 +55,28 @@ class Handlers:
         self._channel_service = channel_service
         self._user_service = user_service
         self._token_service = token_service
+        
+        # Inicializar sistemas narrativos si los servicios están disponibles
+        self._story_system = None
+        self._mochila_system = None
+        self._diana_system = None
+        
+        if self._emotional_service and self._narrative_service:
+            self._diana_system = DianaContextualResponseSystem(
+                event_bus=self._event_bus,
+                emotional_service=self._emotional_service,
+                narrative_service=self._narrative_service
+            )
+            self._story_system = StoryNavigationSystem(
+                narrative_service=self._narrative_service,
+                emotional_service=self._emotional_service,
+                diana_system=self._diana_system
+            )
+            self._mochila_system = EnhancedMochilaSystem(
+                narrative_service=self._narrative_service,
+                emotional_service=self._emotional_service,
+                diana_system=self._diana_system
+            )
 
     async def handle_start(self, message: types.Message, command: types.BotCommand):
         token = command.args
@@ -76,13 +105,25 @@ class Handlers:
             event = UserStartedBotEvent(user_id=user_id, username=username)
             await self._event_bus.publish(event)
             
-            # Initialize emotional state if emotional service is available
-            if self._emotional_service:
+            # Initialize emotional state and generate contextual greeting
+            if self._emotional_service and self._diana_system:
                 await self._emotional_service.get_or_create_state_machine(user_id)
-                # Get personalized greeting based on emotional state
+                # Generate contextual greeting using Diana system
+                greeting = await self._diana_system.generate_contextual_response(
+                    user_id=user_id,
+                    context_type='greeting',
+                    context_data={
+                        'username': username,
+                        'is_first_time': True
+                    }
+                )
+            elif self._emotional_service:
+                # Fallback to basic emotional greeting
+                await self._emotional_service.get_or_create_state_machine(user_id)
                 response_modifiers = await self._emotional_service.get_response_modifiers(user_id)
                 greeting = self._generate_emotional_greeting(username, response_modifiers)
             else:
+                # Basic greeting
                 greeting = f"¡Bienvenido a Diana V2, {username or 'usuario'}! ¿Qué te gustaría hacer hoy?"
             
             await message.answer(greeting, reply_markup=get_main_menu_keyboard())
@@ -189,10 +230,128 @@ class Handlers:
 
     async def handle_not_implemented_callback(self, query: types.CallbackQuery):
         await query.answer("Funcionalidad no implementada todavía.")
+    
+    async def handle_main_menu_callback(self, query: types.CallbackQuery):
+        """Handler para callbacks del menú principal."""
+        action = query.data.replace("main_menu:", "")
+        
+        if action == "historia":
+            if self._story_system:
+                await self._story_system.show_story_hub(query.message)
+                await query.answer()
+            else:
+                await query.answer("Sistema narrativo no disponible", show_alert=True)
+                
+        elif action == "mochila":
+            if self._mochila_system:
+                await self._mochila_system.show_mochila_hub(query.message)
+                await query.answer()
+            else:
+                await query.answer("Sistema de mochila no disponible", show_alert=True)
+                
+        elif action == "profile":
+            await self.handle_profile_callback(query)
+            
+        else:
+            await query.answer("Funcionalidad no implementada todavía.")
+    
+    # Handlers Narrativos
+    async def handle_historia_command(self, message: types.Message):
+        """Handler para el comando /historia."""
+        if self._story_system:
+            await self._story_system.show_story_hub(message)
+        else:
+            await message.answer("El sistema narrativo no está disponible en este momento.")
+    
+    async def handle_mochila_command(self, message: types.Message):
+        """Handler para el comando /mochila."""
+        if self._mochila_system:
+            await self._mochila_system.show_mochila_hub(message)
+        else:
+            await message.answer("El sistema de mochila no está disponible en este momento.")
+    
+    async def handle_diana_callback(self, query: types.CallbackQuery):
+        """Handler para todos los callbacks que empiezan con diana:."""
+        if not self._story_system:
+            await query.answer("Sistema narrativo no disponible", show_alert=True)
+            return
+            
+        action = query.data.replace("diana:", "")
+        
+        try:
+            if action == "continue_story":
+                await self._story_system.continue_story(query)
+            elif action == "back_to_story_hub":
+                # Recrear el hub de historia
+                await self._story_system.show_story_hub(query.message)
+                await query.answer()
+            elif action.startswith("make_choice:"):
+                choice_id = int(action.split(":")[1])
+                await self._story_system.make_narrative_choice(query, choice_id)
+            elif action.startswith("deep_explore:"):
+                fragment_key = action.split(":", 1)[1]
+                await self._story_system.deep_explore(query, fragment_key)
+            elif action.startswith("reflect:"):
+                fragment_key = action.split(":", 1)[1]
+                await self._story_system.reflect_on_fragment(query, fragment_key)
+            elif action == "back_to_main":
+                await query.message.edit_text(
+                    "¡Hola! ¿Qué te gustaría hacer?", 
+                    reply_markup=get_main_menu_keyboard()
+                )
+                await query.answer()
+            else:
+                await query.answer("Función en desarrollo...", show_alert=True)
+        except Exception as e:
+            logger.error(f"Error manejando callback diana: {e}")
+            await query.answer("Error procesando acción", show_alert=True)
+    
+    async def handle_mochila_callback(self, query: types.CallbackQuery):
+        """Handler para todos los callbacks que empiezan con mochila:."""
+        if not self._mochila_system:
+            await query.answer("Sistema de mochila no disponible", show_alert=True)
+            return
+        
+        action_parts = query.data.split(":")
+        action = action_parts[1] if len(action_parts) > 1 else ""
+        
+        try:
+            if action == "category" and len(action_parts) > 2:
+                category_key = action_parts[2]
+                await self._mochila_system.show_category_view(query, category_key)
+            elif action == "piece" and len(action_parts) > 2:
+                piece_key = action_parts[2]
+                await self._mochila_system.show_piece_detail(query, piece_key)
+            elif action == "find_connections":
+                await self._mochila_system.find_connections(query)
+            elif action == "back_to_hub":
+                # Recrear el hub de mochila
+                await self._mochila_system.show_mochila_hub(query.message)
+                await query.answer()
+            else:
+                await query.answer("Función en desarrollo...", show_alert=True)
+        except Exception as e:
+            logger.error(f"Error manejando callback mochila: {e}")
+            await query.answer("Error procesando acción", show_alert=True)
 
     def register(self, dp: Dispatcher):
+        # Comandos básicos
         dp.message.register(self.handle_start, CommandStart())
         dp.message.register(self.handle_admin_command, Command("admin"))
+        
+        # Comandos narrativos
+        if self._story_system:
+            dp.message.register(self.handle_historia_command, Command("historia"))
+        if self._mochila_system:
+            dp.message.register(self.handle_mochila_command, Command("mochila"))
+        
+        # Callbacks narrativos
+        if self._story_system:
+            dp.callback_query.register(self.handle_diana_callback, F.data.startswith("diana:"))
+        if self._mochila_system:
+            dp.callback_query.register(self.handle_mochila_callback, F.data.startswith("mochila:"))
+        
+        # Admin callbacks
         dp.callback_query.register(self.handle_free_channel_menu_callback, F.data == "admin:free_channel_menu")
         dp.callback_query.register(self.handle_setup_free_channel_callback, F.data == "admin:setup_free_channel")
         dp.callback_query.register(self.handle_set_wait_time_callback, F.data == "admin:set_wait_time")
@@ -201,8 +360,9 @@ class Handlers:
         dp.message.register(self.handle_post_text, AdminStates.waiting_for_post_text)
         dp.callback_query.register(self.handle_confirm_post_callback, F.data == "admin:confirm_post")
         dp.message.register(self.handle_channel_forward, AdminStates.waiting_for_channel_id, F.forward_from_chat)
-        dp.callback_query.register(self.handle_profile_callback, F.data == "main_menu:profile")
-        dp.callback_query.register(self.handle_not_implemented_callback, F.data.startswith("main_menu:"))
+        
+        # User interface - Main menu callbacks
+        dp.callback_query.register(self.handle_main_menu_callback, F.data.startswith("main_menu:"))
 
         # Admin VIP
         dp.callback_query.register(self.handle_vip_channel_menu_callback, F.data == "admin:vip_channel_menu")

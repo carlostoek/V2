@@ -13,7 +13,11 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="📢 Canales", callback_data="admin:channels"),
-            InlineKeyboardButton(text="⚙️ Configuración", callback_data="admin:settings")
+            InlineKeyboardButton(text="🔔 Notificaciones", callback_data="admin:notifications")
+        ],
+        [
+            InlineKeyboardButton(text="⚙️ Configuración", callback_data="admin:settings"),
+            InlineKeyboardButton(text="📊 Exportar Datos", callback_data="admin:export")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

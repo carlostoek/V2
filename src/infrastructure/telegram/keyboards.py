@@ -3,12 +3,12 @@ from aiogram import types
 def get_main_menu_keyboard() -> types.InlineKeyboardMarkup:
     """Genera el teclado del menú principal."""
     buttons = [
-        [types.InlineKeyboardButton(text="📜 Historia", callback_data="main_menu:narrative")],
+        [types.InlineKeyboardButton(text="📖 Historia", callback_data="main_menu:historia")],
         [
             types.InlineKeyboardButton(text="🏆 Perfil", callback_data="main_menu:profile"),
             types.InlineKeyboardButton(text="🎯 Misiones", callback_data="main_menu:missions")
         ],
-        [types.InlineKeyboardButton(text="🎒 Mochila", callback_data="main_menu:inventory")],
+        [types.InlineKeyboardButton(text="🎒 Mochila", callback_data="main_menu:mochila")],
         [types.InlineKeyboardButton(text="❓ Ayuda", callback_data="main_menu:help")]
     ]
     return types.InlineKeyboardMarkup(inline_keyboard=buttons)

@@ -42,8 +42,18 @@ async def show_token_management(callback_query: CallbackQuery, session: AsyncSes
         event_bus = EventBus()
         tokeneitor = Tokeneitor(event_bus)
         
-        # Obtener estadísticas de tokens
-        token_stats = await get_token_statistics(tokeneitor)
+        # Obtener estadísticas de tokens reales usando AdminService
+        admin_service = AdminService(event_bus)
+        revenue_stats = await admin_service.get_revenue_statistics()
+        top_tariffs = await admin_service.get_top_tariffs()
+        
+        token_stats = {
+            'total_generated': revenue_stats['tokens_generated'],
+            'total_redeemed': revenue_stats['tokens_redeemed'],
+            'conversion_rate': revenue_stats['conversion_rate'],
+            'estimated_revenue': revenue_stats['estimated_revenue'],
+            'top_tariffs': [{'name': t['name'], 'tokens': t['sales'], 'revenue': t['revenue']} for t in top_tariffs]
+        }
         
         text = "🎫 **GESTIÓN DE TOKENS VIP**\n\n"
         text += "💎 **Panel de Control Monetario**\n"
@@ -126,12 +136,23 @@ async def tariff_selected_for_generation(callback_query: CallbackQuery, state: F
             await callback_query.answer("❌ Tarifa no encontrada")
             return
         
-        # Generar el token usando el servicio Tokeneitor
+        # Generar el token usando AdminService
         event_bus = EventBus()
-        tokeneitor = Tokeneitor(event_bus)
+        admin_service = AdminService(event_bus)
+        admin_id = callback_query.from_user.id
         
-        # Simular generación exitosa (en producción usar tokeneitor.generate_token)
-        token_url = f"https://t.me/TestingRefactor_bot?start=token_{secrets.token_urlsafe(32)}"
+        # Generar token real
+        token_result = await admin_service.generate_subscription_token(
+            tariff_id=tariff_id,
+            admin_id=admin_id,
+            expires_in_days=7
+        )
+        
+        if not token_result:
+            await callback_query.answer("❌ Error al generar token")
+            return
+            
+        token_url = f"https://t.me/TestingRefactor_bot?start=token_{token_result.token}"
         
         text = "✅ **TOKEN GENERADO EXITOSAMENTE**\n\n"
         text += f"🏷️ **Tarifa:** {tariff['name']}\n"
@@ -313,29 +334,49 @@ async def confirm_bulk_generation(callback_query: CallbackQuery, state: FSMConte
             parse_mode="Markdown"
         )
         
-        # Simular generación de tokens (en producción usar tokeneitor)
+        # Generar tokens usando AdminService
+        event_bus = EventBus()
+        admin_service = AdminService(event_bus)
+        admin_id = callback_query.from_user.id
+        
+        # Usar el método de generación masiva del AdminService
+        bulk_result = await admin_service.generate_bulk_tokens(
+            tariff_id=data['tariff_id'],
+            quantity=quantity,
+            admin_id=admin_id
+        )
+        
+        if not bulk_result["success"]:
+            await callback_query.message.edit_text(
+                f"❌ **ERROR EN GENERACIÓN MASIVA**\n\n"
+                f"Error: {bulk_result['error']}\n\n"
+                f"Por favor intenta con una cantidad menor o contacta soporte.",
+                parse_mode="Markdown"
+            )
+            await state.clear()
+            return
+        
+        # Procesar resultado exitoso
         generated_tokens = []
-        for i in range(quantity):
-            token_url = f"https://t.me/TestingRefactor_bot?start=token_{secrets.token_urlsafe(32)}"
+        tokens = bulk_result["data"]["tokens"]
+        for i, token in enumerate(tokens):
+            token_url = f"https://t.me/TestingRefactor_bot?start=token_{token}"
             generated_tokens.append({
                 "id": i + 1,
                 "url": token_url,
-                "token": token_url.split("token_")[-1],
+                "token": token,
                 "created_at": datetime.now().isoformat()
             })
-            
-            # Actualizar progreso cada 10%
-            if (i + 1) % max(1, quantity // 10) == 0:
-                progress = int(((i + 1) / quantity) * 100)
-                bars = "▰" * (progress // 10) + "▱" * (10 - progress // 10)
-                progress_text = f"⏳ **GENERANDO TOKENS...**\n\n"
-                progress_text += f"📊 Progreso: {progress}%\n{bars}\n\n"
-                progress_text += f"✅ Generados: {i + 1:,}/{quantity:,}"
-                
-                await callback_query.message.edit_text(
-                    progress_text,
-                    parse_mode="Markdown"
-                )
+        
+        # Simular progreso visual
+        progress_text = f"⏳ **GENERANDO TOKENS...**\n\n"
+        progress_text += f"📊 Progreso: 100%\n▰▰▰▰▰▰▰▰▰▰\n\n"
+        progress_text += f"✅ Generados: {quantity:,}/{quantity:,}"
+        
+        await callback_query.message.edit_text(
+            progress_text,
+            parse_mode="Markdown"
+        )
         
         # Generación completada
         success_text = "🎉 **GENERACIÓN COMPLETADA EXITOSAMENTE**\n\n"
@@ -515,43 +556,71 @@ async def get_token_statistics(tokeneitor: Tokeneitor) -> Dict[str, Any]:
     }
 
 async def get_available_tariffs() -> List[Dict[str, Any]]:
-    """Obtiene las tarifas disponibles."""
-    return [
-        {
-            "id": 1,
-            "name": "VIP 1 Semana",
-            "price": 9.99,
-            "duration_days": 7,
-            "active_tokens": 45,
-            "conversion_rate": 88.9,
-            "is_active": True
-        },
-        {
-            "id": 2,
-            "name": "VIP 1 Mes",
-            "price": 29.99,
-            "duration_days": 30,
-            "active_tokens": 67,
-            "conversion_rate": 94.0,
-            "is_active": True
-        },
-        {
-            "id": 3,
-            "name": "VIP 3 Meses",
-            "price": 79.99,
-            "duration_days": 90,
-            "active_tokens": 30,
-            "conversion_rate": 90.0,
-            "is_active": True
-        }
-    ]
+    """Obtiene las tarifas disponibles usando AdminService."""
+    event_bus = EventBus()
+    admin_service = AdminService(event_bus)
+    
+    # Obtener tarifas reales de la base de datos
+    tariffs = await admin_service.get_all_tariffs()
+    
+    result = []
+    for tariff in tariffs:
+        # Calcular estadísticas simuladas para cada tarifa
+        # En una implementación real, estas vendrían de consultas específicas
+        result.append({
+            "id": tariff.id,
+            "name": tariff.name,
+            "price": tariff.price,
+            "duration_days": tariff.duration_days,
+            "active_tokens": 0,  # Se calcularía con consulta específica
+            "conversion_rate": 85.0,  # Se calcularía con consulta específica  
+            "is_active": tariff.is_active
+        })
+    
+    # Si no hay tarifas, crear algunas por defecto
+    if not result:
+        result = [
+            {
+                "id": 1,
+                "name": "VIP 1 Semana",
+                "price": 9.99,
+                "duration_days": 7,
+                "active_tokens": 0,
+                "conversion_rate": 88.9,
+                "is_active": True
+            },
+            {
+                "id": 2,
+                "name": "VIP 1 Mes",
+                "price": 29.99,
+                "duration_days": 30,
+                "active_tokens": 0,
+                "conversion_rate": 94.0,
+                "is_active": True
+            }
+        ]
+    
+    return result
 
 async def get_tariff_details(tariff_id: int) -> Dict[str, Any]:
     """Obtiene detalles de una tarifa específica."""
-    tariffs = await get_available_tariffs()
-    for tariff in tariffs:
-        if tariff["id"] == tariff_id:
-            return tariff
+    event_bus = EventBus()
+    admin_service = AdminService(event_bus)
+    
+    # Obtener tarifa directamente de la base de datos
+    tariff = await admin_service.get_tariff(tariff_id)
+    
+    if tariff:
+        return {
+            "id": tariff.id,
+            "name": tariff.name,
+            "price": tariff.price,
+            "duration_days": tariff.duration_days,
+            "active_tokens": 0,  # Se calcularía con consulta específica
+            "conversion_rate": 85.0,  # Se calcularía con consulta específica
+            "is_active": tariff.is_active
+        }
+    
     return None
 
 def create_keyboard_from_data(keyboard_data: List[List[Dict[str, str]]]):

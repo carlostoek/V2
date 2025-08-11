@@ -10,6 +10,7 @@ from src.modules.narrative.service import NarrativeService
 from src.modules.channel.service import ChannelService
 from src.modules.user.service import UserService
 from src.modules.token.tokeneitor import Tokeneitor
+from src.bot.middleware.diana_context import DianaContextMiddleware
 from .handlers import setup_handlers
 
 class TelegramAdapter:
@@ -38,6 +39,16 @@ class TelegramAdapter:
 
     def _register_handlers(self):
         """Registra los handlers de Telegram."""
+        # Registrar middleware Diana Context si los servicios están disponibles
+        if self._emotional_service and self._narrative_service:
+            diana_middleware = DianaContextMiddleware(
+                event_bus=self._event_bus,
+                emotional_service=self._emotional_service,
+                narrative_service=self._narrative_service
+            )
+            self.dp.message.middleware(diana_middleware)
+            self.dp.callback_query.middleware(diana_middleware)
+        
         # Pasa las dependencias (event_bus, servicios) a los handlers
         setup_handlers(
             self.dp, 

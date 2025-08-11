@@ -494,56 +494,5 @@ class StoryNavigationSystem:
                 history.pop(0)
 
 
-# Registro de handlers
-@router.message(Command("historia"))
-async def handle_story_command(message: Message, 
-                             narrative_service: NarrativeService,
-                             emotional_service: EmotionalService,
-                             diana_system: DianaContextualResponseSystem):
-    """Handler principal para el comando /historia."""
-    story_system = StoryNavigationSystem(narrative_service, emotional_service, diana_system)
-    await story_system.show_story_hub(message)
-
-
-@router.callback_query(lambda c: c.data.startswith("diana:"))
-async def handle_diana_callbacks(callback: CallbackQuery,
-                               narrative_service: NarrativeService,
-                               emotional_service: EmotionalService,
-                               diana_system: DianaContextualResponseSystem):
-    """Handler para todos los callbacks de Diana."""
-    
-    story_system = StoryNavigationSystem(narrative_service, emotional_service, diana_system)
-    
-    action = callback.data.replace("diana:", "")
-    
-    if action == "continue_story":
-        await story_system.continue_story(callback)
-    
-    elif action == "back_to_story_hub":
-        # Recrear el hub de historia
-        await story_system.show_story_hub(callback.message)
-        await callback.answer()
-    
-    elif action.startswith("make_choice:"):
-        choice_id = int(action.split(":")[1])
-        await story_system.make_narrative_choice(callback, choice_id)
-    
-    elif action.startswith("deep_explore:"):
-        fragment_key = action.split(":", 1)[1]
-        await story_system.deep_explore(callback, fragment_key)
-    
-    elif action.startswith("reflect:"):
-        fragment_key = action.split(":", 1)[1]
-        await story_system.reflect_on_fragment(callback, fragment_key)
-    
-    else:
-        await callback.answer("Función en desarrollo...", show_alert=True)
-
-
-def register_story_navigation_handlers(dp, narrative_service, emotional_service, diana_system):
-    """Registra los handlers de navegación narrativa."""
-    dp.include_router(router)
-    
-    # Proporcionar dependencias a través del contexto
-    # En una implementación real, esto se haría a través del sistema DI
-    pass
+# Los handlers están integrados en el sistema principal
+# No necesitamos registro separado
