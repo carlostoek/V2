@@ -140,12 +140,22 @@ class KeyboardFactory:
     
     @classmethod
     def admin_menu(cls) -> types.InlineKeyboardMarkup:
-        """Crea el teclado del menú de administración."""
+        """Crea el teclado del menú de administración con todos los servicios."""
         buttons = [
-            [{"text": "🆓 Administrar Canal Gratuito", "callback_data": "admin:free_channel_menu"}],
-            [{"text": "💎 Administrar Canal VIP", "callback_data": "admin:vip_channel_menu"}]
+            [
+                {"text": "💎 VIP", "callback_data": "admin:section:vip"},
+                {"text": "🎮 Gamificación", "callback_data": "admin:section:gamification"}
+            ],
+            [
+                {"text": "📚 Contenido", "callback_data": "admin:section:content"},
+                {"text": "📊 Analytics", "callback_data": "admin:section:analytics"}
+            ],
+            [
+                {"text": "⚙️ Configuración", "callback_data": "admin:section:config"},
+                {"text": "🛠️ Sistema", "callback_data": "admin:section:system"}
+            ]
         ]
-        return cls.create_inline(buttons)
+        return cls.create_inline(buttons, width=2)
     
     @classmethod
     def free_channel_admin(cls, configured: bool) -> types.InlineKeyboardMarkup:

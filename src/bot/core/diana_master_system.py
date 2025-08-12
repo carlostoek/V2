@@ -949,6 +949,308 @@ async def cmd_admin(message: Message):
         await message.reply(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
+# === GAMIFICATION COMMANDS ===
+
+@master_router.message(Command("regalo"))
+async def cmd_daily_reward(message: Message):
+    """🎁 Daily rewards system with Diana's personality"""
+    print(f"🎁 Diana Master Router: /regalo for user {message.from_user.id}")
+    
+    if not diana_master:
+        await message.reply("🔧 Sistema inicializándose...")
+        return
+    
+    user_id = message.from_user.id
+    daily_rewards_service = diana_master.services.get('daily_rewards')
+    
+    if not daily_rewards_service:
+        await message.reply("🔧 Sistema de regalos no disponible en este momento.")
+        return
+    
+    # Use existing daily rewards handler logic
+    from ..handlers.user.daily_rewards import cmd_daily_reward
+    await cmd_daily_reward(message, daily_rewards_service)
+
+
+@master_router.message(Command("tienda"))
+async def cmd_shop(message: Message):
+    """🛍️ Shop system with Diana's touch"""
+    print(f"🛍️ Diana Master Router: /tienda for user {message.from_user.id}")
+    
+    if not diana_master:
+        await message.reply("🔧 Sistema inicializándose...")
+        return
+    
+    user_id = message.from_user.id
+    shop_service = diana_master.services.get('shop')
+    
+    if not shop_service:
+        await message.reply("🔧 Tienda no disponible en este momento.")
+        return
+    
+    # Use existing shop handler logic
+    from ..handlers.user.shop import cmd_shop
+    await cmd_shop(message, shop_service)
+
+
+@master_router.message(Command("trivia"))
+async def cmd_trivia(message: Message):
+    """🧠 Trivia game with Diana's intellectual challenge"""
+    print(f"🧠 Diana Master Router: /trivia for user {message.from_user.id}")
+    
+    if not diana_master:
+        await message.reply("🔧 Sistema inicializándose...")
+        return
+    
+    user_id = message.from_user.id
+    trivia_service = diana_master.services.get('trivia')
+    
+    if not trivia_service:
+        await message.reply("🔧 Sistema de trivia no disponible en este momento.")
+        return
+    
+    # Use existing trivia handler logic
+    from ..handlers.user.trivia import cmd_trivia
+    await cmd_trivia(message, trivia_service)
+
+
+@master_router.message(Command("misiones"))
+async def cmd_missions(message: Message):
+    """🎯 Missions system with gamification integration"""
+    print(f"🎯 Diana Master Router: /misiones for user {message.from_user.id}")
+    
+    if not diana_master:
+        await message.reply("🔧 Sistema inicializándose...")
+        return
+    
+    user_id = message.from_user.id
+    gamification_service = diana_master.services.get('gamification')
+    
+    if not gamification_service:
+        await message.reply("🔧 Sistema de misiones no disponible en este momento.")
+        return
+    
+    # Use existing missions handler logic
+    from ..handlers.gamification.misiones import handle_misiones
+    await handle_misiones(message, gamification_service)
+
+
+@master_router.message(Command("historia"))
+async def cmd_historia(message: Message):
+    """📖 Interactive narrative system with Diana's emotional integration"""
+    print(f"📖 Diana Master Router: /historia for user {message.from_user.id}")
+    
+    if not diana_master:
+        await message.reply("🔧 Sistema inicializándose...")
+        return
+    
+    user_id = message.from_user.id
+    narrative_service = diana_master.services.get('narrative')
+    emotional_service = diana_master.services.get('emotional')
+    
+    if not narrative_service:
+        await message.reply("🔧 Sistema de narrativa no disponible en este momento.")
+        return
+    
+    # Analyze user's emotional state for personalized experience
+    emotional_context = {}
+    if emotional_service:
+        try:
+            # Analyze user interaction for emotional state
+            emotional_trigger = await emotional_service.analyze_user_interaction(
+                user_id=user_id,
+                message_text="/historia",
+                context={"action": "start_story", "intent": "narrative_exploration"}
+            )
+            
+            # Get current response modifiers based on emotional state
+            modifiers = await emotional_service.get_response_modifiers(user_id)
+            emotional_context = {
+                "modifiers": modifiers,
+                "trigger": emotional_trigger
+            }
+            
+            # Trigger emotional state change if needed
+            if emotional_trigger:
+                await emotional_service.trigger_state_change(user_id, emotional_trigger, {"source": "historia_command"})
+        except Exception as e:
+            print(f"Warning: Emotional analysis failed for user {user_id}: {e}")
+    
+    # Get user's narrative progress with emotional context
+    try:
+        progress_data = await narrative_service.get_user_narrative_progress(user_id)
+        current_fragment = await narrative_service.get_user_fragment(user_id)
+        
+        # Create emotionally-aware response
+        base_message = "📖 *Historia de Diana*\n\n"
+        
+        if current_fragment:
+            # User has an active story fragment
+            character_emoji = _get_character_emoji(current_fragment.get('character', 'diana'))
+            
+            story_message = (
+                f"{base_message}"
+                f"{character_emoji} *{current_fragment['title']}*\n\n"
+                f"{current_fragment['text']}\n\n"
+                f"📊 *Progreso narrativo:* {progress_data['progress']:.1f}%\n"
+                f"📚 *Fragmentos visitados:* {progress_data['fragments_visited']}/{progress_data['total_fragments']}\n\n"
+            )
+            
+            # Apply emotional modifications to the response
+            if emotional_service and emotional_context.get("modifiers"):
+                story_message = await emotional_service.modify_response(
+                    user_id=user_id,
+                    original_response=story_message,
+                    context=emotional_context
+                )
+            
+            # Create choices keyboard with emotional state influence
+            keyboard = await _create_story_choices_keyboard(current_fragment, emotional_context)
+            
+        else:
+            # No active fragment - show story beginning
+            welcome_message = (
+                f"{base_message}"
+                f"🌸 *Bienvenida a mi mundo*\n\n"
+                f"Hola, soy Diana... y tengo muchas historias que contarte.\n"
+                f"Cada decisión que tomes cambiará el curso de nuestra historia juntos.\n\n"
+                f"¿Estás listo para sumergirte en un mundo de secretos y emociones?\n\n"
+                f"📊 *Tu progreso actual:* {progress_data['progress']:.1f}%"
+            )
+            
+            # Apply emotional modifications
+            if emotional_service and emotional_context.get("modifiers"):
+                welcome_message = await emotional_service.modify_response(
+                    user_id=user_id,
+                    original_response=welcome_message,
+                    context=emotional_context
+                )
+            
+            keyboard = _create_story_main_keyboard(emotional_context)
+        
+        await message.reply(story_message if current_fragment else welcome_message, 
+                          reply_markup=keyboard, parse_mode="Markdown")
+        
+    except Exception as e:
+        error_msg = "😔 Lo siento, hay un problema con el sistema de historia en este momento."
+        if emotional_service:
+            error_msg = await emotional_service.modify_response(user_id, error_msg)
+        await message.reply(error_msg)
+        print(f"Error in historia command: {e}")
+
+
+@master_router.message(Command("fragmento"))
+async def cmd_fragmento(message: Message):
+    """📜 Get contextual story fragment based on user achievements and emotional state"""
+    print(f"📜 Diana Master Router: /fragmento for user {message.from_user.id}")
+    
+    if not diana_master:
+        await message.reply("🔧 Sistema inicializándose...")
+        return
+    
+    user_id = message.from_user.id
+    narrative_service = diana_master.services.get('narrative')
+    emotional_service = diana_master.services.get('emotional')
+    
+    if not narrative_service:
+        await message.reply("🔧 Sistema de narrativa no disponible en este momento.")
+        return
+    
+    try:
+        # Analyze emotional state for contextualized fragment delivery
+        emotional_context = {}
+        if emotional_service:
+            try:
+                emotional_trigger = await emotional_service.analyze_user_interaction(
+                    user_id=user_id,
+                    message_text="/fragmento",
+                    context={"action": "request_fragment", "intent": "story_exploration"}
+                )
+                
+                modifiers = await emotional_service.get_response_modifiers(user_id)
+                emotional_context = {
+                    "modifiers": modifiers,
+                    "trigger": emotional_trigger
+                }
+                
+                if emotional_trigger:
+                    await emotional_service.trigger_state_change(user_id, emotional_trigger, {"source": "fragmento_command"})
+            except Exception as e:
+                print(f"Warning: Emotional analysis failed: {e}")
+        
+        # Get story fragment to send (if any queued from events)
+        fragment_key = narrative_service.story_fragments_to_send.get(user_id)
+        
+        if not fragment_key:
+            # No queued fragment, show current progress and encourage interaction
+            progress_data = await narrative_service.get_user_narrative_progress(user_id)
+            lore_pieces = await narrative_service.get_user_lore_pieces(user_id)
+            
+            message_text = (
+                f"📜 *Fragmentos de Historia*\n\n"
+                f"🌸 No tienes fragmentos nuevos en este momento, pero tu historia continúa...\n\n"
+                f"📊 *Progreso narrativo:* {progress_data['progress']:.1f}%\n"
+                f"🗝️ *Pistas recolectadas:* {len(lore_pieces)}\n\n"
+                f"💡 *¿Cómo obtener más fragmentos?*\n"
+                f"• Completa misiones 🎯\n"
+                f"• Reacciona a publicaciones del canal ❤️\n"
+                f"• Sube de nivel 📈\n"
+                f"• Interactúa conmigo regularmente 💬\n\n"
+                f"Cada acción que realizas puede desbloquear nuevas partes de mi historia..."
+            )
+            
+            # Apply emotional modification
+            if emotional_service and emotional_context.get("modifiers"):
+                message_text = await emotional_service.modify_response(
+                    user_id=user_id,
+                    original_response=message_text,
+                    context=emotional_context
+                )
+            
+            keyboard = _create_fragment_exploration_keyboard(emotional_context)
+            
+        else:
+            # User has a queued fragment - deliver it with emotional context
+            current_fragment = await narrative_service.get_user_fragment(user_id)
+            
+            if current_fragment:
+                character_emoji = _get_character_emoji(current_fragment.get('character', 'diana'))
+                
+                fragment_message = (
+                    f"✨ *Nuevo Fragmento Desbloqueado*\n\n"
+                    f"{character_emoji} *{current_fragment['title']}*\n\n"
+                    f"{current_fragment['text']}\n\n"
+                    f"🎉 ¡Has desbloqueado una nueva parte de la historia!\n"
+                    f"Usa /historia para continuar tu aventura."
+                )
+                
+                # Apply emotional modifications
+                if emotional_service and emotional_context.get("modifiers"):
+                    fragment_message = await emotional_service.modify_response(
+                        user_id=user_id,
+                        original_response=fragment_message,
+                        context=emotional_context
+                    )
+                
+                # Clear the queued fragment
+                del narrative_service.story_fragments_to_send[user_id]
+                
+                keyboard = _create_fragment_continue_keyboard(emotional_context)
+                message_text = fragment_message
+            else:
+                message_text = "😔 Hubo un problema al cargar tu fragmento. Intenta de nuevo más tarde."
+                keyboard = None
+        
+        await message.reply(message_text, reply_markup=keyboard, parse_mode="Markdown")
+        
+    except Exception as e:
+        error_msg = "😔 Lo siento, hay un problema con los fragmentos en este momento."
+        if emotional_service:
+            error_msg = await emotional_service.modify_response(user_id, error_msg)
+        await message.reply(error_msg)
+        print(f"Error in fragmento command: {e}")
+
+
 @master_router.callback_query(F.data.startswith("diana:"))
 async def handle_diana_callbacks(callback: CallbackQuery):
     """🎭 Handle all Diana Master System callbacks"""
@@ -1021,47 +1323,475 @@ async def handle_diana_callbacks(callback: CallbackQuery):
     await callback.answer()
 
 
-@master_router.callback_query(F.data.startswith("trivia:"))
-async def handle_trivia_callbacks(callback: CallbackQuery):
-    """🧠 Handle trivia answer callbacks"""
+# === GAMIFICATION CALLBACK HANDLERS ===
+
+@master_router.callback_query(F.data.startswith("daily:"))
+async def handle_daily_rewards_callbacks(callback: CallbackQuery):
+    """🎁 Handle daily rewards system callbacks"""
     if not diana_master:
         await callback.answer("🔧 Sistema no disponible")
         return
-   
-    trivia_data = callback.data.replace("trivia:", "")
+    
+    daily_rewards_service = diana_master.services.get('daily_rewards')
+    if not daily_rewards_service:
+        await callback.answer("🔧 Sistema de regalos no disponible")
+        return
+    
+    # Route to existing callback handlers
+    from ..handlers.user.daily_rewards import (
+        daily_claim_callback, daily_stats_callback, daily_leaderboard_callback,
+        daily_rewards_info_callback, daily_main_callback
+    )
+    
+    if callback.data == "daily:claim":
+        await daily_claim_callback(callback, daily_rewards_service)
+    elif callback.data == "daily:stats":
+        await daily_stats_callback(callback, daily_rewards_service)
+    elif callback.data == "daily:leaderboard":
+        await daily_leaderboard_callback(callback, daily_rewards_service)
+    elif callback.data == "daily:rewards_info":
+        await daily_rewards_info_callback(callback, daily_rewards_service)
+    elif callback.data == "daily:main":
+        await daily_main_callback(callback, daily_rewards_service)
+
+
+@master_router.callback_query(F.data.startswith("shop:"))
+async def handle_shop_callbacks(callback: CallbackQuery):
+    """🛍️ Handle shop system callbacks"""
+    if not diana_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+    
+    shop_service = diana_master.services.get('shop')
+    if not shop_service:
+        await callback.answer("🔧 Tienda no disponible")
+        return
+    
+    # Route to existing callback handlers
+    from ..handlers.user.shop import (
+        shop_main_callback, shop_category_callback, shop_item_callback,
+        shop_buy_callback, shop_cannot_buy_callback, shop_vip_only_callback
+    )
+    
+    if callback.data == "shop:main":
+        await shop_main_callback(callback, shop_service)
+    elif callback.data.startswith("shop:category:"):
+        await shop_category_callback(callback, shop_service)
+    elif callback.data.startswith("shop:item:"):
+        await shop_item_callback(callback, shop_service)
+    elif callback.data.startswith("shop:buy:"):
+        await shop_buy_callback(callback, shop_service)
+    elif callback.data == "shop:cannot_buy":
+        await shop_cannot_buy_callback(callback)
+    elif callback.data == "shop:vip_only":
+        await shop_vip_only_callback(callback, shop_service)
+
+
+@master_router.callback_query(F.data.startswith("trivia:"))
+async def handle_trivia_callbacks(callback: CallbackQuery):
+    """🧠 Handle trivia system callbacks"""
+    if not diana_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+    
+    trivia_service = diana_master.services.get('trivia')
+    if not trivia_service:
+        # Fallback to simplified trivia handler (existing code)
+        trivia_data = callback.data.replace("trivia:", "")
+        user_id = callback.from_user.id
+        
+        # Parse trivia answer: "correct:jupiter" or "wrong:earth"
+        if trivia_data.startswith("correct:"):
+            answer = trivia_data.replace("correct:", "")
+            result_text = "🎉 **¡RESPUESTA CORRECTA!**\n\n"
+            result_text += f"✅ ¡Bien hecho! {answer.capitalize()} es efectivamente el planeta más grande del sistema solar.\n\n"
+            result_text += "🏆 **Recompensas obtenidas:**\n"
+            result_text += "• 💰 20 Besitos\n"
+            result_text += "• 🎯 +1 Pregunta correcta\n"
+            result_text += "• ⭐ Experiencia en trivia\n\n"
+            result_text += "🚀 ¡Sigue así y conviértete en un maestro del conocimiento!"
+            
+        elif trivia_data.startswith("wrong:"):
+            answer = trivia_data.replace("wrong:", "")
+            result_text = "😅 **Respuesta Incorrecta**\n\n"
+            result_text += f"❌ {answer.capitalize()} no es correcto, pero ¡no te desanimes!\n\n"
+            result_text += "💡 **Respuesta correcta:** Júpiter es el planeta más grande de nuestro sistema solar.\n\n"
+            result_text += "🎁 **Consolación:**\n"
+            result_text += "• 💰 5 Besitos por intentarlo\n"
+            result_text += "• 🧠 Conocimiento adquirido\n\n"
+            result_text += "📚 ¡Cada error es una oportunidad de aprender!"
+        
+        else:
+            result_text = "🤔 **Opción no válida**\n\nSelecciona una de las opciones disponibles."
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Otra Pregunta", callback_data="diana:trivia_challenge")],
+            [InlineKeyboardButton(text="🏠 Menú Principal", callback_data="diana:refresh")]
+        ])
+        
+        await safe_edit_message(callback, result_text, keyboard)
+        await callback.answer()
+        return
+    
+    # Route to existing trivia callback handlers
+    from ..handlers.user.trivia import (
+        trivia_start_callback, trivia_answer_callback, trivia_abandon_callback,
+        trivia_leaderboard_callback, trivia_my_stats_callback, trivia_main_callback
+    )
+    
+    if callback.data == "trivia:start":
+        await trivia_start_callback(callback, trivia_service)
+    elif callback.data.startswith("trivia:answer:"):
+        await trivia_answer_callback(callback, trivia_service)
+    elif callback.data == "trivia:abandon":
+        await trivia_abandon_callback(callback, trivia_service)
+    elif callback.data == "trivia:leaderboard":
+        await trivia_leaderboard_callback(callback, trivia_service)
+    elif callback.data == "trivia:my_stats":
+        await trivia_my_stats_callback(callback, trivia_service)
+    elif callback.data == "trivia:main":
+        await trivia_main_callback(callback, trivia_service)
+
+
+@master_router.callback_query(F.data.startswith("missions:"))
+async def handle_missions_callbacks(callback: CallbackQuery):
+    """🎯 Handle missions system callbacks"""
+    if not diana_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+    
+    gamification_service = diana_master.services.get('gamification')
+    if not gamification_service:
+        await callback.answer("🔧 Sistema de misiones no disponible")
+        return
+    
+    # Route to existing missions callback handlers
+    from ..handlers.gamification.misiones import handle_missions_callback, handle_missions_back_to_menu
+    
+    if callback.data == "missions:back_to_menu":
+        await handle_missions_back_to_menu(callback)
+    else:
+        await handle_missions_callback(callback, gamification_service)
+
+
+@master_router.callback_query(F.data.startswith("story:"))
+async def handle_story_callbacks(callback: CallbackQuery):
+    """📖 Handle narrative system callbacks with emotional integration"""
+    if not diana_master:
+        await callback.answer("🔧 Sistema no disponible")
+        return
+    
+    user_id = callback.from_user.id
+    narrative_service = diana_master.services.get('narrative')
+    emotional_service = diana_master.services.get('emotional')
+    
+    if not narrative_service:
+        await callback.answer("🔧 Sistema de narrativa no disponible")
+        return
+    
+    action_data = callback.data.replace("story:", "")
+    
+    # Analyze emotional context for all story interactions
+    emotional_context = {}
+    if emotional_service:
+        try:
+            emotional_trigger = await emotional_service.analyze_user_interaction(
+                user_id=user_id,
+                message_text=f"story_callback:{action_data}",
+                context={"action": "story_interaction", "callback_data": action_data}
+            )
+            
+            modifiers = await emotional_service.get_response_modifiers(user_id)
+            emotional_context = {
+                "modifiers": modifiers,
+                "trigger": emotional_trigger
+            }
+            
+            if emotional_trigger:
+                await emotional_service.trigger_state_change(user_id, emotional_trigger, {"source": "story_callback"})
+        except Exception as e:
+            print(f"Warning: Emotional analysis failed: {e}")
+    
+    try:
+        if action_data.startswith("choice:"):
+            await handle_story_choice_callback(callback, narrative_service, emotional_service, action_data, emotional_context)
+        elif action_data == "lore":
+            await handle_story_lore_callback(callback, narrative_service, emotional_service, emotional_context)
+        elif action_data == "continue":
+            await handle_story_continue_callback(callback, narrative_service, emotional_service, emotional_context)
+        elif action_data == "current":
+            await handle_story_current_callback(callback, narrative_service, emotional_service, emotional_context)
+        elif action_data == "search_secrets":
+            await handle_story_secrets_callback(callback, narrative_service, emotional_service, emotional_context)
+        else:
+            await callback.answer("🔧 Opción no reconocida")
+            
+    except Exception as e:
+        error_msg = "😔 Hubo un problema procesando tu solicitud."
+        if emotional_service:
+            error_msg = await emotional_service.modify_response(user_id, error_msg)
+        await callback.answer(error_msg, show_alert=True)
+        print(f"Error in story callback: {e}")
+
+
+async def handle_story_choice_callback(callback: CallbackQuery, narrative_service, emotional_service, action_data: str, emotional_context: Dict[str, Any]):
+    """Handle story choice selections with emotional state transitions"""
     user_id = callback.from_user.id
     
-    # Parse trivia answer: "correct:jupiter" or "wrong:earth"
-    if trivia_data.startswith("correct:"):
-        answer = trivia_data.replace("correct:", "")
-        result_text = "🎉 **¡RESPUESTA CORRECTA!**\n\n"
-        result_text += f"✅ ¡Bien hecho! {answer.capitalize()} es efectivamente el planeta más grande del sistema solar.\n\n"
-        result_text += "🏆 **Recompensas obtenidas:**\n"
-        result_text += "• 💰 20 Besitos\n"
-        result_text += "• 🎯 +1 Pregunta correcta\n"
-        result_text += "• ⭐ Experiencia en trivia\n\n"
-        result_text += "🚀 ¡Sigue así y conviértete en un maestro del conocimiento!"
-        
-    elif trivia_data.startswith("wrong:"):
-        answer = trivia_data.replace("wrong:", "")
-        result_text = "😅 **Respuesta Incorrecta**\n\n"
-        result_text += f"❌ {answer.capitalize()} no es correcto, pero ¡no te desanimes!\n\n"
-        result_text += "💡 **Respuesta correcta:** Júpiter es el planeta más grande de nuestro sistema solar.\n\n"
-        result_text += "🎁 **Consolación:**\n"
-        result_text += "• 💰 5 Besitos por intentarlo\n"
-        result_text += "• 🧠 Conocimiento adquirido\n\n"
-        result_text += "📚 ¡Cada error es una oportunidad de aprender!"
+    if action_data == "choice:start":
+        # Start the user's story journey
+        try:
+            # Trigger user started event to get initial fragment
+            from src.modules.events import UserStartedBotEvent
+            if hasattr(narrative_service, '_event_bus'):
+                await narrative_service._event_bus.publish(UserStartedBotEvent(user_id=user_id))
+            
+            # Get initial fragment
+            await asyncio.sleep(0.1)  # Brief delay to let event process
+            current_fragment = await narrative_service.get_user_fragment(user_id)
+            
+            if current_fragment:
+                character_emoji = _get_character_emoji(current_fragment.get('character', 'diana'))
+                
+                story_text = (
+                    f"✨ *Tu Historia Comienza...*\n\n"
+                    f"{character_emoji} *{current_fragment['title']}*\n\n"
+                    f"{current_fragment['text']}\n\n"
+                    f"🌟 *¿Qué decides hacer?*"
+                )
+                
+                # Apply emotional modifications
+                if emotional_service and emotional_context.get("modifiers"):
+                    story_text = await emotional_service.modify_response(user_id, story_text, emotional_context)
+                
+                keyboard = await _create_story_choices_keyboard(current_fragment, emotional_context)
+                
+            else:
+                story_text = (
+                    f"🌸 *Diana te susurra...*\n\n"
+                    f"Tu historia está a punto de comenzar. Primero, necesitas explorar un poco más el mundo que te rodea.\n\n"
+                    f"Completa algunas misiones o interactúa más conmigo para desbloquear tu primer fragmento de historia."
+                )
+                
+                if emotional_service:
+                    story_text = await emotional_service.modify_response(user_id, story_text, emotional_context)
+                
+                keyboard = _create_fragment_exploration_keyboard(emotional_context)
+            
+            await safe_edit_message(callback, story_text, keyboard)
+            
+        except Exception as e:
+            await callback.answer("😔 No pude iniciar tu historia ahora", show_alert=True)
+            print(f"Error starting story: {e}")
     
+    elif action_data.startswith("choice:"):
+        # Handle specific story choices
+        choice_id_str = action_data.replace("choice:", "")
+        
+        try:
+            choice_id = int(choice_id_str)
+            success = await narrative_service.make_narrative_choice(user_id, choice_id)
+            
+            if success:
+                # Get new fragment after choice
+                await asyncio.sleep(0.1)
+                current_fragment = await narrative_service.get_user_fragment(user_id)
+                
+                if current_fragment:
+                    character_emoji = _get_character_emoji(current_fragment.get('character', 'diana'))
+                    
+                    choice_result_text = (
+                        f"✨ *Tu decisión cambia la historia...*\n\n"
+                        f"{character_emoji} *{current_fragment['title']}*\n\n"
+                        f"{current_fragment['text']}\n\n"
+                    )
+                    
+                    # Apply emotional modifications
+                    if emotional_service and emotional_context.get("modifiers"):
+                        choice_result_text = await emotional_service.modify_response(user_id, choice_result_text, emotional_context)
+                    
+                    keyboard = await _create_story_choices_keyboard(current_fragment, emotional_context)
+                    await safe_edit_message(callback, choice_result_text, keyboard)
+                else:
+                    # End of current story branch
+                    end_text = (
+                        f"🌟 *Fin de este capítulo*\n\n"
+                        f"Has completado esta parte de la historia. Continúa interactuando conmigo, completando misiones y explorando para desbloquear más capítulos.\n\n"
+                        f"Tu historia apenas comienza..."
+                    )
+                    
+                    if emotional_service:
+                        end_text = await emotional_service.modify_response(user_id, end_text, emotional_context)
+                    
+                    keyboard = _create_fragment_exploration_keyboard(emotional_context)
+                    await safe_edit_message(callback, end_text, keyboard)
+            else:
+                await callback.answer("😔 No pude procesar tu elección", show_alert=True)
+                
+        except ValueError:
+            # Handle special choice types (mystery, playful, etc.)
+            await handle_special_story_choice(callback, narrative_service, emotional_service, choice_id_str, emotional_context)
+        except Exception as e:
+            await callback.answer("😔 Error al procesar tu elección", show_alert=True)
+            print(f"Error processing choice: {e}")
+
+
+async def handle_special_story_choice(callback: CallbackQuery, narrative_service, emotional_service, choice_type: str, emotional_context: Dict[str, Any]):
+    """Handle special story choices like mystery, playful, etc."""
+    user_id = callback.from_user.id
+    
+    special_responses = {
+        "mystery": {
+            "text": "🔮 *Los secretos te llaman...*\n\nSientes una extraña energía a tu alrededor. Diana parece tener secretos que solo los más curiosos pueden descubrir.\n\n*¿Estás listo para adentrarte en lo desconocido?*",
+            "keyboard": [
+                [InlineKeyboardButton(text="🌙 Seguir la intuición", callback_data="story:choice:start")],
+                [InlineKeyboardButton(text="🔍 Investigar más", callback_data="story:lore")],
+                [InlineKeyboardButton(text="🏠 Regresar", callback_data="diana:refresh")]
+            ]
+        },
+        "playful": {
+            "text": "😉 *Diana te guiña un ojo travieso...*\n\n'¿Vienes a jugar conmigo? Me gustan las personas que no tienen miedo de un poco de diversión...'\n\n*Su sonrisa promete aventuras inesperadas*",
+            "keyboard": [
+                [InlineKeyboardButton(text="😈 Acepto el desafío", callback_data="story:choice:start")],
+                [InlineKeyboardButton(text="🎭 ¿Qué tienes en mente?", callback_data="story:lore")],
+                [InlineKeyboardButton(text="🏠 Tal vez después", callback_data="diana:refresh")]
+            ]
+        }
+    }
+    
+    response_data = special_responses.get(choice_type)
+    if response_data:
+        text = response_data["text"]
+        
+        # Apply emotional modifications
+        if emotional_service and emotional_context.get("modifiers"):
+            text = await emotional_service.modify_response(user_id, text, emotional_context)
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=response_data["keyboard"])
+        await safe_edit_message(callback, text, keyboard)
     else:
-        result_text = "🤔 Respuesta no reconocida. ¡Inténtalo de nuevo!"
+        await callback.answer("🔧 Tipo de elección no reconocido")
+
+
+async def handle_story_lore_callback(callback: CallbackQuery, narrative_service, emotional_service, emotional_context: Dict[str, Any]):
+    """Handle lore/clues display with emotional context"""
+    user_id = callback.from_user.id
+    
+    try:
+        lore_pieces = await narrative_service.get_user_lore_pieces(user_id)
+        progress_data = await narrative_service.get_user_narrative_progress(user_id)
+        
+        if lore_pieces:
+            lore_text = f"🗝️ *Tus Pistas Recolectadas*\n\n"
+            lore_text += f"📊 *Progreso:* {progress_data['progress']:.1f}%\n\n"
+            
+            for i, piece in enumerate(lore_pieces, 1):
+                lore_text += f"✨ **{piece['title']}**\n"
+                lore_text += f"_{piece['description']}_\n"
+                lore_text += f"🕐 Descubierta: {piece['source']}\n\n"
+            
+            lore_text += f"💡 *Continúa explorando para descubrir más secretos sobre Diana y su mundo...*"
+            
+        else:
+            lore_text = (
+                f"🗝️ *Pistas Narrativas*\n\n"
+                f"🌸 Aún no has recolectado ninguna pista sobre mi historia...\n\n"
+                f"💡 *¿Cómo obtener pistas?*\n"
+                f"• Completa misiones 🎯\n" 
+                f"• Avanza en la historia 📖\n"
+                f"• Sube de nivel 📈\n"
+                f"• Reacciona en el canal ❤️\n\n"
+                f"Cada pista revelará secretos sobre mi pasado y el mundo que habito..."
+            )
+        
+        # Apply emotional modifications
+        if emotional_service and emotional_context.get("modifiers"):
+            lore_text = await emotional_service.modify_response(user_id, lore_text, emotional_context)
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📖 Continuar Historia", callback_data="story:continue")],
+            [InlineKeyboardButton(text="🎯 Buscar Más Pistas", callback_data="diana:missions_hub")],
+            [InlineKeyboardButton(text="🏠 Menú Principal", callback_data="diana:refresh")]
+        ])
+        
+        await safe_edit_message(callback, lore_text, keyboard)
+        
+    except Exception as e:
+        await callback.answer("😔 No pude cargar tus pistas")
+        print(f"Error loading lore: {e}")
+
+
+async def handle_story_continue_callback(callback: CallbackQuery, narrative_service, emotional_service, emotional_context: Dict[str, Any]):
+    """Handle story continuation"""
+    user_id = callback.from_user.id
+    
+    try:
+        current_fragment = await narrative_service.get_user_fragment(user_id)
+        
+        if current_fragment:
+            character_emoji = _get_character_emoji(current_fragment.get('character', 'diana'))
+            
+            continue_text = (
+                f"📖 *Continuando tu historia...*\n\n"
+                f"{character_emoji} *{current_fragment['title']}*\n\n"
+                f"{current_fragment['text']}\n\n"
+            )
+            
+            # Apply emotional modifications
+            if emotional_service and emotional_context.get("modifiers"):
+                continue_text = await emotional_service.modify_response(user_id, continue_text, emotional_context)
+            
+            keyboard = await _create_story_choices_keyboard(current_fragment, emotional_context)
+        else:
+            continue_text = (
+                f"📖 *Tu Historia*\n\n"
+                f"🌸 No tienes un fragmento activo en este momento.\n\n"
+                f"Interactúa más conmigo, completa misiones y explora para desbloquear nuevos capítulos de tu historia personalizada..."
+            )
+            
+            if emotional_service:
+                continue_text = await emotional_service.modify_response(user_id, continue_text, emotional_context)
+            
+            keyboard = _create_fragment_exploration_keyboard(emotional_context)
+        
+        await safe_edit_message(callback, continue_text, keyboard)
+        
+    except Exception as e:
+        await callback.answer("😔 No pude continuar tu historia")
+        print(f"Error continuing story: {e}")
+
+
+async def handle_story_current_callback(callback: CallbackQuery, narrative_service, emotional_service, emotional_context: Dict[str, Any]):
+    """Handle current story status display"""
+    # This is the same as continue, so we can reuse that function
+    await handle_story_continue_callback(callback, narrative_service, emotional_service, emotional_context)
+
+
+async def handle_story_secrets_callback(callback: CallbackQuery, narrative_service, emotional_service, emotional_context: Dict[str, Any]):
+    """Handle mysterious secret searching"""
+    user_id = callback.from_user.id
+    
+    secrets_text = (
+        f"🔮 *Buscando Secretos Ocultos...*\n\n"
+        f"*Diana te mira con una sonrisa enigmática*\n\n"
+        f"'Los secretos no se revelan a cualquiera... debes demostrar que eres digno de conocer la verdad.'\n\n"
+        f"🌙 *Completa más misiones para desbloquear los misterios más profundos*\n"
+        f"🗝️ *Cada pista te acerca más a la verdad*\n"
+        f"✨ *Tu progreso determina qué secretos puedes descubrir*"
+    )
+    
+    # Apply emotional modifications - this should be mysterious
+    if emotional_service and emotional_context.get("modifiers"):
+        secrets_text = await emotional_service.modify_response(user_id, secrets_text, emotional_context)
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎲 Nueva Pregunta", callback_data="diana:trivia_challenge")],
-        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+        [InlineKeyboardButton(text="🎯 Buscar en Misiones", callback_data="diana:missions_hub")],
+        [InlineKeyboardButton(text="🗝️ Ver Mis Pistas", callback_data="story:lore")],
+        [InlineKeyboardButton(text="📖 Volver a Historia", callback_data="story:continue")],
+        [InlineKeyboardButton(text="🏠 Menú Principal", callback_data="diana:refresh")]
     ])
     
-    await safe_edit_message(callback, result_text, keyboard)
-    await callback.answer()
+    await safe_edit_message(callback, secrets_text, keyboard)
 
 
 # === DIANA CONTENT PACKAGES ===
@@ -1681,6 +2411,95 @@ async def handle_premium_plus(callback: CallbackQuery, master: DianaMasterInterf
     ])
     
     await safe_edit_message(callback, premium_text, keyboard)
+
+
+# === NARRATIVE SYSTEM HELPER FUNCTIONS ===
+
+def _get_character_emoji(character: str) -> str:
+    """Get emoji for narrative character"""
+    character_emojis = {
+        "diana": "🌸",
+        "lucien": "🎭", 
+        "system": "🤖",
+        "unknown": "❓",
+        "narrator": "📖"
+    }
+    return character_emojis.get(character.lower(), "👤")
+
+
+def _create_story_main_keyboard(emotional_context: Dict[str, Any] = None) -> InlineKeyboardMarkup:
+    """Create main story keyboard with emotional state influence"""
+    buttons = [
+        [InlineKeyboardButton(text="🌟 Comenzar Mi Historia", callback_data="story:choice:start")],
+        [InlineKeyboardButton(text="🗝️ Ver Mis Pistas", callback_data="story:lore")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    ]
+    
+    # Add emotional state influence
+    modifiers = emotional_context.get("modifiers", {}) if emotional_context else {}
+    if modifiers.get("tone") == "mysterious":
+        buttons.insert(1, [InlineKeyboardButton(text="🔮 Explora los Secretos...", callback_data="story:choice:mystery")])
+    elif modifiers.get("tone") == "playful":
+        buttons.insert(1, [InlineKeyboardButton(text="😉 ¡Aventura Traviesa!", callback_data="story:choice:playful")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+async def _create_story_choices_keyboard(fragment_data: Dict[str, Any], emotional_context: Dict[str, Any] = None) -> InlineKeyboardMarkup:
+    """Create keyboard for story choices with emotional influence"""
+    buttons = []
+    
+    # Add story choices
+    choices = fragment_data.get('choices', [])
+    for choice in choices:
+        # Modify choice text based on emotional state if needed
+        choice_text = choice['text']
+        modifiers = emotional_context.get("modifiers", {}) if emotional_context else {}
+        
+        if modifiers.get("tone") == "mysterious" and not choice_text.endswith("..."):
+            choice_text += "..."
+        elif modifiers.get("tone") == "playful":
+            choice_text = choice_text.replace(".", " 😉")
+        
+        buttons.append([InlineKeyboardButton(
+            text=choice_text, 
+            callback_data=f"story:choice:{choice['id']}"
+        )])
+    
+    # Add navigation buttons
+    buttons.append([InlineKeyboardButton(text="📖 Continuar Historia", callback_data="story:continue")])
+    buttons.append([InlineKeyboardButton(text="🗝️ Ver Pistas", callback_data="story:lore")])
+    buttons.append([InlineKeyboardButton(text="🏠 Menú Principal", callback_data="diana:refresh")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def _create_fragment_exploration_keyboard(emotional_context: Dict[str, Any] = None) -> InlineKeyboardMarkup:
+    """Create keyboard for fragment exploration"""
+    buttons = [
+        [InlineKeyboardButton(text="📖 Ver Historia Actual", callback_data="story:current")],
+        [InlineKeyboardButton(text="🎯 Ir a Misiones", callback_data="diana:missions_hub")],
+        [InlineKeyboardButton(text="🛒 Visitar Tienda", callback_data="diana:epic_shop")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    ]
+    
+    # Add emotional influence
+    modifiers = emotional_context.get("modifiers", {}) if emotional_context else {}
+    if modifiers.get("tone") == "mysterious":
+        buttons.insert(0, [InlineKeyboardButton(text="🔮 Buscar Secretos Ocultos", callback_data="story:search_secrets")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def _create_fragment_continue_keyboard(emotional_context: Dict[str, Any] = None) -> InlineKeyboardMarkup:
+    """Create keyboard to continue with story after receiving fragment"""
+    buttons = [
+        [InlineKeyboardButton(text="📖 Continuar Historia", callback_data="story:continue")],
+        [InlineKeyboardButton(text="🗝️ Ver Todas Mis Pistas", callback_data="story:lore")],
+        [InlineKeyboardButton(text="🏠 Volver al Inicio", callback_data="diana:refresh")]
+    ]
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 # === EXPORT FOR REGISTRATION ===

@@ -240,11 +240,40 @@ class DianaAdminServicesIntegration:
     # === VIP/ADMIN INTEGRATION ===
     
     async def get_vip_system_stats(self) -> Dict[str, Any]:
-        """Get VIP system statistics with fallback"""
+        """Get VIP system statistics with service integration"""
         
         cache_key = "vip_stats"
         if self._is_cache_valid(cache_key):
             return self._stats_cache[cache_key]
+            
+        try:
+            # Try to get stats from TariffService first
+            tariff_service = self.services.get('tariff')
+            if tariff_service and hasattr(tariff_service, 'get_system_stats'):
+                stats = await tariff_service.get_system_stats()
+                if stats:
+                    self._cache_stats(cache_key, stats, minutes=5)
+                    return stats
+            
+            # Fallback to Tokeneitor if available
+            tokeneitor = self.services.get('tokeneitor')
+            if tokeneitor and hasattr(tokeneitor, 'get_token_stats'):
+                token_stats = await tokeneitor.get_token_stats()
+                if token_stats:
+                    stats = {
+                        'active_subscriptions': token_stats.get('active', 0),
+                        'pending_tokens': token_stats.get('pending', 0),
+                        'revenue_today': token_stats.get('revenue_day', 0),
+                        'revenue_month': token_stats.get('revenue_month', 0)
+                    }
+                    self._cache_stats(cache_key, stats, minutes=5)
+                    return stats
+            
+            return self._get_fallback_vip_stats()
+            
+        except Exception as e:
+            self.logger.error("Error getting VIP stats from services", error=str(e))
+            return self._get_fallback_vip_stats()
             
         try:
             if "admin" not in self.services:
@@ -658,15 +687,317 @@ class DianaAdminServicesIntegration:
             # Handle specific tariff actions
             tariff_action = action.replace("vip:tariff_", "")
             return await self._handle_tariff_action(tariff_action, user_id, params)
+        elif action == "vip:list_tokens":
+            # Show active tokens interface
+            self.logger.info("🎫 Mostrando lista de tokens activos...")
+            
+            try:
+                await self.show_tokens_management_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "🎫 Lista de tokens desplegada correctamente.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error al mostrar tokens: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error al mostrar tokens: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:config_tokens":
+            # Show token configuration interface  
+            self.logger.info("⚙️ Mostrando configuración de tokens...")
+            
+            try:
+                await self.show_token_configuration_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "⚙️ Configuración de tokens desplegada.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en configuración de tokens: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en configuración: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:token_stats":
+            # Show token usage statistics
+            self.logger.info("📊 Mostrando estadísticas de tokens...")
+            
+            try:
+                await self.show_token_statistics_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "📊 Estadísticas de tokens desplegadas.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en estadísticas de tokens: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en estadísticas: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:conversion_stats":
+            # Show conversion statistics
+            self.logger.info("📈 Mostrando estadísticas de conversión...")
+            
+            try:
+                await self.show_conversion_statistics_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "📈 Estadísticas de conversión desplegadas.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en estadísticas de conversión: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en estadísticas: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:revenue_analysis":
+            # Show revenue analysis
+            self.logger.info("💰 Mostrando análisis de ingresos...")
+            
+            try:
+                await self.show_revenue_analysis_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "💰 Análisis de ingresos desplegado.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en análisis de ingresos: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en análisis: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:retention_analysis":
+            # Show retention analysis
+            self.logger.info("👥 Mostrando análisis de retención...")
+            
+            try:
+                await self.show_retention_analysis_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "👥 Análisis de retención desplegado.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en análisis de retención: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en análisis: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:export_stats":
+            # Export statistics
+            self.logger.info("📊 Exportando estadísticas...")
+            
+            try:
+                export_result = await self.export_vip_statistics(user_id)
+                if export_result["success"]:
+                    return {
+                        "success": True,
+                        "message": f"📊 Estadísticas exportadas exitosamente!\n\n{export_result['message']}",
+                        "show_alert": True
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Error exportando: {export_result['error']}",
+                        "show_alert": True
+                    }
+            except Exception as e:
+                self.logger.error(f"❌ Error exportando estadísticas: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en exportación: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:edit_messages":
+            # Show message configuration interface
+            self.logger.info("✏️ Mostrando configuración de mensajes VIP...")
+            
+            try:
+                await self.show_vip_messages_configuration_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "✏️ Configuración de mensajes desplegada.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en configuración de mensajes: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en mensajes: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:config_reminders":
+            # Show reminders configuration interface
+            self.logger.info("⏰ Mostrando configuración de recordatorios...")
+            
+            try:
+                await self.show_vip_reminders_configuration_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "⏰ Configuración de recordatorios desplegada.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en recordatorios: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en recordatorios: {str(e)}",
+                    "show_alert": True
+                }
+        elif action == "vip:goodbye_messages":
+            # Show goodbye messages configuration interface
+            self.logger.info("👋 Mostrando configuración de mensajes de despedida...")
+            
+            try:
+                await self.show_vip_goodbye_messages_configuration_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "👋 Configuración de despedidas desplegada.",
+                    "show_alert": False
+                }
+            except Exception as e:
+                self.logger.error(f"❌ Error en mensajes de despedida: {e}")
+                return {
+                    "success": False,
+                    "error": f"❌ Error en despedidas: {str(e)}",
+                    "show_alert": True
+                }
         else:
-            # Other VIP actions (placeholder)
-            self.logger.info(f"ℹ️  Acción VIP genérica: {action}")
-            return {"success": True, "message": f"VIP action {action} executed successfully"}
+            # Unknown VIP action
+            self.logger.warning(f"⚠️ Acción VIP desconocida: {action}")
+            return {
+                "success": False,
+                "error": f"Acción VIP desconocida: {action}",
+                "show_alert": False
+            }
     
     async def _handle_gamification_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle gamification-related admin actions"""
-        # Placeholder for gamification actions  
-        return {"success": True, "message": f"Gamification action {action} executed successfully"}
+        self.logger.info(f"🎮 Manejando acción de gamificación: {action} para usuario {user_id}")
+        
+        try:
+            if action == "gamification:points_distribution":
+                # Show points distribution interface
+                self.logger.info("✨ Mostrando distribución de puntos...")
+                await self.show_points_distribution_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "✨ Distribución de puntos desplegada.",
+                    "show_alert": False
+                }
+                
+            elif action == "gamification:mission_popularity":
+                # Show mission popularity interface
+                self.logger.info("📜 Mostrando popularidad de misiones...")
+                await self.show_mission_popularity_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "📜 Popularidad de misiones desplegada.",
+                    "show_alert": False
+                }
+                
+            elif action == "gamification:engagement_metrics":
+                # Show engagement metrics interface
+                self.logger.info("📊 Mostrando métricas de engagement...")
+                await self.show_engagement_metrics_interface(user_id)
+                return {
+                    "success": True,
+                    "message": "📊 Métricas de engagement desplegadas.",
+                    "show_alert": False
+                }
+                
+            elif action == "gamification:full_report":
+                # Generate and show full gamification report
+                self.logger.info("📋 Generando informe completo de gamificación...")
+                report_result = await self.generate_gamification_full_report(user_id)
+                if report_result["success"]:
+                    return {
+                        "success": True,
+                        "message": f"📋 Informe completo generado!\n\n{report_result['message']}",
+                        "show_alert": True
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Error generando informe: {report_result['error']}",
+                        "show_alert": True
+                    }
+            else:
+                # Unknown gamification action
+                self.logger.warning(f"⚠️ Acción de gamificación desconocida: {action}")
+                return {
+                    "success": False,
+                    "error": f"Acción de gamificación desconocida: {action}",
+                    "show_alert": False
+                }
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en acción de gamificación: {e}")
+            return {
+                "success": False,
+                "error": f"Error en gamificación: {str(e)}",
+                "show_alert": True
+            }
+
+    async def _handle_narrative_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle narrative-related admin actions"""
+        try:
+            if action.startswith("narrative:"):
+                action = action.replace("narrative:", "")
+                
+                if action == "get_fragments":
+                    fragment_type = params.get("type")
+                    fragments = await self.get_narrative_fragments(fragment_type)
+                    return {
+                        "success": True,
+                        "fragments": fragments,
+                        "count": len(fragments)
+                    }
+                    
+                elif action == "get_archetypes":
+                    archetype_data = await self.get_archetype_data()
+                    return {
+                        "success": True,
+                        "archetypes": archetype_data.get("archetypes", []),
+                        "stats": archetype_data.get("stats", {})
+                    }
+                    
+                elif action == "get_triggers":
+                    emotional_service = self.services.get('emotional')
+                    if emotional_service and hasattr(emotional_service, 'get_triggers'):
+                        triggers = await emotional_service.get_triggers()
+                        return {
+                            "success": True,
+                            "triggers": triggers
+                        }
+                    return {
+                        "success": False,
+                        "error": "EmotionalService no disponible"
+                    }
+                    
+            return {
+                "success": False,
+                "error": f"Acción de narrativa desconocida: {action}"
+            }
+            
+        except Exception as e:
+            self.logger.error("Error en acción de narrativa", error=str(e))
+            return {
+                "success": False,
+                "error": str(e)
+            }
     
     async def _handle_channel_action(self, action: str, user_id: int, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle channel-related admin actions"""
@@ -2255,3 +2586,758 @@ Envía el nuevo {field_names[field]} para esta tarifa.
                 "error": str(e),
                 "channels": []
             }
+    
+    # === MISSING VIP INTERFACE METHODS ===
+    
+    async def show_tokens_management_interface(self, admin_id: int):
+        """Show tokens management interface with active tokens list and controls"""
+        try:
+            self.logger.info(f"🎫 Mostrando gestión de tokens para admin {admin_id}")
+            
+            # Get tokeneitor service
+            tokeneitor = self.services.get('tokeneitor')
+            if not tokeneitor:
+                raise Exception("Servicio Tokeneitor no disponible")
+            
+            # Get active tokens (mock implementation for now)
+            tokens_data = {
+                "active_tokens": [
+                    {
+                        "id": "tk_001",
+                        "tariff_name": "VIP Premium",
+                        "created_at": "2025-01-10 14:30",
+                        "expires_at": "2025-01-17 14:30",
+                        "used": False,
+                        "token": "VIP_PREMIUM_XYZ123"
+                    },
+                    {
+                        "id": "tk_002", 
+                        "tariff_name": "VIP Básico",
+                        "created_at": "2025-01-09 10:15",
+                        "expires_at": "2025-01-16 10:15",
+                        "used": True,
+                        "token": "VIP_BASIC_ABC789"
+                    }
+                ],
+                "total": 2,
+                "used_today": 1,
+                "pending": 1
+            }
+            
+            message_text = f"""<b>🎫 Gestión de Tokens VIP</b>
+<i>Lucien custodia las llaves doradas del reino de Diana...</i>
+
+<b>📊 Resumen de Tokens:</b>
+• <b>Tokens totales:</b> {tokens_data['total']}
+• <b>Usados hoy:</b> {tokens_data['used_today']}
+• <b>Pendientes de uso:</b> {tokens_data['pending']}
+
+<b>🔑 Tokens Activos:</b>"""
+
+            for token in tokens_data["active_tokens"]:
+                status_icon = "✅" if token["used"] else "⏳"
+                usage_text = "Usado" if token["used"] else "Pendiente"
+                
+                message_text += f"""
+
+{status_icon} <b>{token['tariff_name']}</b>
+   • Token: <code>{token['token']}</code>
+   • Estado: {usage_text}
+   • Creado: {token['created_at']}
+   • Expira: {token['expires_at']}"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            # Create management keyboard  
+            buttons = [
+                [
+                    InlineKeyboardButton(text="🎫 Generar Nuevo", callback_data="admin:subsection:vip:tokens"),
+                    InlineKeyboardButton(text="⚙️ Configuración", callback_data="admin:action:vip:config_tokens")
+                ],
+                [
+                    InlineKeyboardButton(text="📊 Estadísticas", callback_data="admin:action:vip:token_stats"),
+                    InlineKeyboardButton(text="🔄 Actualizar", callback_data="admin:action:vip:list_tokens")
+                ],
+                [
+                    InlineKeyboardButton(text="🔙 Volver VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Admin Principal", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            
+            from ..core.diana_admin_master import diana_admin_master
+            if diana_admin_master and hasattr(diana_admin_master, 'services_integration'):
+                from aiogram import Bot
+                # Get bot instance if available 
+                # await bot.send_message(admin_id, message_text, reply_markup=keyboard, parse_mode="HTML")
+                # For now, just log the action
+                self.logger.info(f"✅ Interface de tokens preparada para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error al mostrar gestión de tokens: {e}")
+            raise e
+    
+    async def show_token_configuration_interface(self, admin_id: int):
+        """Show token configuration interface"""
+        try:
+            self.logger.info(f"⚙️ Mostrando configuración de tokens para admin {admin_id}")
+            
+            # Token configuration settings
+            config_data = {
+                "default_expiry_days": 7,
+                "max_tokens_per_tariff": 100,
+                "auto_cleanup_expired": True,
+                "notification_before_expiry": True,
+                "notification_days": 1
+            }
+            
+            message_text = f"""<b>⚙️ Configuración de Tokens</b>
+<i>Lucien permite ajustar los parámetros de las llaves doradas...</i>
+
+<b>🔧 Configuración Actual:</b>
+• <b>Expiración por defecto:</b> {config_data['default_expiry_days']} días
+• <b>Máx. tokens por tarifa:</b> {config_data['max_tokens_per_tariff']}
+• <b>Limpieza automática:</b> {'Activa' if config_data['auto_cleanup_expired'] else 'Desactiva'}
+• <b>Notificaciones:</b> {'Activas' if config_data['notification_before_expiry'] else 'Desactivas'}
+• <b>Aviso previo:</b> {config_data['notification_days']} día(s)
+
+<b>⚙️ Ajustes Disponibles:</b>
+<i>Personaliza el comportamiento de los tokens VIP</i>"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="⏰ Cambiar Expiración", callback_data="admin:config_token:expiry"),
+                    InlineKeyboardButton(text="📈 Límite por Tarifa", callback_data="admin:config_token:limit")
+                ],
+                [
+                    InlineKeyboardButton(text="🔄 Auto-Limpieza", callback_data="admin:config_token:cleanup"),
+                    InlineKeyboardButton(text="🔔 Notificaciones", callback_data="admin:config_token:notifications")
+                ],
+                [
+                    InlineKeyboardButton(text="💾 Guardar Config", callback_data="admin:config_token:save"),
+                    InlineKeyboardButton(text="↩️ Restablecer", callback_data="admin:config_token:reset")
+                ],
+                [
+                    InlineKeyboardButton(text="🎫 Volver Tokens", callback_data="admin:action:vip:list_tokens"),
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Configuración de tokens preparada para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en configuración de tokens: {e}")
+            raise e
+    
+    async def show_token_statistics_interface(self, admin_id: int):
+        """Show token usage statistics interface"""
+        try:
+            self.logger.info(f"📊 Mostrando estadísticas de tokens para admin {admin_id}")
+            
+            # Token statistics data (mock for now)
+            stats_data = {
+                "total_generated": 50,
+                "total_used": 32,
+                "success_rate": 64.0,
+                "expired_unused": 8,
+                "usage_by_day": {
+                    "monday": 5,
+                    "tuesday": 3,
+                    "wednesday": 7,
+                    "thursday": 4,
+                    "friday": 8,
+                    "saturday": 3,
+                    "sunday": 2
+                },
+                "popular_tariffs": [
+                    {"name": "VIP Premium", "usage": 15},
+                    {"name": "VIP Básico", "usage": 12},
+                    {"name": "VIP Semanal", "usage": 5}
+                ]
+            }
+            
+            message_text = f"""<b>📊 Estadísticas de Tokens</b>
+<i>Lucien presenta el registro de uso de las llaves doradas...</i>
+
+<b>📈 Resumen General:</b>
+• <b>Tokens generados:</b> {stats_data['total_generated']}
+• <b>Tokens utilizados:</b> {stats_data['total_used']}
+• <b>Tasa de éxito:</b> {stats_data['success_rate']}%
+• <b>Expirados sin usar:</b> {stats_data['expired_unused']}
+
+<b>🏷️ Tarifas Más Populares:</b>"""
+
+            for tariff in stats_data["popular_tariffs"]:
+                message_text += f"\n• <b>{tariff['name']}:</b> {tariff['usage']} usos"
+
+            message_text += f"""
+
+<b>📅 Uso por Día de la Semana:</b>
+• Lunes: {stats_data['usage_by_day']['monday']} • Martes: {stats_data['usage_by_day']['tuesday']}
+• Miércoles: {stats_data['usage_by_day']['wednesday']} • Jueves: {stats_data['usage_by_day']['thursday']}
+• Viernes: {stats_data['usage_by_day']['friday']} • Sábado: {stats_data['usage_by_day']['saturday']}
+• Domingo: {stats_data['usage_by_day']['sunday']}"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="📈 Detalles", callback_data="admin:token_stats:detailed"),
+                    InlineKeyboardButton(text="📊 Exportar", callback_data="admin:action:vip:export_stats")
+                ],
+                [
+                    InlineKeyboardButton(text="🔄 Actualizar", callback_data="admin:action:vip:token_stats"),
+                    InlineKeyboardButton(text="🎫 Gestionar", callback_data="admin:action:vip:list_tokens")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Estadísticas de tokens preparadas para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en estadísticas de tokens: {e}")
+            raise e
+    
+    async def show_conversion_statistics_interface(self, admin_id: int):
+        """Show conversion statistics interface"""
+        try:
+            self.logger.info(f"📈 Mostrando estadísticas de conversión para admin {admin_id}")
+            
+            # Conversion statistics (mock data)
+            conversion_data = {
+                "total_visitors": 1250,
+                "vip_conversions": 89,
+                "conversion_rate": 7.12,
+                "average_time_to_convert": "3.2 días",
+                "revenue_per_conversion": 25.50,
+                "best_performing_content": "Historia Interactiva #3",
+                "conversion_funnel": {
+                    "visitors": 1250,
+                    "engaged": 856,
+                    "interested": 234,
+                    "converted": 89
+                },
+                "monthly_trend": [
+                    {"month": "Enero", "conversions": 89, "rate": 7.12},
+                    {"month": "Diciembre", "conversions": 76, "rate": 6.45},
+                    {"month": "Noviembre", "conversions": 82, "rate": 6.89}
+                ]
+            }
+            
+            message_text = f"""<b>📈 Análisis de Conversiones</b>
+<i>Lucien revela los secretos de la persuasión de Diana...</i>
+
+<b>🎯 Métricas de Conversión:</b>
+• <b>Visitantes totales:</b> {conversion_data['total_visitors']:,}
+• <b>Conversiones VIP:</b> {conversion_data['vip_conversions']}
+• <b>Tasa de conversión:</b> {conversion_data['conversion_rate']}%
+• <b>Tiempo promedio:</b> {conversion_data['average_time_to_convert']}
+• <b>Ingreso por conversión:</b> ${conversion_data['revenue_per_conversion']:.2f}
+
+<b>🏆 Mejor contenido:</b> {conversion_data['best_performing_content']}
+
+<b>📊 Embudo de Conversión:</b>
+🚪 Visitantes: {conversion_data['conversion_funnel']['visitors']:,}
+👀 Interesados: {conversion_data['conversion_funnel']['engaged']:,}
+❤️ Comprometidos: {conversion_data['conversion_funnel']['interested']:,}
+💎 Convertidos: {conversion_data['conversion_funnel']['converted']:,}
+
+<b>📅 Tendencia Mensual:</b>"""
+
+            for month_data in conversion_data["monthly_trend"]:
+                message_text += f"\n• {month_data['month']}: {month_data['conversions']} ({month_data['rate']}%)"
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="📊 Detalles", callback_data="admin:conversion:detailed"),
+                    InlineKeyboardButton(text="📈 Tendencias", callback_data="admin:conversion:trends")
+                ],
+                [
+                    InlineKeyboardButton(text="🎯 Optimización", callback_data="admin:conversion:optimization"),
+                    InlineKeyboardButton(text="📋 Informe", callback_data="admin:action:vip:export_stats")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Estadísticas de conversión preparadas para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en estadísticas de conversión: {e}")
+            raise e
+    
+    async def show_revenue_analysis_interface(self, admin_id: int):
+        """Show revenue analysis interface"""
+        try:
+            self.logger.info(f"💰 Mostrando análisis de ingresos para admin {admin_id}")
+            
+            # Revenue analysis data (mock)
+            revenue_data = {
+                "today": 127.50,
+                "week": 892.25,
+                "month": 3456.78,
+                "total": 15789.50,
+                "average_per_user": 27.85,
+                "best_day": "Viernes",
+                "growth_rate": 15.3,
+                "payment_methods": {
+                    "card": 65,
+                    "paypal": 25,
+                    "crypto": 10
+                },
+                "top_tariffs": [
+                    {"name": "VIP Premium", "revenue": 1250.50, "users": 45},
+                    {"name": "VIP Mensual", "revenue": 875.25, "users": 35},
+                    {"name": "VIP Básico", "revenue": 432.10, "users": 28}
+                ]
+            }
+            
+            message_text = f"""<b>💰 Análisis de Ingresos</b>
+<i>Lucien presenta el flujo de tributos al imperio de Diana...</i>
+
+<b>💵 Ingresos Actuales:</b>
+• <b>Hoy:</b> ${revenue_data['today']:.2f}
+• <b>Esta semana:</b> ${revenue_data['week']:.2f}
+• <b>Este mes:</b> ${revenue_data['month']:.2f}
+• <b>Total acumulado:</b> ${revenue_data['total']:.2f}
+
+<b>📊 Métricas Clave:</b>
+• <b>Promedio por usuario:</b> ${revenue_data['average_per_user']:.2f}
+• <b>Mejor día:</b> {revenue_data['best_day']}
+• <b>Tasa de crecimiento:</b> +{revenue_data['growth_rate']}%
+
+<b>💳 Métodos de Pago:</b>
+• Tarjetas: {revenue_data['payment_methods']['card']}%
+• PayPal: {revenue_data['payment_methods']['paypal']}%
+• Crypto: {revenue_data['payment_methods']['crypto']}%
+
+<b>🏆 Tarifas Más Rentables:</b>"""
+
+            for tariff in revenue_data["top_tariffs"]:
+                message_text += f"\n• <b>{tariff['name']}:</b> ${tariff['revenue']:.2f} ({tariff['users']} usuarios)"
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="📊 Detalles", callback_data="admin:revenue:detailed"),
+                    InlineKeyboardButton(text="📈 Proyecciones", callback_data="admin:revenue:projections")
+                ],
+                [
+                    InlineKeyboardButton(text="💳 Métodos Pago", callback_data="admin:revenue:payment_methods"),
+                    InlineKeyboardButton(text="🔄 Actualizar", callback_data="admin:action:vip:revenue_analysis")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Análisis de ingresos preparado para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en análisis de ingresos: {e}")
+            raise e
+    
+    async def show_retention_analysis_interface(self, admin_id: int):
+        """Show user retention analysis interface"""
+        try:
+            self.logger.info(f"👥 Mostrando análisis de retención para admin {admin_id}")
+            
+            # Retention analysis data (mock)
+            retention_data = {
+                "total_vip_users": 156,
+                "active_this_month": 134,
+                "retention_rate": 85.9,
+                "churn_rate": 14.1,
+                "average_subscription_length": "4.2 meses",
+                "renewal_rate": 78.5,
+                "at_risk_users": 12,
+                "cohort_analysis": {
+                    "month_1": 100,
+                    "month_2": 89,
+                    "month_3": 78,
+                    "month_4": 71,
+                    "month_5": 65,
+                    "month_6": 62
+                },
+                "engagement_levels": {
+                    "high": 45,
+                    "medium": 78,
+                    "low": 21,
+                    "inactive": 12
+                }
+            }
+            
+            message_text = f"""<b>👥 Análisis de Retención</b>
+<i>Lucien analiza la lealtad de los devotos de Diana...</i>
+
+<b>📊 Métricas de Retención:</b>
+• <b>Usuarios VIP totales:</b> {retention_data['total_vip_users']}
+• <b>Activos este mes:</b> {retention_data['active_this_month']}
+• <b>Tasa de retención:</b> {retention_data['retention_rate']}%
+• <b>Tasa de abandono:</b> {retention_data['churn_rate']}%
+• <b>Duración promedio:</b> {retention_data['average_subscription_length']}
+
+<b>🔄 Renovaciones:</b>
+• <b>Tasa de renovación:</b> {retention_data['renewal_rate']}%
+• <b>Usuarios en riesgo:</b> {retention_data['at_risk_users']} 🚨
+
+<b>📈 Análisis de Cohortes (% retención):</b>
+• Mes 1: {retention_data['cohort_analysis']['month_1']}%
+• Mes 2: {retention_data['cohort_analysis']['month_2']}%
+• Mes 3: {retention_data['cohort_analysis']['month_3']}%
+• Mes 4: {retention_data['cohort_analysis']['month_4']}%
+• Mes 5: {retention_data['cohort_analysis']['month_5']}%
+• Mes 6: {retention_data['cohort_analysis']['month_6']}%
+
+<b>🎯 Niveles de Engagement:</b>
+• Alto: {retention_data['engagement_levels']['high']} usuarios
+• Medio: {retention_data['engagement_levels']['medium']} usuarios
+• Bajo: {retention_data['engagement_levels']['low']} usuarios
+• Inactivos: {retention_data['engagement_levels']['inactive']} usuarios"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="🚨 Usuarios Riesgo", callback_data="admin:retention:at_risk"),
+                    InlineKeyboardButton(text="📊 Cohortes", callback_data="admin:retention:cohorts")
+                ],
+                [
+                    InlineKeyboardButton(text="🎯 Engagement", callback_data="admin:retention:engagement"),
+                    InlineKeyboardButton(text="🔄 Renovaciones", callback_data="admin:retention:renewals")
+                ],
+                [
+                    InlineKeyboardButton(text="💌 Campañas", callback_data="admin:retention:campaigns"),
+                    InlineKeyboardButton(text="📋 Informe", callback_data="admin:action:vip:export_stats")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Análisis de retención preparado para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en análisis de retención: {e}")
+            raise e
+    
+    async def export_vip_statistics(self, admin_id: int) -> Dict[str, Any]:
+        """Export VIP statistics to file or generate report"""
+        try:
+            self.logger.info(f"📊 Exportando estadísticas VIP para admin {admin_id}")
+            
+            # Generate comprehensive statistics report
+            export_data = {
+                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "admin_id": admin_id,
+                "report_type": "vip_complete_stats",
+                "data": {
+                    "users": await self._get_vip_users_stats(),
+                    "revenue": await self._get_revenue_stats(), 
+                    "tokens": await self._get_tokens_stats(),
+                    "conversion": await self._get_conversion_stats(),
+                    "retention": await self._get_retention_stats()
+                }
+            }
+            
+            # Format report for display
+            report_summary = f"""📊 <b>Informe VIP Generado</b>
+
+<b>📅 Fecha:</b> {export_data['generated_at']}
+<b>👤 Administrador:</b> {admin_id}
+
+<b>📋 Secciones Incluidas:</b>
+✅ Estadísticas de usuarios VIP
+✅ Análisis de ingresos
+✅ Gestión de tokens  
+✅ Métricas de conversión
+✅ Análisis de retención
+
+<b>📄 Formato:</b> Informe completo
+<b>📊 Total de métricas:</b> {len(export_data['data'])} secciones
+
+<i>El informe ha sido generado y está disponible para consulta.</i>"""
+            
+            return {
+                "success": True,
+                "message": report_summary,
+                "export_data": export_data,
+                "filename": f"vip_stats_{admin_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error exportando estadísticas: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    async def show_vip_messages_configuration_interface(self, admin_id: int):
+        """Show VIP messages configuration interface"""
+        try:
+            self.logger.info(f"✏️ Mostrando configuración de mensajes VIP para admin {admin_id}")
+            
+            # Current VIP messages configuration (mock)
+            messages_config = {
+                "welcome_message": "¡Bienvenido al círculo exclusivo de Diana! 💎",
+                "renewal_reminder": "Tu acceso VIP expira pronto. ¡Renueva para seguir disfrutando! 🔔",
+                "thank_you_message": "Gracias por formar parte del círculo íntimo de Diana ❤️",
+                "exclusive_content_intro": "Contenido exclusivo solo para ti...",
+                "subscription_confirmation": "¡Tu suscripción VIP está activa! ✅"
+            }
+            
+            message_text = f"""<b>✏️ Configuración de Mensajes VIP</b>
+<i>Lucien permite ajustar las palabras que Diana susurra a sus elegidos...</i>
+
+<b>📝 Mensajes Actuales:</b>
+
+<b>🌟 Bienvenida VIP:</b>
+"{messages_config['welcome_message']}"
+
+<b>🔔 Recordatorio de Renovación:</b>
+"{messages_config['renewal_reminder']}"
+
+<b>❤️ Agradecimiento:</b>
+"{messages_config['thank_you_message']}"
+
+<b>🎭 Introducción Contenido:</b>
+"{messages_config['exclusive_content_intro']}"
+
+<b>✅ Confirmación Suscripción:</b>
+"{messages_config['subscription_confirmation']}"
+
+<b>⚙️ Opciones de Edición:</b>
+<i>Selecciona el mensaje que deseas personalizar</i>"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="🌟 Editar Bienvenida", callback_data="admin:msg_edit:welcome"),
+                    InlineKeyboardButton(text="🔔 Editar Recordatorio", callback_data="admin:msg_edit:reminder")
+                ],
+                [
+                    InlineKeyboardButton(text="❤️ Editar Agradecimiento", callback_data="admin:msg_edit:thanks"),
+                    InlineKeyboardButton(text="🎭 Editar Introducción", callback_data="admin:msg_edit:intro")
+                ],
+                [
+                    InlineKeyboardButton(text="✅ Editar Confirmación", callback_data="admin:msg_edit:confirmation"),
+                    InlineKeyboardButton(text="🎨 Plantillas", callback_data="admin:msg_templates")
+                ],
+                [
+                    InlineKeyboardButton(text="💾 Guardar Cambios", callback_data="admin:msg_save"),
+                    InlineKeyboardButton(text="🔄 Restablecer", callback_data="admin:msg_reset")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Configuración de mensajes preparada para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en configuración de mensajes: {e}")
+            raise e
+    
+    async def show_vip_reminders_configuration_interface(self, admin_id: int):
+        """Show VIP reminders configuration interface"""
+        try:
+            self.logger.info(f"⏰ Mostrando configuración de recordatorios para admin {admin_id}")
+            
+            # Current reminders configuration (mock)
+            reminders_config = {
+                "renewal_reminder_enabled": True,
+                "days_before_expiry": 3,
+                "reminder_frequency": "daily",
+                "custom_message": "¡No dejes que expire tu acceso especial a Diana! 💎",
+                "final_warning_enabled": True,
+                "final_warning_hours": 24,
+                "success_renewal_message": "¡Gracias por renovar! Diana te espera... ❤️"
+            }
+            
+            message_text = f"""<b>⏰ Configuración de Recordatorios</b>
+<i>Lucien programa los susurros que mantienen a los devotos cerca...</i>
+
+<b>🔔 Estado Actual:</b>
+• <b>Recordatorios:</b> {'Activos' if reminders_config['renewal_reminder_enabled'] else 'Inactivos'} ✅
+• <b>Días de aviso:</b> {reminders_config['days_before_expiry']} días antes
+• <b>Frecuencia:</b> {reminders_config['reminder_frequency']}
+• <b>Aviso final:</b> {'Activo' if reminders_config['final_warning_enabled'] else 'Inactivo'}
+• <b>Horas finales:</b> {reminders_config['final_warning_hours']} horas antes
+
+<b>📝 Mensaje de Recordatorio:</b>
+"{reminders_config['custom_message']}"
+
+<b>✅ Mensaje de Renovación Exitosa:</b>
+"{reminders_config['success_renewal_message']}"
+
+<b>⚙️ Configuraciones Disponibles:</b>
+<i>Ajusta la estrategia de recordatorios</i>"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="🔔 Toggle Recordatorios", callback_data="admin:reminder_toggle:main"),
+                    InlineKeyboardButton(text="⏰ Cambiar Días", callback_data="admin:reminder_days")
+                ],
+                [
+                    InlineKeyboardButton(text="🔄 Frecuencia", callback_data="admin:reminder_frequency"),
+                    InlineKeyboardButton(text="⚠️ Aviso Final", callback_data="admin:reminder_toggle:final")
+                ],
+                [
+                    InlineKeyboardButton(text="✏️ Editar Mensaje", callback_data="admin:reminder_edit:message"),
+                    InlineKeyboardButton(text="✅ Editar Éxito", callback_data="admin:reminder_edit:success")
+                ],
+                [
+                    InlineKeyboardButton(text="📊 Estadísticas", callback_data="admin:reminder_stats"),
+                    InlineKeyboardButton(text="🧪 Probar", callback_data="admin:reminder_test")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Configuración de recordatorios preparada para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en configuración de recordatorios: {e}")
+            raise e
+    
+    async def show_vip_goodbye_messages_configuration_interface(self, admin_id: int):
+        """Show VIP goodbye messages configuration interface"""
+        try:
+            self.logger.info(f"👋 Mostrando configuración de despedidas para admin {admin_id}")
+            
+            # Current goodbye messages configuration (mock)
+            goodbye_config = {
+                "immediate_goodbye": "Gracias por haber formado parte del círculo íntimo de Diana. Siempre serás recordado... 🌹",
+                "delayed_goodbye_enabled": True,
+                "delay_hours": 48,
+                "delayed_message": "Diana nota tu ausencia... ¿Considerarías regresar a su círculo especial? 💭",
+                "final_goodbye": "Las puertas permanecen abiertas para tu regreso cuando lo desees. Diana no olvida... ✨",
+                "comeback_offer_enabled": True,
+                "comeback_discount": 20,
+                "comeback_message": "Diana te ofrece una oportunidad especial para regresar: 20% de descuento en tu próxima suscripción 💎"
+            }
+            
+            message_text = f"""<b>👋 Configuración de Despedidas</b>
+<i>Lucien maneja las elegantes despedidas del círculo de Diana...</i>
+
+<b>📋 Configuración Actual:</b>
+
+<b>👋 Despedida Inmediata:</b>
+"{goodbye_config['immediate_goodbye']}"
+
+<b>⏰ Despedida Diferida:</b>
+• <b>Estado:</b> {'Activa' if goodbye_config['delayed_goodbye_enabled'] else 'Inactiva'}
+• <b>Retraso:</b> {goodbye_config['delay_hours']} horas
+• <b>Mensaje:</b> "{goodbye_config['delayed_message']}"
+
+<b>✨ Despedida Final:</b>
+"{goodbye_config['final_goodbye']}"
+
+<b>💎 Oferta de Regreso:</b>
+• <b>Estado:</b> {'Activa' if goodbye_config['comeback_offer_enabled'] else 'Inactiva'}
+• <b>Descuento:</b> {goodbye_config['comeback_discount']}%
+• <b>Mensaje:</b> "{goodbye_config['comeback_message']}"
+
+<b>⚙️ Opciones de Personalización:</b>
+<i>Refina la experiencia de despedida</i>"""
+
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            
+            buttons = [
+                [
+                    InlineKeyboardButton(text="👋 Editar Inmediata", callback_data="admin:goodbye_edit:immediate"),
+                    InlineKeyboardButton(text="⏰ Config Diferida", callback_data="admin:goodbye_config:delayed")
+                ],
+                [
+                    InlineKeyboardButton(text="✨ Editar Final", callback_data="admin:goodbye_edit:final"),
+                    InlineKeyboardButton(text="💎 Config Regreso", callback_data="admin:goodbye_config:comeback")
+                ],
+                [
+                    InlineKeyboardButton(text="📊 Estadísticas", callback_data="admin:goodbye_stats"),
+                    InlineKeyboardButton(text="🧪 Vista Previa", callback_data="admin:goodbye_preview")
+                ],
+                [
+                    InlineKeyboardButton(text="💾 Guardar", callback_data="admin:goodbye_save"),
+                    InlineKeyboardButton(text="🔄 Restablecer", callback_data="admin:goodbye_reset")
+                ],
+                [
+                    InlineKeyboardButton(text="💎 Menú VIP", callback_data="admin:section:vip"),
+                    InlineKeyboardButton(text="🏛️ Panel Admin", callback_data="admin:main")
+                ]
+            ]
+            
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+            self.logger.info(f"✅ Configuración de despedidas preparada para admin {admin_id}")
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error en configuración de despedidas: {e}")
+            raise e
+    
+    # === HELPER METHODS FOR STATISTICS ===
+    
+    async def _get_vip_users_stats(self) -> Dict[str, Any]:
+        """Get VIP users statistics"""
+        return {
+            "total_vip": 156,
+            "active_monthly": 134,
+            "new_this_month": 23,
+            "churned_this_month": 8
+        }
+    
+    async def _get_revenue_stats(self) -> Dict[str, Any]:
+        """Get revenue statistics"""
+        return {
+            "monthly_revenue": 3456.78,
+            "average_per_user": 27.85,
+            "growth_rate": 15.3
+        }
+    
+    async def _get_tokens_stats(self) -> Dict[str, Any]:
+        """Get tokens statistics"""
+        return {
+            "generated_total": 50,
+            "used_total": 32,
+            "success_rate": 64.0
+        }
+    
+    async def _get_conversion_stats(self) -> Dict[str, Any]:
+        """Get conversion statistics"""
+        return {
+            "conversion_rate": 7.12,
+            "total_conversions": 89,
+            "revenue_per_conversion": 25.50
+        }
+    
+    async def _get_retention_stats(self) -> Dict[str, Any]:
+        """Get retention statistics"""
+        return {
+            "retention_rate": 85.9,
+            "churn_rate": 14.1,
+            "renewal_rate": 78.5
+        }

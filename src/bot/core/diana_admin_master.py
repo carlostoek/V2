@@ -47,13 +47,42 @@ ADMIN_MENU_STRUCTURE = {
         title="VIP",
         icon="💎",
         subsections={
-            "config": "🛠 Configuración VIP (Mensajes/Recordatorios/Suscripciones/Despedidas)",
-            "invite": "🏷 Generar Invitación", 
-            "stats": "📊 Estadísticas VIP",
-            "subscribers": "📊 Suscriptores (CRUD)",
-            "post": "📢 Enviar Post"
+            "config": "⚙️ Configuración VIP",
+            "tokens": "🔑 Gestión de Tokens",
+            "stats": "📊 Estadísticas",
+            "subscribers": "👥 Suscriptores",
+            "tariffs": "💰 Tarifas",
+            "shop": "🛍️ Tienda VIP"
         },
-        description="Gestión completa del sistema VIP"
+        description="Gestión del sistema VIP, suscripciones y tienda"
+    ),
+    "gamification": AdminMenuSection(
+        key="gamification",
+        title="Gamificación",
+        icon="🎮",
+        subsections={
+            "points": "✨ Sistema de Puntos",
+            "missions": "📜 Misiones",
+            "achievements": "🏆 Logros",
+            "rewards": "🎁 Recompensas",
+            "daily": "🎁 Recompensas Diarias",
+            "trivia": "❓ Trivias"
+        },
+        description="Gestión completa del sistema de gamificación"
+    ),
+    "narrative": AdminMenuSection(
+        key="narrative",
+        title="Narrativa",
+        icon="📖",
+        subsections={
+            "progress": "📊 Progreso General",
+            "fragments": "🧩 Fragmentos de Historia", 
+            "choices": "🔄 Decisiones Narrativas",
+            "lore": "📜 Piezas de Lore",
+            "triggers": "⚡ Disparadores",
+            "archetypes": "🎭 Arquetipos"
+        },
+        description="Gestión completa del sistema narrativo de Diana"
     ),
     "free_channel": AdminMenuSection(
         key="free_channel",
@@ -280,27 +309,27 @@ class DianaAdminMaster:
         
         buttons = []
         
-        # Row 1: VIP & Channel Management
+        # Row 1: VIP & Gamification
         buttons.append([
             InlineKeyboardButton(
                 text=f"{ADMIN_MENU_STRUCTURE['vip'].icon} {ADMIN_MENU_STRUCTURE['vip'].title}",
                 callback_data="admin:section:vip"
             ),
             InlineKeyboardButton(
-                text=f"{ADMIN_MENU_STRUCTURE['free_channel'].icon} Canal Gratuito",
-                callback_data="admin:section:free_channel"
+                text=f"{ADMIN_MENU_STRUCTURE['gamification'].icon} {ADMIN_MENU_STRUCTURE['gamification'].title}",
+                callback_data="admin:section:gamification"
             )
         ])
         
-        # Row 2: Configuration & Gamification  
+        # Row 2: Narrative & Configuration
         buttons.append([
+            InlineKeyboardButton(
+                text=f"{ADMIN_MENU_STRUCTURE['narrative'].icon} {ADMIN_MENU_STRUCTURE['narrative'].title}",
+                callback_data="admin:section:narrative"
+            ),
             InlineKeyboardButton(
                 text=f"{ADMIN_MENU_STRUCTURE['global_config'].icon} Config Global",
                 callback_data="admin:section:global_config"
-            ),
-            InlineKeyboardButton(
-                text=f"{ADMIN_MENU_STRUCTURE['gamification'].icon} Gamificación",
-                callback_data="admin:section:gamification"
             )
         ])
         
@@ -359,6 +388,49 @@ class DianaAdminMaster:
         }
         return titles.get(permission_level, "🤔 Visitante Desconocido")
     
+    async def _create_narrative_interface(self, user_id: int) -> Tuple[str, InlineKeyboardMarkup]:
+        """Create interface for narrative section"""
+        context = await self.get_admin_context(user_id)
+        self.update_admin_context(user_id, "narrative")
+        
+        # Get narrative stats from services
+        narrative_stats = await self.services_integration.get_narrative_stats()
+        
+        text = f"""<b>📖 Narrativa de Diana</b>
+
+<i>Lucien custodia los secretos de la narrativa...</i>
+
+<b>📊 Estado Actual del Sistema:</b>
+• Fragmentos desbloqueados: {narrative_stats.get('unlocked_fragments', 0)}/{narrative_stats.get('total_fragments', 0)}
+• Decisiones registradas: {narrative_stats.get('recorded_choices', 0)}
+• Piezas de lore descubiertas: {narrative_stats.get('discovered_lore', 0)}/{narrative_stats.get('total_lore', 0)}
+• Arquetipos detectados: {narrative_stats.get('detected_archetypes', 0)}
+• Disparadores activos: {narrative_stats.get('active_triggers', 0)}
+
+<b>⚙️ Herramientas de Narrativa:</b>
+<i>Selecciona una opción para gestionar el sistema narrativo</i>"""
+
+        buttons = [
+            [
+                InlineKeyboardButton(text="📊 Progreso", callback_data="admin:subsection:narrative:progress"),
+                InlineKeyboardButton(text="🧩 Fragmentos", callback_data="admin:subsection:narrative:fragments")
+            ],
+            [
+                InlineKeyboardButton(text="🔄 Decisiones", callback_data="admin:subsection:narrative:choices"),
+                InlineKeyboardButton(text="📜 Lore", callback_data="admin:subsection:narrative:lore")
+            ],
+            [
+                InlineKeyboardButton(text="⚡ Disparadores", callback_data="admin:subsection:narrative:triggers"),
+                InlineKeyboardButton(text="🎭 Arquetipos", callback_data="admin:subsection:narrative:archetypes")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Volver", callback_data="admin:main"),
+                InlineKeyboardButton(text="🔄 Actualizar", callback_data="admin:section:narrative")
+            ]
+        ]
+        
+        return text, InlineKeyboardMarkup(inline_keyboard=buttons)
+
     def _get_lucien_section_intro(self, section_key: str, section_title: str) -> str:
         """Get Lucien's personalized introduction for each section"""
         intros = {
@@ -379,6 +451,10 @@ class DianaAdminMaster:
         
         if section_key not in ADMIN_MENU_STRUCTURE:
             return await self.create_admin_main_interface(user_id)
+            
+        # Special handling for narrative section
+        if section_key == "narrative":
+            return await self._create_narrative_interface(user_id)
             
         section = ADMIN_MENU_STRUCTURE[section_key]
         context = await self.get_admin_context(user_id)
